@@ -1,0 +1,2246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mytinerary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a trip drawn as a transit map. Each day is a colored line; stops sit on it in order,
+   with travel legs between them. Main column = the day's line; side rail = map, home base, bookings, budget. */
+:root {
+  --paper: #F2F3EE;
+  --card: #FFFFFF;
+  --ink: #111722;
+  --muted: #586170;
+  --rule: #D8DBD2;
+  --accent: #E0442B;
+  --tint: #FBEDE9;
+  --good: #2F8F4E;
+  --warn: #B7791F;
+  --display: "Fraunces", Georgia, "Times New Roman", serif;
+  --body: "Inter", "Helvetica Neue", Arial, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --on-c: #FFFFFF;
+  --l1: #E0442B; --l2: #0E8C8C; --l3: #C98A12; --l4: #5B4BC4; --l5: #2F8F4E; --l6: #C2417E; --l7: #2C6DB5;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0F141B; --card: #161D27; --ink: #ECEEE8; --muted: #9AA3AF; --rule: #273141;
+    --accent: #FF6A4D; --tint: #2A1C1A; --good: #5CC283; --warn: #E3A843;
+    --l1: #FF6A4D; --l2: #2FB5B5; --l3: #E3A843; --l4: #8C7FF0; --l5: #5CC283; --l6: #E874A8; --l7: #5C9BE6;
+    --on-c: #0F141B;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0F141B; --card: #161D27; --ink: #ECEEE8; --muted: #9AA3AF; --rule: #273141;
+  --accent: #FF6A4D; --tint: #2A1C1A; --good: #5CC283; --warn: #E3A843;
+  --l1: #FF6A4D; --l2: #2FB5B5; --l3: #E3A843; --l4: #8C7FF0; --l5: #5CC283; --l6: #E874A8; --l7: #5C9BE6;
+  --on-c: #0F141B;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
+@media (max-width: 480px) { .wrap { padding: 0 16px; } }
+
+/* Top bar */
+.top { border-bottom: 1px solid var(--rule); background: var(--paper); position: sticky; top: 0; z-index: 20; }
+.top .wrap { display: flex; align-items: center; gap: 16px; min-height: 60px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
+.mark { font-family: var(--display); font-weight: 700; font-size: 23px; letter-spacing: -0.01em; text-decoration: none; display: flex; align-items: center; gap: 10px; }
+.mark .dot { width: 14px; height: 14px; border-radius: 50%; border: 4px solid var(--accent); background: var(--card); }
+.tagline { color: var(--muted); font-size: 14px; }
+.top .spacer { flex: 1; }
+.btn { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--rule); background: var(--card); padding: 8px 14px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 14px; text-decoration: none; line-height: 1.2; }
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.btn.primary:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.ghost { background: transparent; }
+.btn.small { padding: 5px 10px; font-size: 13px; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.menu { position: relative; }
+.menu-pop { position: absolute; right: 0; top: calc(100% + 6px); background: var(--card); border: 1px solid var(--rule); border-radius: 12px; min-width: 260px; padding: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.12); display: none; z-index: 30; }
+.menu-pop.open { display: block; }
+.menu-pop button { display: flex; width: 100%; text-align: left; background: none; border: 0; padding: 8px 10px; border-radius: 8px; cursor: pointer; flex-direction: column; }
+.menu-pop button:hover { background: var(--paper); }
+.menu-pop small { color: var(--muted); }
+.menu-pop .empty { padding: 10px; color: var(--muted); font-size: 14px; }
+
+/* Banner */
+.banner { margin: 18px 0 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 14px; border: 1px dashed var(--rule); border-radius: 12px; font-size: 14px; color: var(--muted); }
+.banner strong { color: var(--ink); }
+
+/* Trip header */
+.trip-head { padding: 28px 0 22px; border-bottom: 2px solid var(--ink); display: grid; gap: 14px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.dest { font-family: var(--display); font-weight: 700; font-size: clamp(40px, 8vw, 104px); line-height: 1; letter-spacing: -0.02em; overflow-wrap: anywhere; }
+.thesis { font-size: 19px; max-width: 62ch; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--mono); font-size: 12px; padding: 4px 9px; border: 1px solid var(--rule); border-radius: 999px; background: var(--card); white-space: nowrap; }
+.head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Day line legend */
+.lines { display: flex; gap: 10px; overflow-x: auto; padding: 18px 0 6px; scrollbar-width: thin; }
+.line-tab { flex: 0 0 auto; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; text-align: left; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 10px 14px 10px 10px; cursor: pointer; min-width: 190px; max-width: 260px; }
+.line-tab .bullet { grid-row: span 2; width: 34px; height: 34px; border-radius: 50%; background: var(--c); color: var(--on-c); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 16px; }
+.line-tab .d { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.line-tab .t { font-weight: 600; font-size: 14px; line-height: 1.25; }
+.line-tab[aria-selected="true"] { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
+
+/* Main grid */
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 28px; padding: 18px 0 60px; align-items: start; }
+@media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+.rail { display: grid; gap: 18px; position: sticky; top: 76px; }
+@media (max-width: 980px) { .rail { position: static; } }
+.panel { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 16px; }
+.panel h3 { font-family: var(--body); font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.panel h3 small { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--muted); text-transform: none; letter-spacing: 0; }
+
+/* Day header */
+.day-head { display: grid; gap: 8px; margin-bottom: 18px; }
+.day-head h2 { font-family: var(--display); font-weight: 600; font-size: clamp(26px, 3.4vw, 38px); line-height: 1.15; letter-spacing: -0.01em; }
+.day-head .pitch { font-size: 17px; color: var(--muted); max-width: 64ch; }
+.day-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.rework { display: flex; gap: 8px; flex: 1 1 320px; }
+.rework input { flex: 1; min-width: 0; border: 1px solid var(--rule); background: var(--card); border-radius: 999px; padding: 7px 14px; font-size: 14px; }
+
+/* Timeline */
+.timeline { position: relative; display: grid; gap: 0; }
+.stop { display: grid; grid-template-columns: 88px 40px minmax(0, 1fr); align-items: start; }
+.stop .time { font-family: var(--mono); font-size: 13px; padding-top: 18px; text-align: right; padding-right: 8px; font-variant-numeric: tabular-nums; }
+.stop .time small { display: block; white-space: nowrap; color: var(--muted); font-size: 11px; }
+.rail-col { position: relative; align-self: stretch; display: flex; justify-content: center; }
+.rail-col::before { content: ""; position: absolute; top: 0; bottom: 0; width: 6px; background: var(--c); left: 50%; transform: translateX(-50%); }
+.stop:first-child .rail-col::before { top: 22px; }
+.stop:last-child .rail-col::before { bottom: calc(100% - 22px); }
+.node { position: relative; z-index: 1; margin-top: 12px; width: 26px; height: 26px; border-radius: 50%; background: var(--card); border: 4px solid var(--c); display: grid; place-items: center; font-family: var(--mono); font-size: 11px; font-weight: 600; }
+.node.minor { width: 16px; height: 16px; margin-top: 17px; border-width: 3px; }
+.node.home { border-radius: 4px; }
+.card { margin: 6px 0; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; transition: border-color .15s, box-shadow .15s; }
+.card.hl { border-color: var(--c); box-shadow: 0 0 0 1px var(--c); }
+.card.free { background: transparent; border-style: dashed; }
+.card.transitk { background: transparent; border: 0; padding: 10px 2px; }
+.card .cat { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.card .name { font-family: var(--display); font-weight: 600; font-size: 20px; line-height: 1.2; }
+.card .why { font-size: 15px; }
+.tip { font-size: 14px; background: var(--tint); border-left: 3px solid var(--accent); padding: 7px 10px; border-radius: 0 8px 8px 0; }
+.tip b { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; margin-right: 6px; }
+.card .foot { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+.pill { font-family: var(--mono); font-size: 11px; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--rule); white-space: nowrap; }
+.pill.now { background: var(--accent); color: #fff; border-color: var(--accent); }
+.pill.daybefore { border-color: var(--warn); color: var(--warn); }
+.pill.walkin { color: var(--muted); }
+.lnk { font-size: 13px; color: var(--muted); text-decoration: underline; text-underline-offset: 2px; background: none; border: 0; padding: 2px 4px; cursor: pointer; }
+.lnk:hover { color: var(--ink); }
+.leg { display: grid; grid-template-columns: 88px 40px minmax(0,1fr); }
+.leg .rail-col::before { background: repeating-linear-gradient(var(--c) 0 6px, transparent 6px 11px); width: 4px; }
+.leg .txt { font-family: var(--mono); font-size: 12px; color: var(--muted); padding: 6px 0; }
+
+/* Map */
+.map svg { width: 100%; height: auto; display: block; border-radius: 10px; background: var(--paper); }
+.map .gridl { stroke: var(--rule); stroke-width: 1; }
+.map text { font-family: var(--mono); fill: var(--muted); font-size: 11px; }
+.map .stop-c { cursor: pointer; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.map-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.map-legend i { width: 14px; height: 4px; border-radius: 2px; background: var(--c); display: inline-block; }
+
+/* Home base */
+.home-name { font-family: var(--display); font-weight: 600; font-size: 18px; }
+.muted { color: var(--muted); }
+.small { font-size: 14px; }
+.routine { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--rule); }
+.routine div { display: grid; grid-template-columns: 92px 1fr; gap: 8px; font-size: 14px; }
+.routine b { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 400; padding-top: 2px; }
+.alts { margin-top: 10px; font-size: 14px; }
+.alts summary { cursor: pointer; color: var(--muted); }
+.alts ul { margin: 8px 0 0; padding-left: 18px; }
+
+/* Bookings */
+.bk-group { display: grid; gap: 4px; margin-bottom: 12px; }
+.bk-group:last-child { margin-bottom: 0; }
+.bk-label { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .07em; display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.bk-label .sw { width: 8px; height: 8px; border-radius: 50%; }
+.bk { display: grid; grid-template-columns: 20px 1fr auto; gap: 8px; align-items: start; font-size: 14px; padding: 4px 0; }
+.bk input { margin-top: 3px; accent-color: var(--accent); }
+.bk.done span { text-decoration: line-through; color: var(--muted); }
+.bk em { font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; padding-top: 2px; }
+
+/* Budget */
+.bud-row { display: grid; grid-template-columns: 44px 1fr 64px; gap: 8px; align-items: center; font-size: 13px; margin-bottom: 8px; }
+.bud-row .lab { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.bud-row .amt { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.bar { position: relative; height: 14px; background: var(--paper); border-radius: 4px; display: flex; overflow: visible; }
+.bar span { height: 100%; }
+.bar span:first-child { border-radius: 4px 0 0 4px; }
+.bar .target { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); }
+.bud-key { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.bud-key span { display: inline-flex; align-items: center; gap: 5px; }
+.bud-key i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.bud-sum { font-size: 14px; margin-bottom: 12px; }
+.bud-sum strong { font-family: var(--display); font-size: 26px; font-weight: 700; display: block; line-height: 1.1; }
+
+.watch { margin: 0; padding-left: 18px; font-size: 14px; display: grid; gap: 6px; }
+
+/* Plan form */
+.plan { max-width: 860px; padding: 32px 0 80px; }
+.plan h1 { font-family: var(--display); font-weight: 700; font-size: clamp(36px, 6vw, 72px); line-height: 1; letter-spacing: -0.02em; }
+.plan .lede, .prof .lede { font-size: 18px; color: var(--muted); max-width: 58ch; margin: 14px 0 26px; }
+fieldset { border: 0; border-top: 2px solid var(--ink); margin: 0 0 26px; padding: 16px 0 0; display: grid; gap: 16px; }
+legend { font-family: var(--mono); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; padding: 0 10px 0 0; }
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+label.f { display: grid; gap: 6px; font-weight: 600; font-size: 14px; }
+label.f span.h { font-weight: 400; color: var(--muted); font-size: 13px; }
+.inp { border: 1px solid var(--rule); background: var(--card); border-radius: 10px; padding: 10px 12px; width: 100%; font-weight: 400; font-size: 16px; }
+textarea.inp { min-height: 88px; resize: vertical; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg label { cursor: pointer; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg span { display: inline-block; padding: 8px 14px; border: 1px solid var(--rule); border-radius: 999px; background: var(--card); font-size: 14px; font-weight: 500; }
+.seg input:checked + span { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sliders { display: grid; gap: 12px; }
+.sl { display: grid; grid-template-columns: 170px 1fr 28px; gap: 12px; align-items: center; font-size: 15px; }
+.sl input { accent-color: var(--accent); width: 100%; }
+.sl output { font-family: var(--mono); text-align: right; }
+@media (max-width: 480px) { .sl { grid-template-columns: 1fr 28px; } .sl input { grid-column: 1 / -1; grid-row: 2; } }
+.qlabel { font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+.form-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.form-actions .btn.primary { padding: 12px 22px; font-size: 16px; }
+.note { font-size: 13px; color: var(--muted); }
+.err { color: var(--accent); font-size: 14px; font-weight: 600; }
+
+/* Generating */
+.gen { padding: 60px 0 100px; max-width: 760px; }
+.gen .dest { font-size: clamp(40px, 7vw, 88px); }
+.gen-line { margin: 34px 0 18px; height: 8px; border-radius: 4px; background: var(--rule); position: relative; overflow: hidden; }
+.gen-line i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 4px; transition: width .6s ease; }
+.gen-stops { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; }
+.gen-stops .chip { animation: pop .3s ease both; }
+@keyframes pop { from { transform: scale(.8); opacity: .2; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .gen-stops .chip { animation: none; } .gen-line i { transition: none; } }
+.gen-status { font-family: var(--mono); font-size: 13px; color: var(--muted); margin-top: 14px; }
+
+/* Drawer */
+.drawer-bg { position: fixed; inset: 0; background: rgba(10,14,20,.35); z-index: 40; display: none; }
+.drawer-bg.open { display: block; }
+.drawer { position: fixed; right: 0; top: 0; bottom: 0; width: min(460px, 100%); background: var(--paper); border-left: 1px solid var(--rule); z-index: 41; transform: translateX(105%); transition: transform .2s ease; display: flex; flex-direction: column; }
+.drawer.open { transform: none; }
+.drawer header { padding: 18px 18px 12px; border-bottom: 1px solid var(--rule); display: grid; gap: 4px; }
+.drawer header h3 { font-family: var(--display); font-weight: 600; font-size: 22px; }
+.drawer .body { padding: 16px 18px; overflow-y: auto; display: grid; gap: 10px; align-content: start; flex: 1; }
+.drawer .x { position: absolute; right: 14px; top: 14px; }
+.alt { text-align: left; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 14px; cursor: pointer; display: grid; gap: 4px; }
+.alt:hover { border-color: var(--ink); }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 999px; font-size: 14px; z-index: 60; display: none; max-width: calc(100% - 32px); }
+.toast.show { display: block; }
+/* Import from Gmail / Calendar */
+.import { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 18px; display: grid; gap: 12px; margin: 0 0 28px; }
+.import h2 { font-family: var(--display); font-weight: 600; font-size: 22px; line-height: 1.15; }
+.import .row2 { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.found-strip { margin: 18px 0 0; }
+.found-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.found { border: 1px solid var(--rule); border-radius: 14px; padding: 12px 14px; display: grid; gap: 6px; background: var(--paper); align-content: start; }
+.found .fd { font-family: var(--display); font-weight: 600; font-size: 20px; line-height: 1.1; }
+.found ul { margin: 0; padding-left: 16px; font-size: 13px; color: var(--muted); }
+.found .btn { justify-self: start; margin-top: 4px; }
+.scan-notes { font-size: 13px; color: var(--warn); margin: 0; padding-left: 18px; }
+.pill.booked { background: var(--good); border-color: var(--good); color: #fff; }
+.booked-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.booked-list li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.hidden { display: none !important; }
+.demo-bar { background: var(--ink); color: var(--paper); font-size: 13px; }
+.demo-bar .wrap { padding-top: 7px; padding-bottom: 7px; }
+.demo-bar strong { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; background: var(--accent); color: #fff; padding: 2px 7px; border-radius: 999px; margin-right: 8px; }
+
+/* Planning flow: steps, wish list, anchor board */
+.planflow { padding: 28px 0 120px; }
+.pf-title { font-family: var(--display); font-weight: 700; font-size: clamp(32px, 5vw, 56px); line-height: 1.05; letter-spacing: -0.02em; }
+.planflow .lede { font-size: 17px; color: var(--muted); max-width: 64ch; margin: 10px 0 0; }
+.planflow .grid.wide { grid-template-columns: minmax(0, 1fr) 360px; }
+@media (max-width: 980px) { .planflow .grid.wide { grid-template-columns: 1fr; } }
+.steps { display: flex; flex-wrap: wrap; gap: 6px 22px; list-style: none; padding: 0; margin: 0 0 18px; font-size: 14px; color: var(--muted); }
+.steps li, .steps a { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+.steps .n { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--rule); display: grid; place-items: center; font-family: var(--mono); font-size: 12px; }
+.steps li.cur { color: var(--ink); font-weight: 600; }
+.steps li.cur .n { border-color: var(--accent); background: var(--accent); color: #fff; }
+.steps li.done .n { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.steps a:hover { color: var(--ink); }
+.row2 { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.filters button { border: 1px solid var(--rule); background: var(--card); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.wish-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.wcard { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; transition: border-color .15s, box-shadow .15s; }
+.wcard.hl { border-color: var(--c); }
+.wcard.on { border-color: var(--c); box-shadow: 0 0 0 2px var(--c); }
+.flash { animation: flash 1.1s ease; }
+@keyframes flash { 0%, 60% { box-shadow: 0 0 0 4px var(--accent); } }
+.tile { background: var(--c); color: var(--on-c); padding: 14px 16px 12px; min-height: 150px; display: grid; grid-template-rows: auto 1fr auto auto; gap: 6px; position: relative; overflow: hidden; }
+.tile::after { content: ""; position: absolute; right: -46px; top: -46px; width: 150px; height: 150px; border-radius: 50%; border: 20px solid currentColor; opacity: .13; }
+.tile-cat, .tile-hood { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; opacity: .9; position: relative; }
+.tile-cat { text-transform: uppercase; }
+.tile-name { font-family: var(--display); font-weight: 700; font-size: 23px; line-height: 1.08; align-self: end; position: relative; text-wrap: balance; }
+.tile-line { display: flex; justify-content: space-between; align-items: center; height: 12px; position: relative; margin-top: 4px; }
+.tile-line::before { content: ""; position: absolute; left: 0; right: 0; top: 4px; height: 4px; background: currentColor; opacity: .5; border-radius: 2px; }
+.tile-line i { width: 12px; height: 12px; border-radius: 50%; background: var(--c); border: 3px solid currentColor; position: relative; }
+.wbody { padding: 12px 14px 14px; display: grid; gap: 8px; flex: 1; align-content: start; }
+.fitwhy { font-size: 13px; font-weight: 600; color: var(--accent); }
+.wbody .why { font-size: 14px; margin: 0; }
+.wmeta { display: grid; gap: 2px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.wbody .foot { margin-top: auto; padding-top: 2px; }
+.wish-more { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 18px; }
+.look { display: flex; gap: 8px; flex: 1 1 340px; }
+.look input { flex: 1; min-width: 0; border: 1px solid var(--rule); background: var(--card); border-radius: 999px; padding: 7px 14px; font-size: 14px; }
+.wish-load { padding: 10px 0 40px; }
+.nextbar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--rule); z-index: 25; box-shadow: 0 -6px 20px rgba(0,0,0,.06); }
+.nextbar .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
+.pin { cursor: pointer; }
+.pin.hl circle { stroke: var(--ink); stroke-width: 5; }
+.tray { margin-bottom: 16px; display: grid; gap: 10px; }
+.tray h3 { margin-bottom: 0; }
+.tray.over { border-color: var(--accent); box-shadow: 0 0 0 3px var(--tint); }
+.tray-items { display: flex; flex-wrap: wrap; gap: 8px; }
+.tray-items:empty { display: none; }
+.tray-item { border: 1px solid var(--rule); border-left: 5px solid var(--c); border-radius: 10px; padding: 7px 10px; background: var(--paper); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; display: grid; max-width: 260px; }
+.tray-item b { font-size: 14px; font-weight: 600; line-height: 1.25; }
+.tray-item small { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.tray-item.hl { border-color: var(--c); }
+.board-scroll { overflow-x: auto; border: 1px solid var(--rule); border-radius: 16px; background: var(--card); }
+.board { display: grid; min-width: min-content; }
+.gutter-l { position: relative; }
+.gutter-l span { position: absolute; right: 6px; transform: translateY(-50%); font-family: var(--mono); font-size: 10px; color: var(--muted); white-space: nowrap; }
+.gutter-l span:first-child { transform: none; }
+.day-h { height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-bottom: 1px solid var(--rule); }
+.day-h b { display: block; font-size: 14px; line-height: 1.2; }
+.day-h small { font-family: var(--mono); font-size: 11px; color: var(--muted); white-space: nowrap; }
+.bullet { width: 26px; height: 26px; border-radius: 50%; background: var(--c); color: var(--on-c); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 14px; flex: none; }
+.day-col { border-left: 1px solid var(--rule); }
+.day-body { position: relative; background-image: repeating-linear-gradient(to bottom, var(--rule) 0, var(--rule) 1px, transparent 1px, transparent var(--pxh)); }
+.offhours { position: absolute; left: 0; right: 0; background: var(--paper); opacity: .7; }
+.blocked { position: absolute; left: 0; right: 0; background: repeating-linear-gradient(135deg, var(--paper) 0 6px, var(--card) 6px 12px); display: flex; align-items: flex-end; font-family: var(--mono); font-size: 10px; color: var(--muted); padding: 4px 6px; line-height: 1.3; }
+.blocked.top { align-items: flex-start; }
+.anc { position: absolute; left: 5px; right: 5px; background: var(--card); border: 1px solid var(--c); border-left: 5px solid var(--c); border-radius: 8px; padding: 4px 20px 4px 8px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; display: grid; align-content: start; gap: 1px; box-shadow: 0 1px 3px rgba(0,0,0,.08); z-index: 2; }
+.anc b { font-size: 13px; line-height: 1.2; font-weight: 600; }
+.anc .t { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.anc .w { font-size: 11px; color: var(--warn); font-weight: 600; line-height: 1.25; }
+.anc.warn { border-color: var(--warn); border-left-color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, var(--card)); }
+.anc.hl { box-shadow: 0 0 0 2px var(--c); }
+.anc.lifted, .tray-item.lifted { opacity: .35; }
+.anc-x { position: absolute; right: 1px; top: 1px; border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 2px 5px; border-radius: 999px; }
+.anc-x:hover { color: var(--accent); }
+.band { position: absolute; left: 0; right: 0; background: color-mix(in srgb, var(--good) 16%, transparent); border-top: 1px dashed var(--good); border-bottom: 1px dashed var(--good); pointer-events: none; z-index: 1; }
+.closed-note { position: absolute; inset: 0; display: grid; place-items: start center; padding-top: 10px; font-family: var(--mono); font-size: 11px; color: var(--warn); background: color-mix(in srgb, var(--warn) 9%, transparent); pointer-events: none; text-transform: uppercase; letter-spacing: .06em; z-index: 3; }
+.drop-ghost { position: absolute; left: 5px; right: 5px; border: 2px dashed var(--c); border-radius: 8px; background: color-mix(in srgb, var(--c) 12%, transparent); font-family: var(--mono); font-size: 11px; padding: 4px 8px; pointer-events: none; z-index: 3; line-height: 1.3; }
+.drop-ghost.warn { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); font-weight: 600; }
+.drag-float { position: fixed; z-index: 70; pointer-events: none; width: 170px; background: var(--card); border: 1px solid var(--c); border-left: 5px solid var(--c); border-radius: 8px; padding: 6px 8px; font-size: 13px; font-weight: 600; box-shadow: 0 12px 28px rgba(0,0,0,.22); transform: rotate(-1.5deg); overflow: hidden; }
+.board-foot { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+.board-foot .btn.primary { padding: 12px 22px; font-size: 16px; }
+.board-foot .note { flex: 1 1 300px; }
+.warn-t { color: var(--warn); }
+.day-sum { display: grid; gap: 12px; }
+.day-sum > div { display: grid; grid-template-columns: 26px 1fr; gap: 10px; font-size: 14px; align-items: start; }
+.day-sum .far { color: var(--warn); font-weight: 600; }
+.place-form { display: grid; gap: 12px; }
+.pill.pick { border-color: var(--c); color: var(--c); font-weight: 600; }
+
+/* Travel profile chat */
+.prof { padding: 32px 0 80px; }
+.prof h1 { font-family: var(--display); font-weight: 700; font-size: clamp(36px, 6vw, 72px); line-height: 1; letter-spacing: -0.02em; }
+.prof .lede { margin-bottom: 0; }
+.prof-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 28px; align-items: start; margin-top: 26px; }
+@media (max-width: 900px) { .prof-grid { grid-template-columns: 1fr; } }
+.chat { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; display: flex; flex-direction: column; }
+.chat-log { padding: 18px; display: flex; flex-direction: column; gap: 10px; min-height: 340px; max-height: 62vh; overflow-y: auto; }
+.msg { max-width: 85%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.assistant { background: var(--paper); align-self: flex-start; border-bottom-left-radius: 4px; }
+.msg.user { background: var(--ink); color: var(--paper); align-self: flex-end; border-bottom-right-radius: 4px; }
+.msg.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); display: inline-block; margin: 0 2px; animation: blink 1.2s infinite both; }
+.msg.typing i:nth-child(2) { animation-delay: .2s; }
+.msg.typing i:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .msg.typing i { animation: none; } }
+.prof-done { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 14px; background: var(--tint); border-left: 3px solid var(--accent); padding: 8px 12px; border-radius: 0 10px 10px 0; }
+.chat-input { border-top: 1px solid var(--rule); padding: 12px; display: flex; gap: 8px; align-items: flex-end; }
+.chat-input textarea { flex: 1; min-width: 0; resize: none; border: 1px solid var(--rule); border-radius: 12px; padding: 10px 12px; max-height: 140px; background: var(--paper); font-size: 15px; line-height: 1.4; }
+.chat-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 0 14px 12px; }
+.prof-panel { position: sticky; top: 76px; }
+@media (max-width: 900px) { .prof-panel { position: static; } }
+.pf-sec { border-top: 1px solid var(--rule); padding-top: 10px; margin-top: 10px; display: grid; gap: 6px; }
+.pf-sec:first-of-type { border-top: 0; padding-top: 0; margin-top: 0; }
+.pf-k { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding-top: 2px; }
+.pf-row { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 10px; font-size: 14px; }
+.pf-int { display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 14px; }
+.dots { display: inline-flex; gap: 4px; }
+.dots i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--accent); }
+.dots i.on { background: var(--accent); }
+.pf-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pf-chip { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; padding: 3px 4px 3px 10px; border: 1px solid var(--rule); border-radius: 999px; background: var(--paper); }
+.pf-chip button { background: none; border: 0; cursor: pointer; color: var(--muted); padding: 0 5px; font-size: 15px; line-height: 1; border-radius: 999px; }
+.pf-chip button:hover { color: var(--accent); }
+.pf-empty { font-size: 14px; color: var(--muted); margin: 0; }
+.pf-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.prof-banner { margin: 0 0 22px; justify-content: space-between; }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="mark" href="#trip" id="homeLink"><span class="dot" aria-hidden="true"></span>mytinerary</a>
+    <span class="tagline">Getting there shouldn't be half the journey</span>
+    <span class="spacer"></span>
+    <a class="btn ghost" href="#profile" id="profileBtn">Travel profile</a>
+    <div class="menu">
+      <button class="btn ghost" id="tripsBtn" aria-haspopup="true" aria-expanded="false">My trips</button>
+      <div class="menu-pop" id="tripsMenu" role="menu"></div>
+    </div>
+    <a class="btn primary" href="#plan" id="planBtn">Plan a trip</a>
+  </div>
+</header>
+
+<div class="demo-bar hidden" id="demoBar"><div class="wrap"><strong>Demo</strong> Ideas, chat replies and finished trips are sample data (mostly San Francisco), not live AI. Everything you do is saved only on this device.</div></div>
+<main id="app"></main>
+
+<div class="drawer-bg" id="drawerBg"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="drawerTitle">
+  <header>
+    <span class="eyebrow" id="drawerEyebrow">Swap a stop</span>
+    <h3 id="drawerTitle">Alternatives</h3>
+    <span class="small muted" id="drawerSub"></span>
+    <button class="btn small x" id="drawerClose">Close</button>
+  </header>
+  <div class="body" id="drawerBody"></div>
+</aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+"use strict";
+
+/* ---------- Claude runtime ---------- */
+// ?mock on localhost or the home network swaps in fake Claude + connectors so the UI can be tested outside claude.ai.
+// The public GitHub Pages demo always runs on sample data, since Claude is only available on claude.ai.
+const DEMO = /\.github\.io$/.test(location.hostname);
+const MOCK = DEMO || /[?&]mock\b/.test(location.search) && /^(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|[\w-]+\.local)$/.test(location.hostname);
+const hasRuntime = window.claude && typeof window.claude.use === "function";
+const sampleP = MOCK ? Promise.resolve(mockSample()) : hasRuntime ? window.claude.use("sample").catch(() => null) : Promise.resolve(null);
+const mcpP = MOCK ? Promise.resolve(mockMcp()) : hasRuntime ? window.claude.use("mcp").catch(() => null) : Promise.resolve(null);
+let sampleFn = null, mcpApi = null;
+let sampleBlocked = false;
+let runtimeSettled = false;
+Promise.all([sampleP, mcpP]).then(([s, m]) => { sampleFn = s; mcpApi = m; runtimeSettled = true; render(); maybeAutoScan(); });
+
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const LINE = ["--l1", "--l2", "--l3", "--l4", "--l5", "--l6", "--l7"];
+const lineVar = i => "var(" + LINE[i % LINE.length] + ")";
+const BUDGET_TARGET = { Budget: 200, "Mid-range": 300, Splurge: 500 }; // per person per day, from the 2020 deck
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function parseDate(s) { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s || ""); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
+function isoDate(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function fmtDay(s) { const d = parseDate(s); return d ? DOW[d.getDay()] + " " + MON[d.getMonth()] + " " + d.getDate() : s || ""; }
+function fmtRange(a, b) {
+  const x = parseDate(a), y = parseDate(b);
+  if (!x || !y) return "";
+  const yr = y.getFullYear();
+  if (x.getMonth() === y.getMonth()) return MON[x.getMonth()] + " " + x.getDate() + "–" + y.getDate() + ", " + yr;
+  return MON[x.getMonth()] + " " + x.getDate() + " – " + MON[y.getMonth()] + " " + y.getDate() + ", " + yr;
+}
+function fmtTime(t) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(t || "");
+  if (!m) return "";
+  let h = +m[1]; const ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12;
+  return h + ":" + m[2] + " " + ap;
+}
+function addMin(t, mins) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(t || ""); if (!m) return null;
+  let total = +m[1] * 60 + +m[2] + mins; total = Math.max(0, Math.min(total, 23 * 60 + 59));
+  return String(Math.floor(total / 60)).padStart(2, "0") + ":" + String(total % 60).padStart(2, "0");
+}
+const money = n => "$" + Math.round(n).toLocaleString("en-US");
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 3200); }
+function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null"); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+const MODE = { walk: "Walk", transit: "Transit", rideshare: "Rideshare", drive: "Drive", ferry: "Ferry", train: "Train", bike: "Bike" };
+const BOOK = { now: "Book now", daybefore: "Book day before", walkin: "Walk in", none: "" };
+const MEALS = ["breakfast", "brunch", "lunch", "dinner", "drinks", "coffee", "snack", "dessert"];
+function isMeal(it) { return it.kind === "meal" || MEALS.includes(String(it.category || "").toLowerCase()); }
+function plotted(it) { return Number.isFinite(it.lat) && Number.isFinite(it.lng) && it.kind !== "transit"; }
+
+/* ---------- Example trip: rebuilt from the 2020 "Mytinerary Itinerary Template" (SF weekend) ---------- */
+const EXAMPLE = {
+  id: "example-sf",
+  example: true,
+  title: "San Francisco weekend",
+  destination: "San Francisco",
+  summary: "A long weekend that trades the checklist for neighborhoods: murals and a late dinner in the Mission, the Bay from the water, and a slow Sunday at the Ferry Building.",
+  startDate: "2026-12-04", endDate: "2026-12-06",
+  travelers: 2, tripType: "Couple", pace: "Moderate", budget: "Mid-range",
+  homeBase: {
+    name: "Westin St. Francis", type: "Hotel", neighborhood: "Union Square", nightly: 289, lat: 37.7880, lng: -122.4089,
+    why: "Central enough to walk to half the trip, on the cable car line, and a short rideshare to the Mission and the waterfront.",
+    alternatives: [
+      { name: "Hotel Emblem", nightly: 239, why: "Smaller boutique hotel a few blocks away; less corporate." },
+      { name: "Hotel Zephyr", nightly: 259, why: "On the Wharf, closer to Alcatraz; farther from the Mission." }
+    ],
+    routine: [
+      { role: "Coffee", name: "Blue Bottle, Mint Plaza", note: "Six minutes on foot. Order the New Orleans iced." },
+      { role: "Late bite", name: "Lori's Diner, Mason St", note: "Open late when dinner runs long or plans fall through." },
+      { role: "Forgot something", name: "Walgreens, Powell & Market", note: "Chargers, sunscreen, the layer you didn't pack." }
+    ]
+  },
+  days: [
+    { date: "2026-12-04", title: "Murals, Mission, long dinner", pitch: "Land, drop bags, and get straight into the Mission: a guided mural walk, golden hour at Dolores Park, then a dinner worth dressing up a little for.",
+      items: [
+        { time: "11:00", end: "11:45", kind: "transit", category: "Arrive", name: "Land at SFO, rideshare to the hotel", neighborhood: "SFO", why: "About 25 minutes to Union Square outside rush hour.", tip: "", cost: 0, costTier: "", booking: "none" },
+        { time: "12:00", end: "12:30", kind: "lodging", category: "Check in", name: "Westin St. Francis", neighborhood: "Union Square", address: "335 Powell St, San Francisco, CA", lat: 37.7880, lng: -122.4089, why: "Early check-in is often possible; if not, leave bags at the desk.", tip: "Ask for a tower room above the 20th floor for the view.", cost: 0, costTier: "", booking: "none" },
+        { time: "13:00", end: "14:15", kind: "meal", category: "Lunch", name: "Kin Khao", neighborhood: "Union Square", address: "55 Cyril Magnin St, San Francisco, CA", lat: 37.7853, lng: -122.4093, why: "Michelin-starred Thai that still feels casual, five minutes from the hotel.", tip: "Be sure to get the caramelized pork belly. You deserve it.", cost: 35, costTier: "$$", booking: "daybefore", transitFromPrev: { mode: "walk", minutes: 5 } },
+        { time: "15:00", end: "17:00", kind: "activity", category: "Tour", name: "Precita Eyes Mission Murals Tour", neighborhood: "Mission", address: "2981 24th St, San Francisco, CA", lat: 37.7527, lng: -122.4130, why: "Muralists lead the walk through Balmy Alley; the best way to see the neighborhood with context.", tip: "Bring comfortable shoes and take plenty of pictures.", cost: 25, costTier: "$", booking: "now", transitFromPrev: { mode: "rideshare", minutes: 18 } },
+        { time: "17:15", end: "18:15", kind: "free", category: "Free time", name: "Golden hour at Dolores Park", neighborhood: "Mission", address: "Dolores Park, San Francisco, CA", lat: 37.7596, lng: -122.4269, why: "Unstructured time on the best lawn in the city. Grab a cone from Bi-Rite on the way.", tip: "Sit on the upper southwest corner for the skyline view.", cost: 8, costTier: "$", booking: "walkin", transitFromPrev: { mode: "walk", minutes: 15 } },
+        { time: "18:30", end: "20:30", kind: "meal", category: "Dinner", name: "Foreign Cinema", neighborhood: "Mission", address: "2534 Mission St, San Francisco, CA", lat: 37.7563, lng: -122.4192, why: "Mediterranean dinner in a courtyard with films projected on the wall.", tip: "Good cocktail bar (Laszlo) next door if you're early; don't miss the fried chicken.", cost: 85, costTier: "$$$", booking: "now", transitFromPrev: { mode: "walk", minutes: 12 } },
+        { time: "21:00", end: "22:30", kind: "meal", category: "Drinks", name: "Beretta", neighborhood: "Mission", address: "1199 Valencia St, San Francisco, CA", lat: 37.7546, lng: -122.4210, why: "Cocktails and a lively room on Valencia, a four-minute walk.", tip: "", cost: 18, costTier: "$$", booking: "walkin", transitFromPrev: { mode: "walk", minutes: 4 } }
+      ] },
+    { date: "2026-12-05", title: "The Bay from the water", pitch: "A classic diner breakfast, the afternoon on Alcatraz, Irish coffees by the cable car turnaround, and dinner and a nightcap up on the hills.",
+      items: [
+        { time: "08:30", end: "09:30", kind: "meal", category: "Breakfast", name: "Dottie's True Blue Cafe", neighborhood: "SoMa", address: "28 6th St, San Francisco, CA", lat: 37.7816, lng: -122.4100, why: "Big plates, house-baked bread, and a line that moves.", tip: "Get a coffee on the way in case there's a long line.", cost: 22, costTier: "$$", booking: "walkin", transitFromPrev: { mode: "walk", minutes: 10 } },
+        { time: "10:30", end: "11:15", kind: "free", category: "Free time", name: "Wander the Embarcadero", neighborhood: "Embarcadero", address: "Pier 33, San Francisco, CA", lat: 37.8060, lng: -122.4040, why: "Slack before the ferry so a slow breakfast doesn't cost you the boat.", tip: "", cost: 0, costTier: "", booking: "none", transitFromPrev: { mode: "rideshare", minutes: 11 } },
+        { time: "11:30", end: "15:00", kind: "activity", category: "Tour", name: "Alcatraz day tour", neighborhood: "Pier 33", address: "Pier 33, Alcatraz Landing, San Francisco, CA", lat: 37.8087, lng: -122.4041, why: "The cellhouse audio tour is still the best history lesson in the city.", tip: "No matter the weather, bring a light jacket for the ferry ride.", cost: 47, costTier: "$$", booking: "now", transitFromPrev: { mode: "walk", minutes: 3 } },
+        { time: "15:30", end: "16:30", kind: "meal", category: "Drinks", name: "Buena Vista Cafe", neighborhood: "Fisherman's Wharf", address: "2765 Hyde St, San Francisco, CA", lat: 37.8066, lng: -122.4209, why: "Where the American Irish coffee was born, with Bay views.", tip: "It will likely be crowded; stalk tables close to finishing and swoop in.", cost: 14, costTier: "$$", booking: "walkin", transitFromPrev: { mode: "rideshare", minutes: 8 } },
+        { time: "17:00", end: "19:00", kind: "free", category: "Free time", name: "Back to the hotel to change", neighborhood: "Union Square", lat: 37.7880, lng: -122.4089, why: "Ride the Powell-Hyde cable car back from the turnaround.", tip: "", cost: 8, costTier: "$", booking: "none", transitFromPrev: { mode: "transit", minutes: 20 } },
+        { time: "19:30", end: "21:30", kind: "meal", category: "Dinner", name: "Trestle", neighborhood: "Jackson Square", address: "531 Jackson St, San Francisco, CA", lat: 37.7966, lng: -122.4029, why: "Three-course set menu that punches far above its price.", tip: "Absolutely go for the pasta supplement; get both and split.", cost: 75, costTier: "$$$", booking: "now", transitFromPrev: { mode: "rideshare", minutes: 10 } },
+        { time: "22:00", end: "23:00", kind: "meal", category: "Drinks", name: "Top of the Mark", neighborhood: "Nob Hill", address: "999 California St, San Francisco, CA", lat: 37.7920, lng: -122.4103, why: "A 19th-floor nightcap with the whole city lit up.", tip: "Elevators are on the left as you enter the hotel.", cost: 28, costTier: "$$$", booking: "walkin", transitFromPrev: { mode: "rideshare", minutes: 6 } }
+      ] },
+    { date: "2026-12-06", title: "Ferry Building and home", pitch: "An easy last morning along the water: the Saturday-quality farmers market, a long lunch, and an unhurried ride to the airport.",
+      items: [
+        { time: "08:30", end: "09:15", kind: "meal", category: "Coffee", name: "Philz Coffee", neighborhood: "Financial District", address: "1 Front St, San Francisco, CA", lat: 37.7915, lng: -122.3987, why: "Pour-overs made to order, a straight walk down Market.", tip: "Go for the Mint Mojito iced coffee, even if it's foggy out.", cost: 7, costTier: "$", booking: "walkin", transitFromPrev: { mode: "walk", minutes: 18 } },
+        { time: "09:30", end: "11:15", kind: "activity", category: "Market", name: "Ferry Building Farmers Market", neighborhood: "Embarcadero", address: "1 Ferry Building, San Francisco, CA", lat: 37.7955, lng: -122.3937, why: "Graze through the stalls and the marketplace hall.", tip: "Check out Cowgirl Creamery for some of the Bay's best cheese.", cost: 20, costTier: "$", booking: "none", transitFromPrev: { mode: "walk", minutes: 9 } },
+        { time: "11:30", end: "13:00", kind: "meal", category: "Lunch", name: "Perry's on the Embarcadero", neighborhood: "Embarcadero", address: "155 Steuart St, San Francisco, CA", lat: 37.7928, lng: -122.3926, why: "Easy, reliable lunch with outdoor seating on the waterfront.", tip: "", cost: 35, costTier: "$$", booking: "daybefore", transitFromPrev: { mode: "walk", minutes: 5 } },
+        { time: "13:30", end: "14:00", kind: "lodging", category: "Check out", name: "Collect bags at the hotel", neighborhood: "Union Square", lat: 37.7880, lng: -122.4089, why: "", tip: "", cost: 0, costTier: "", booking: "none", transitFromPrev: { mode: "rideshare", minutes: 9 } },
+        { time: "14:00", end: "16:00", kind: "transit", category: "Depart", name: "Rideshare to SFO for the 4:00 PM flight", neighborhood: "SFO", why: "", tip: "", cost: 0, costTier: "", booking: "none" }
+      ] }
+  ],
+  watchouts: [
+    "Alcatraz sells out 2–3 weeks ahead on weekends. Book it first.",
+    "Bring a layer for every evening; the fog rolls in even in summer.",
+    "The Powell St cable car turnaround line runs 45+ minutes. Walk up a stop or two and hop on."
+  ]
+};
+
+/* ---------- State ---------- */
+const S = {
+  view: "trip",
+  trip: null,
+  day: 0,
+  hl: null,
+  gen: null,
+  formError: "",
+  scan: { state: "idle", step: "", trips: [], notes: [], err: "", picking: null, homeCity: "" }
+};
+function savedTrips() { return store("mytin.trips") || []; }
+function saveTrip(t) {
+  if (!t || t.example) return;
+  const list = savedTrips().filter(x => x.id !== t.id);
+  list.unshift(t);
+  store("mytin.trips", list.slice(0, 12));
+}
+function normalize(t) {
+  t.id = t.id || uid();
+  t.travelers = Math.max(1, parseInt(t.travelers, 10) || 1);
+  t.days = Array.isArray(t.days) ? t.days : [];
+  t.days.forEach(d => {
+    d.items = Array.isArray(d.items) ? d.items : [];
+    d.items.forEach(normItem);
+  });
+  t.homeBase = t.homeBase || {};
+  const hb = t.homeBase;
+  hb.lat = Number(hb.lat); hb.lng = Number(hb.lng); hb.nightly = Number(hb.nightly) || 0; hb.booked = !!hb.booked;
+  hb.alternatives = Array.isArray(hb.alternatives) ? hb.alternatives : [];
+  hb.routine = Array.isArray(hb.routine) ? hb.routine : [];
+  t.watchouts = Array.isArray(t.watchouts) ? t.watchouts : [];
+  t.booked = t.booked || {};
+  return t;
+}
+function normItem(it) {
+  it.id = it.id || uid();
+  it.lat = it.lat == null || it.lat === "" ? NaN : Number(it.lat);
+  it.lng = it.lng == null || it.lng === "" ? NaN : Number(it.lng);
+  it.cost = Number(it.cost) || 0;
+  it.kind = String(it.kind || "activity").toLowerCase();
+  it.booked = it.booked === true || it.booked === "true";
+  it.anchor = it.anchor === true || it.anchor === "true";
+  it.booking = String(it.booking || "none").toLowerCase().replace(/[^a-z]/g, "");
+  if (!BOOK.hasOwnProperty(it.booking)) it.booking = "none";
+  if (it.transitFromPrev && !Number.isFinite(Number(it.transitFromPrev.minutes))) it.transitFromPrev = null;
+  return it;
+}
+
+/* ---------- Routing ---------- */
+function route() {
+  const h = location.hash.replace("#", "");
+  S.view = h === "plan" ? "plan" : h === "profile" ? "profile" : (h === "wish" || h === "anchors") ? (DRAFT ? h : "plan") : (S.gen ? "gen" : "trip");
+  if (S.view === "anchors" && !DRAFT.suggested && !Object.keys(DRAFT.place).length && DRAFT.wish.length) { suggestPlan(false); DRAFT.suggested = true; saveDraft(); }
+  render();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+
+/* ---------- Render ---------- */
+function render(fresh) {
+  if (!fresh && $("#planForm")) readForm(); // keep unsent form edits across re-renders
+  const app = $("#app");
+  const bs = $(".board-scroll"), bsl = bs ? bs.scrollLeft : 0;
+  if (S.view === "plan") app.innerHTML = renderPlan();
+  else if (S.view === "wish") app.innerHTML = renderWish();
+  else if (S.view === "anchors") app.innerHTML = renderAnchors();
+  else if (S.view === "gen" && S.gen) app.innerHTML = renderGen();
+  else if (S.view === "profile") app.innerHTML = renderProfile();
+  else app.innerHTML = renderTrip();
+  if (S.view === "plan") bindPlan();
+  if (S.view === "profile") bindProfile();
+  if (S.view === "wish") bindWish();
+  if (S.view === "anchors") bindAnchors();
+  if ($(".board-scroll")) $(".board-scroll").scrollLeft = bsl;
+  if (S.view === "trip") bindTrip();
+  renderTripsMenu();
+}
+
+function renderTrip() {
+  const t = S.trip;
+  if (!t || !t.days.length) return '<div class="wrap"><p>No trip loaded.</p></div>';
+  S.day = Math.min(S.day, t.days.length - 1);
+  const d = t.days[S.day];
+  const c = lineVar(S.day);
+  const nights = Math.max(0, t.days.length - 1);
+  const banner = t.example
+    ? '<div class="banner"><strong>Example trip.</strong> This is the 2020 San Francisco test itinerary from your template, rebuilt in the new format. <a class="btn small primary" href="#plan">Plan your own</a>' + (S.scan.trips.length ? "" : '<a class="btn small" href="#plan">Already booked? Start from Gmail &amp; Calendar</a>') + "</div>"
+    : "";
+  const tabs = t.days.map((dd, i) =>
+    '<button class="line-tab" role="tab" data-day="' + i + '" aria-selected="' + (i === S.day) + '" style="--c:' + lineVar(i) + '">' +
+    '<span class="bullet">' + (i + 1) + '</span><span class="d">' + esc(fmtDay(dd.date)) + '</span><span class="t">' + esc(dd.title || "Day " + (i + 1)) + "</span></button>").join("");
+
+  return '<div class="wrap">' + banner + renderImport("trip") +
+    '<section class="trip-head">' +
+      '<span class="eyebrow">' + esc(fmtRange(t.startDate, t.endDate)) + " · " + t.days.length + (t.days.length === 1 ? " day" : " days") + (nights ? " · " + nights + (nights === 1 ? " night" : " nights") : "") + "</span>" +
+      '<h1 class="dest">' + esc(t.destination) + "</h1>" +
+      '<p class="thesis">' + esc(t.summary) + "</p>" +
+      '<div class="facts">' +
+        '<span class="chip">' + t.travelers + (t.travelers === 1 ? " traveler" : " travelers") + "</span>" +
+        (t.tripType ? '<span class="chip">' + esc(t.tripType) + "</span>" : "") +
+        (t.pace ? '<span class="chip">' + esc(t.pace) + " pace</span>" : "") +
+        (t.budget ? '<span class="chip">' + esc(t.budget) + " · ~" + money(BUDGET_TARGET[t.budget] || 300) + "/person/day</span>" : "") +
+        (t.occasion && t.occasion !== "Just because" ? '<span class="chip">' + esc(t.occasion) + "</span>" : "") +
+      "</div>" +
+      '<div class="head-actions">' +
+        '<button class="btn small" id="copyText">Copy for the group chat</button>' +
+        (t.plan ? '<a class="btn small" href="#anchors" id="editPlan">Rearrange anchor days</a>' : "") +
+        (t.example ? "" : '<button class="btn small" id="delTrip">Remove from my trips</button>') +
+      "</div>" +
+    "</section>" +
+    '<nav class="lines" role="tablist" aria-label="Days">' + tabs + "</nav>" +
+    '<div class="grid">' +
+      '<section aria-label="Day plan">' +
+        '<div class="day-head">' +
+          '<span class="eyebrow" style="color:' + c + '">Day ' + (S.day + 1) + " · " + esc(fmtDay(d.date)) + "</span>" +
+          "<h2>" + esc(d.title) + "</h2>" +
+          '<p class="pitch">' + esc(d.pitch) + "</p>" +
+          '<div class="day-tools">' +
+            routeLink(d) +
+            '<form class="rework" id="reworkForm"><label for="reworkInput" class="hidden">Change this day</label><input id="reworkInput" placeholder="Not feeling it? e.g. rainy day, more indoors, sleep in" autocomplete="off"><button class="btn small" type="submit" id="reworkBtn">Rework day</button></form>' +
+          "</div>" +
+          '<span class="note" id="reworkNote"></span>' +
+        "</div>" +
+        renderTimeline(d, S.day) +
+      "</section>" +
+      '<aside class="rail">' +
+        renderMap(t) +
+        renderHome(t) +
+        renderBookings(t) +
+        renderBudget(t) +
+        (t.watchouts.length ? '<section class="panel"><h3>Heads up</h3><ul class="watch">' + t.watchouts.map(w => "<li>" + esc(w) + "</li>").join("") + "</ul></section>" : "") +
+        '<p class="note">Places come from Claude\'s knowledge and can be out of date. Check hours and book through the venue before you go.</p>' +
+      "</aside>" +
+    "</div></div>";
+}
+
+function routeLink(d) {
+  const pts = d.items.filter(it => plotted(it) && it.kind !== "lodging").map(it => it.address || (it.name + ", " + (it.neighborhood || "")));
+  if (pts.length < 2) return "";
+  const enc = encodeURIComponent;
+  const way = pts.slice(1, -1).slice(0, 8).map(enc).join("%7C");
+  const url = "https://www.google.com/maps/dir/?api=1&origin=" + enc(pts[0]) + "&destination=" + enc(pts[pts.length - 1]) + (way ? "&waypoints=" + way : "") + "&travelmode=walking";
+  return '<a class="btn small" href="' + url + '" target="_blank" rel="noopener">Open day in Google Maps</a>';
+}
+
+function stopNumbers(d) {
+  let n = 0; const map = {};
+  d.items.forEach(it => { if (plotted(it) && it.kind !== "lodging") map[it.id] = ++n; });
+  return map;
+}
+
+function renderTimeline(d, di) {
+  const c = lineVar(di);
+  const nums = stopNumbers(d);
+  let html = '<div class="timeline" style="--c:' + c + '">';
+  d.items.forEach((it, ii) => {
+    const tr = it.transitFromPrev;
+    if (tr && ii > 0) {
+      html += '<div class="leg"><span></span><span class="rail-col"></span><span class="txt">' + esc(MODE[tr.mode] || tr.mode || "Travel") + " · " + Math.round(Number(tr.minutes)) + " min</span></div>";
+    }
+    const minor = it.kind === "transit" || it.kind === "lodging";
+    const num = nums[it.id];
+    const node = it.kind === "lodging" ? '<span class="node minor home"></span>' : minor ? '<span class="node minor"></span>' : '<span class="node">' + (num || "") + "</span>";
+    const cls = "card" + (it.kind === "free" ? " free" : "") + (minor ? " transitk" : "") + (S.hl === it.id ? " hl" : "");
+    let body = '<span class="cat">' + esc(it.category || it.kind) + (it.neighborhood ? " · " + esc(it.neighborhood) : "") + "</span>" +
+      '<span class="name">' + esc(it.name) + "</span>";
+    if (it.why) body += '<span class="why">' + esc(it.why) + "</span>";
+    if (it.tip) body += '<span class="tip"><b>Pro tip</b>' + esc(it.tip) + "</span>";
+    if (minor && it.booked) body += '<div class="foot"><span class="pill booked">Booked</span></div>';
+    if (!minor) {
+      const foot = [];
+      if (it.anchor) foot.push('<span class="pill pick">Your pick</span>');
+      if (it.cost) foot.push('<span class="pill">' + esc(it.costTier || "") + (it.costTier ? " · " : "") + "~" + money(it.cost) + "/person</span>");
+      if (it.booked) foot.push('<span class="pill booked">Booked</span>');
+      else if (BOOK[it.booking]) foot.push('<span class="pill ' + it.booking + '">' + BOOK[it.booking] + "</span>");
+      const q = encodeURIComponent((it.address || it.name + " " + (it.neighborhood || "") + " " + (S.trip.destination || "")).trim());
+      foot.push('<a class="lnk" href="https://www.google.com/maps/search/?api=1&query=' + q + '" target="_blank" rel="noopener">Map</a>');
+      foot.push('<a class="lnk" href="' + gcalLink(it, d) + '" target="_blank" rel="noopener">Add to calendar</a>');
+      foot.push('<button class="lnk" data-swap="' + ii + '">Swap</button>');
+      body += '<div class="foot">' + foot.join("") + "</div>";
+    }
+    html += '<div class="stop" data-id="' + it.id + '">' +
+      '<span class="time">' + esc(fmtTime(it.time)) + (it.end ? "<small>to " + esc(fmtTime(it.end)) + "</small>" : "") + "</span>" +
+      '<span class="rail-col">' + node + "</span>" +
+      '<div class="' + cls + '">' + body + "</div></div>";
+  });
+  return html + "</div>";
+}
+
+function gcalLink(it, d) {
+  const day = (d.date || "").replace(/-/g, "");
+  const t0 = (it.time || "09:00").replace(":", "") + "00";
+  const t1 = ((it.end || addMin(it.time || "09:00", 60)) || "10:00").replace(":", "") + "00";
+  const details = [it.why, it.tip ? "Pro tip: " + it.tip : ""].filter(Boolean).join("\n\n") + "\n\nPlanned with Mytinerary";
+  return "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent((it.category ? it.category + ": " : "") + it.name) +
+    "&dates=" + day + "T" + t0 + "/" + day + "T" + t1 +
+    "&details=" + encodeURIComponent(details) +
+    "&location=" + encodeURIComponent(it.address || it.name);
+}
+
+function projection(pts, W, H, P) {
+  let minLa = Infinity, maxLa = -Infinity, minLo = Infinity, maxLo = -Infinity;
+  pts.forEach(p => { minLa = Math.min(minLa, p.lat); maxLa = Math.max(maxLa, p.lat); minLo = Math.min(minLo, p.lng); maxLo = Math.max(maxLo, p.lng); });
+  const midLa = (minLa + maxLa) / 2, k = Math.cos(midLa * Math.PI / 180);
+  const spanX = Math.max((maxLo - minLo) * k, 0.004), spanY = Math.max(maxLa - minLa, 0.004);
+  const sc = Math.min((W - 2 * P) / spanX, (H - 2 * P) / spanY);
+  const ox = (W - spanX * sc) / 2, oy = (H - spanY * sc) / 2;
+  const cx = (minLo + maxLo) / 2;
+  const X = lng => ox + ((lng - cx) * k + spanX / 2) * sc;
+  const Y = lat => oy + (maxLa - lat) * sc;
+  return { X, Y, sc };
+}
+
+/* Map: no basemap tiles are allowed in the page, so stops are projected onto a plain grid, like a transit diagram. */
+function renderMap(t) {
+  const pts = [];
+  const hb = t.homeBase;
+  if (Number.isFinite(hb.lat) && Number.isFinite(hb.lng)) pts.push({ lat: hb.lat, lng: hb.lng });
+  t.days.forEach(d => d.items.forEach(it => { if (plotted(it)) pts.push(it); }));
+  if (pts.length < 2) return "";
+  const W = 600, H = 440, P = 40;
+  const { X, Y, sc } = projection(pts, W, H, P);
+  let svg = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Map of stops by day">';
+  for (let gx = 0; gx <= W; gx += 40) svg += '<line class="gridl" x1="' + gx + '" y1="0" x2="' + gx + '" y2="' + H + '"/>';
+  for (let gy = 0; gy <= H; gy += 40) svg += '<line class="gridl" x1="0" y1="' + gy + '" x2="' + W + '" y2="' + gy + '"/>';
+  // scale bar: km per px
+  const kmPerDegLat = 111.32;
+  const kmPerPx = kmPerDegLat / sc;
+  const nice = [0.25, 0.5, 1, 2, 5, 10, 20, 50, 100, 200];
+  let km = nice.find(n => n / kmPerPx >= 70) || 200;
+  const bar = km / kmPerPx;
+  svg += '<g transform="translate(' + (W - P - bar) + "," + (H - 18) + ')"><line x1="0" y1="0" x2="' + bar + '" y2="0" stroke="var(--ink)" stroke-width="2"/><line x1="0" y1="-4" x2="0" y2="4" stroke="var(--ink)" stroke-width="2"/><line x1="' + bar + '" y1="-4" x2="' + bar + '" y2="4" stroke="var(--ink)" stroke-width="2"/><text x="' + (bar / 2) + '" y="-8" text-anchor="middle">' + km + " km · " + (Math.round(km * 0.621 * 10) / 10) + " mi</text></g>";
+  svg += '<g transform="translate(24,30)"><text x="0" y="0" text-anchor="middle" style="font-weight:600;fill:var(--ink)">N</text><path d="M0 6 L5 20 L0 16 L-5 20 Z" fill="var(--ink)"/></g>';
+  const order = t.days.map((_, i) => i).filter(i => i !== S.day).concat([S.day]);
+  order.forEach(di => {
+    const d = t.days[di];
+    const ps = d.items.filter(it => plotted(it) && it.kind !== "lodging");
+    const sel = di === S.day;
+    const col = lineVar(di);
+    if (ps.length > 1) {
+      svg += '<polyline fill="none" stroke="' + col + '" stroke-width="' + (sel ? 6 : 3) + '" stroke-linejoin="round" stroke-linecap="round" opacity="' + (sel ? 1 : 0.22) + '" points="' + ps.map(p => X(p.lng).toFixed(1) + "," + Y(p.lat).toFixed(1)).join(" ") + '"/>';
+    }
+    if (sel) {
+      const nums = stopNumbers(d);
+      ps.forEach(p => {
+        const x = X(p.lng), y = Y(p.lat), on = S.hl === p.id;
+        svg += '<g class="stop-c" data-id="' + p.id + '"><title>' + esc(p.name) + '</title><circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + (on ? 14 : 11) + '" fill="var(--card)" stroke="' + col + '" stroke-width="4"/>' +
+          '<text x="' + x.toFixed(1) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="middle" style="fill:var(--ink);font-weight:600">' + nums[p.id] + "</text></g>";
+      });
+    } else {
+      ps.forEach(p => { svg += '<circle cx="' + X(p.lng).toFixed(1) + '" cy="' + Y(p.lat).toFixed(1) + '" r="3.5" fill="' + col + '" opacity="0.35"/>'; });
+    }
+  });
+  if (Number.isFinite(hb.lat)) {
+    const x = X(hb.lng), y = Y(hb.lat);
+    svg += '<g><title>' + esc(hb.name) + '</title><rect x="' + (x - 9) + '" y="' + (y - 9) + '" width="18" height="18" rx="3" fill="var(--ink)"/><text x="' + (x + 14) + '" y="' + (y + 4) + '" style="fill:var(--ink);font-weight:600">' + esc(hb.name) + "</text></g>";
+  }
+  svg += "</svg>";
+  const legend = t.days.map((d, i) => '<span style="--c:' + lineVar(i) + '"><i></i>Day ' + (i + 1) + "</span>").join("") + '<span><i style="background:var(--ink);width:10px;height:10px"></i>Home base</span>';
+  return '<section class="panel map"><h3>Trip map <small>numbers match the day\'s stops</small></h3>' + svg + '<div class="map-legend">' + legend + "</div></section>";
+}
+
+function renderHome(t) {
+  const hb = t.homeBase;
+  if (!hb.name) return "";
+  const rooms = Math.ceil(t.travelers / 2);
+  return '<section class="panel"><h3>Home base <small>' + esc(hb.type || "") + (hb.nightly ? " · ~" + money(hb.nightly) + "/night" : "") + "</small></h3>" +
+    '<div class="home-name">' + esc(hb.name) + "</div>" +
+    '<div class="small muted">' + esc(hb.neighborhood || "") + (rooms > 1 ? " · " + rooms + " rooms" : "") + "</div>" +
+    (hb.why ? '<p class="small" style="margin:8px 0 0">' + esc(hb.why) + "</p>" : "") +
+    (hb.routine.length ? '<div class="routine"><span class="eyebrow">Your routine around here</span>' + hb.routine.map(r => "<div><b>" + esc(r.role) + "</b><span><strong>" + esc(r.name) + "</strong>" + (r.note ? '<br><span class="muted">' + esc(r.note) + "</span>" : "") + "</span></div>").join("") + "</div>" : "") +
+    (hb.alternatives.length ? '<details class="alts"><summary>' + hb.alternatives.length + " similar options</summary><ul>" + hb.alternatives.map(a => "<li><strong>" + esc(a.name) + "</strong>" + (a.nightly ? " · ~" + money(a.nightly) : "") + (a.why ? " · " + esc(a.why) : "") + "</li>").join("") + "</ul></details>" : "") +
+    "</section>";
+}
+
+function renderBookings(t) {
+  const groups = { booked: [], now: [], daybefore: [], walkin: [] };
+  if (t.homeBase.name) groups[t.homeBase.booked ? "booked" : "now"].push({ id: "home", name: t.homeBase.name, day: "Stay" });
+  t.days.forEach((d, di) => d.items.forEach(it => {
+    const g = it.booked ? "booked" : it.booking;
+    if (groups[g]) groups[g].push({ id: it.id, name: it.name, day: "Day " + (di + 1) });
+  }));
+  const meta = { booked: ["Already booked", "var(--good)"], now: ["Book now", "var(--accent)"], daybefore: ["Book the day before", "var(--warn)"], walkin: ["Walk in, no reservation", "var(--muted)"] };
+  const total = groups.now.length + groups.daybefore.length;
+  const done = groups.now.concat(groups.daybefore).filter(x => t.booked[x.id]).length;
+  let html = '<section class="panel"><h3>What to book <small>' + done + " of " + total + " done</small></h3>";
+  Object.keys(groups).forEach(k => {
+    if (!groups[k].length) return;
+    html += '<div class="bk-group"><span class="bk-label"><span class="sw" style="background:' + meta[k][1] + '"></span>' + meta[k][0] + "</span>";
+    groups[k].forEach(x => {
+      if (k === "booked") html += '<div class="bk done"><span style="color:var(--good)">✓</span><span>' + esc(x.name) + "</span><em>" + x.day + "</em></div>";
+      else if (k === "walkin") html += '<div class="bk"><span></span><span>' + esc(x.name) + "</span><em>" + x.day + "</em></div>";
+      else html += '<label class="bk' + (t.booked[x.id] ? " done" : "") + '"><input type="checkbox" data-book="' + x.id + '"' + (t.booked[x.id] ? " checked" : "") + "><span>" + esc(x.name) + "</span><em>" + x.day + "</em></label>";
+    });
+    html += "</div>";
+  });
+  return html + "</section>";
+}
+
+function renderBudget(t) {
+  const target = BUDGET_TARGET[t.budget] || 300;
+  const rooms = Math.ceil(t.travelers / 2);
+  const lodgePP = (t.homeBase.nightly || 0) * rooms / t.travelers;
+  const rows = t.days.map((d, i) => {
+    const food = d.items.filter(isMeal).reduce((a, it) => a + it.cost, 0);
+    const act = d.items.filter(it => !isMeal(it)).reduce((a, it) => a + it.cost, 0);
+    const lodge = i < t.days.length - 1 || t.days.length === 1 ? lodgePP : 0;
+    return { lodge, food, act, total: lodge + food + act };
+  });
+  const max = Math.max(target * 1.25, ...rows.map(r => r.total));
+  const avg = rows.reduce((a, r) => a + r.total, 0) / rows.length;
+  const trip = rows.reduce((a, r) => a + r.total, 0);
+  const diff = avg - target;
+  const verdict = Math.abs(diff) < target * 0.08 ? "right on budget" : diff > 0 ? money(diff) + " over your " + money(target) + " target" : money(-diff) + " under your " + money(target) + " target";
+  let html = '<section class="panel"><h3>Budget check <small>per person, before flights</small></h3>' +
+    '<div class="bud-sum"><strong>' + money(avg) + '<span class="small muted" style="font-family:var(--body);font-weight:400"> / day</span></strong>' + esc(verdict) + " · " + money(trip) + " for the trip</div>";
+  rows.forEach((r, i) => {
+    const w = v => (v / max * 100).toFixed(1) + "%";
+    html += '<div class="bud-row"><span class="lab">Day ' + (i + 1) + '</span><div class="bar" title="Lodging ' + money(r.lodge) + ", food " + money(r.food) + ", activities " + money(r.act) + '">' +
+      '<span style="width:' + w(r.lodge) + ';background:var(--ink)"></span><span style="width:' + w(r.food) + ';background:' + lineVar(0) + '"></span><span style="width:' + w(r.act) + ';background:' + lineVar(1) + '"></span>' +
+      '<span class="target" style="left:' + w(target) + '"></span></div><span class="amt">' + money(r.total) + "</span></div>";
+  });
+  html += '<div class="bud-key"><span><i style="background:var(--ink)"></i>Lodging</span><span><i style="background:' + lineVar(0) + '"></i>Food &amp; drink</span><span><i style="background:' + lineVar(1) + '"></i>Activities</span><span><i style="background:var(--ink);width:2px"></i>Target</span></div>';
+  return html + "</section>";
+}
+
+function bindTrip() {
+  const ep = $("#editPlan");
+  if (ep) ep.addEventListener("click", () => { DRAFT = JSON.parse(JSON.stringify(S.trip.plan)); DRAFT.tripId = S.trip.id; DRAFT.suggested = true; saveDraft(); });
+  document.querySelectorAll(".line-tab").forEach(b => b.addEventListener("click", () => { S.day = +b.dataset.day; S.hl = null; render(); }));
+  document.querySelectorAll("[data-swap]").forEach(b => b.addEventListener("click", () => openSwap(S.day, +b.dataset.swap)));
+  document.querySelectorAll("[data-book]").forEach(cb => cb.addEventListener("change", () => {
+    S.trip.booked[cb.dataset.book] = cb.checked; saveTrip(S.trip); render();
+  }));
+  const hl = id => {
+    S.hl = id;
+    document.querySelectorAll(".card.hl").forEach(c => c.classList.remove("hl"));
+    const card = document.querySelector('.stop[data-id="' + id + '"] .card');
+    if (card && !card.classList.contains("transitk")) card.classList.add("hl");
+    document.querySelectorAll(".stop-c circle").forEach(c => c.setAttribute("r", "11"));
+    const dot = document.querySelector('.stop-c[data-id="' + id + '"] circle');
+    if (dot) dot.setAttribute("r", "14");
+  };
+  document.querySelectorAll(".stop").forEach(s => s.addEventListener("mouseenter", () => hl(s.dataset.id)));
+  document.querySelectorAll(".stop-c").forEach(g => g.addEventListener("click", () => {
+    hl(g.dataset.id);
+    const el = document.querySelector('.stop[data-id="' + g.dataset.id + '"]');
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }));
+  const rf = $("#reworkForm");
+  if (rf) rf.addEventListener("submit", e => { e.preventDefault(); reworkDay(); });
+  const ct = $("#copyText");
+  if (ct) ct.addEventListener("click", copyText);
+  const del = $("#delTrip");
+  if (del) del.addEventListener("click", () => {
+    store("mytin.trips", savedTrips().filter(x => x.id !== S.trip.id));
+    S.trip = normalize(JSON.parse(JSON.stringify(EXAMPLE))); S.day = 0;
+    toast("Removed from My trips"); render();
+  });
+}
+
+function copyText() {
+  const t = S.trip;
+  const lines = [t.destination.toUpperCase() + " · " + fmtRange(t.startDate, t.endDate), t.summary, ""];
+  if (t.homeBase.name) lines.push("Staying at: " + t.homeBase.name + (t.homeBase.neighborhood ? " (" + t.homeBase.neighborhood + ")" : ""), "");
+  t.days.forEach((d, i) => {
+    lines.push("DAY " + (i + 1) + " · " + fmtDay(d.date) + " · " + d.title);
+    d.items.forEach(it => lines.push("  " + fmtTime(it.time).padEnd(9) + it.name + (it.category ? " (" + it.category + ")" : "")));
+    lines.push("");
+  });
+  lines.push("Planned with Mytinerary");
+  const txt = lines.join("\n");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(() => toast("Itinerary copied. Paste it into your group chat."), () => toast("Your browser blocked copying here."));
+  } else toast("Your browser blocked copying here.");
+}
+
+/* ---------- Plan form (questions from the 2020 Traveler and Trip Preferences survey) ---------- */
+function defaultForm() {
+  const now = new Date();
+  const d = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  while (d.getDay() !== 5) d.setDate(d.getDate() + 1);
+  const e = new Date(d); e.setDate(d.getDate() + 3);
+  return {
+    dest: "San Francisco", from: "Los Angeles", start: isoDate(d), end: isoDate(e), tripType: "Couple", travelers: 2, occasion: "Just because",
+    arrive: "11:00", leave: "16:00", dayStart: "09:00", dayEnd: "22:00", pace: "Moderate", budget: "Mid-range", lodging: "Hotel",
+    culture: 3, outdoors: 4, shopping: 1, food: 5, nightlife: 3,
+    mustdo: "Two splurge dinners (Lazy Bear or Liholiho?), a Marin hike, Swan Oyster Depot, a taqueria in the Mission",
+    diet: [], notes: "We've been to SF a few times, so lighter on the touristy stuff.", stay: "", booked: null
+  };
+}
+let FORM = store("mytin.form") || defaultForm();
+
+function segs(name, opts) {
+  return '<div class="seg" role="radiogroup">' + opts.map(o => '<label><input type="radio" name="' + name + '" id="' + name + "-" + o.replace(/\W/g, "") + '" value="' + esc(o) + '"' + (FORM[name] === o ? " checked" : "") + "><span>" + esc(o) + "</span></label>").join("") + "</div>";
+}
+function renderPlan() {
+  const sl = (k, label) => '<div class="sl"><label for="sl-' + k + '">' + label + '</label><input type="range" min="1" max="5" step="1" id="sl-' + k + '" name="' + k + '" value="' + FORM[k] + '"><output for="sl-' + k + '" id="out-' + k + '">' + FORM[k] + "</output></div>";
+  const diets = DIETS;
+  const bk = FORM.booked && Array.isArray(FORM.booked.items) && FORM.booked.items.length ? FORM.booked : null;
+  return '<div class="wrap"><form class="plan" id="planForm" novalidate>' +
+    stepsHTML(1) +
+    "<h1>Where to next?</h1>" +
+    '<p class="lede">Tell us about the trip, pick the things you most want to do, and place them on your days. We\'ll fill in meals, nearby stops and how to get between them.</p>' +
+    draftBanner() + profileBanner() +
+    renderImport("plan") +
+    (bk ? '<fieldset><legend>Already booked · we\'ll build around these</legend><ul class="booked-list">' +
+      bk.items.map(b => '<li><span class="pill booked">' + esc(b.type || "booking") + "</span><span>" + esc(b.title) + (b.start ? ' <span class="muted">· ' + esc(b.start) + (b.end ? " to " + esc(b.end) : "") + "</span>" : "") + "</span></li>").join("") +
+      '</ul><div><button class="lnk" type="button" data-clear-booked>Clear these bookings</button></div></fieldset>' : "") +
+    "<fieldset><legend>1 · The trip</legend>" +
+      '<div class="row"><label class="f" for="dest">Where are you going?<input class="inp" id="dest" name="dest" required value="' + esc(FORM.dest) + '" placeholder="e.g. Mexico City"></label>' +
+      '<label class="f" for="from">Traveling from<input class="inp" id="from" name="from" value="' + esc(FORM.from) + '" placeholder="e.g. Portland"></label></div>' +
+      '<div class="row"><label class="f" for="start">First day<input class="inp" type="date" id="start" name="start" required value="' + esc(FORM.start) + '"></label>' +
+      '<label class="f" for="end">Last day<input class="inp" type="date" id="end" name="end" required value="' + esc(FORM.end) + '"></label>' +
+      '<label class="f" for="travelers">Travelers<input class="inp" type="number" min="1" max="20" id="travelers" name="travelers" value="' + esc(FORM.travelers) + '"></label></div>' +
+      '<div class="row"><label class="f" for="arrive">Arriving around <span class="h">Leave blank if unsure</span><input class="inp" type="time" id="arrive" name="arrive" value="' + esc(FORM.arrive) + '"></label>' +
+      '<label class="f" for="leave">Leaving around<input class="inp" type="time" id="leave" name="leave" value="' + esc(FORM.leave) + '"></label>' +
+      '<label class="f" for="occasion">Occasion<select class="inp" id="occasion" name="occasion">' + ["Just because", "Birthday", "Anniversary", "Honeymoon", "Bachelor or bachelorette", "Work plus play", "Reunion", "Family visit"].map(o => "<option" + (FORM.occasion === o ? " selected" : "") + ">" + o + "</option>").join("") + "</select></label></div>" +
+      '<div><div class="qlabel">Type of trip</div>' + segs("tripType", ["Solo", "Couple", "Family", "Friends", "Work"]) + "</div>" +
+    "</fieldset>" +
+    "<fieldset><legend>2 · Your days</legend>" +
+      '<div class="row"><label class="f" for="dayStart">Start your day<input class="inp" type="time" id="dayStart" name="dayStart" value="' + esc(FORM.dayStart) + '"></label>' +
+      '<label class="f" for="dayEnd">End your day<input class="inp" type="time" id="dayEnd" name="dayEnd" value="' + esc(FORM.dayEnd) + '"></label></div>' +
+      '<div><div class="qlabel">Pace</div>' + segs("pace", ["Relaxed", "Moderate", "Jam-packed"]) + "</div>" +
+      '<div><div class="qlabel">Budget</div>' + segs("budget", ["Budget", "Mid-range", "Splurge"]) + '<p class="note" style="margin:6px 0 0">About $200, $300 or $500 per person per day, before flights.</p></div>' +
+      '<div><div class="qlabel">Where to stay</div>' + segs("lodging", ["Hotel", "Boutique hotel", "Vacation rental", "No preference"]) + "</div>" +
+      '<label class="f" for="stay">Already booked a place? <span class="h">Optional. We\'ll plan around it.</span><input class="inp" id="stay" name="stay" value="' + esc(FORM.stay || "") + '" placeholder="Hotel name or address"></label>' +
+    "</fieldset>" +
+    "<fieldset><legend>3 · What you're into</legend><div class=\"sliders\">" +
+      sl("food", "Food") + sl("culture", "Culture &amp; history") + sl("outdoors", "Outdoors &amp; adventure") + sl("nightlife", "Drinks &amp; nightlife") + sl("shopping", "Shopping") +
+    "</div></fieldset>" +
+    "<fieldset><legend>4 · Must-dos and needs</legend>" +
+      '<label class="f" for="mustdo">Any must-dos? <span class="h">Places you already have in mind, or things you want us to find</span><textarea class="inp" id="mustdo" name="mustdo">' + esc(FORM.mustdo) + "</textarea></label>" +
+      '<div><div class="qlabel">Dietary needs</div><div class="seg">' + diets.map(o => '<label><input type="checkbox" name="diet" id="diet-' + o.replace(/\W/g, "") + '" value="' + o + '"' + (FORM.diet.includes(o) ? " checked" : "") + "><span>" + o + "</span></label>").join("") + "</div></div>" +
+      '<label class="f" for="notes">Anything else we should know?<textarea class="inp" id="notes" name="notes" placeholder="Mobility, kids\' ages, places you\'ve already been, a hotel you already booked">' + esc(FORM.notes) + "</textarea></label>" +
+    "</fieldset>" +
+    '<div class="form-actions"><button class="btn primary" type="submit" id="genBtn">Next: pick things to do</button><button class="btn" type="button" id="quickBtn">Just build the whole trip</button><a class="btn ghost" href="#trip">Cancel</a>' +
+      '<span class="note" id="genNote">' + (sampleFn ? "Uses your Claude account. Takes about a minute." : sampleBlocked ? "Claude access was declined for this page." : "Open this page on claude.ai to generate trips with Claude.") + "</span></div>" +
+    (S.formError ? '<p class="err">' + esc(S.formError) + "</p>" : "") +
+    "</form></div>";
+}
+function readForm() {
+  const f = $("#planForm");
+  const g = n => (f.elements[n] ? f.elements[n].value : "").trim();
+  const r = n => { const el = f.querySelector('input[name="' + n + '"]:checked'); return el ? el.value : ""; };
+  FORM = {
+    dest: g("dest"), from: g("from"), start: g("start"), end: g("end"), travelers: Math.max(1, parseInt(g("travelers"), 10) || 1),
+    occasion: g("occasion"), arrive: g("arrive"), leave: g("leave"), tripType: r("tripType"), dayStart: g("dayStart"), dayEnd: g("dayEnd"),
+    pace: r("pace"), budget: r("budget"), lodging: r("lodging"),
+    food: +g("food"), culture: +g("culture"), outdoors: +g("outdoors"), nightlife: +g("nightlife"), shopping: +g("shopping"),
+    mustdo: g("mustdo"), notes: g("notes"), stay: g("stay"),
+    diet: Array.from(f.querySelectorAll('input[name="diet"]:checked')).map(x => x.value),
+    booked: FORM.booked || null
+  };
+  store("mytin.form", FORM);
+  return FORM;
+}
+function bindPlan() {
+  const f = $("#planForm");
+  f.querySelectorAll('input[type="range"]').forEach(r => r.addEventListener("input", () => { $("#out-" + r.name).textContent = r.value; }));
+  const go = quick => {
+    const p = readForm();
+    const a = parseDate(p.start), b = parseDate(p.end);
+    S.formError = "";
+    if (!p.dest) S.formError = "Add a destination.";
+    else if (!a || !b) S.formError = "Pick a first and last day.";
+    else if (b < a) S.formError = "The last day is before the first day.";
+    else if ((b - a) / 864e5 > 6) S.formError = "This prototype plans up to 7 days at a time. Shorten the dates or plan each leg separately.";
+    else if (!sampleFn) S.formError = sampleBlocked ? "Claude access was declined for this page, so it can't build trips. Reload to be asked again." : "Building trips needs Claude, which is only available when this page is open on claude.ai.";
+    if (S.formError) { render(); return; }
+    if (quick) generate(p); else startWish(p);
+  };
+  f.addEventListener("submit", e => { e.preventDefault(); go(false); });
+  $("#quickBtn").addEventListener("click", () => go(true));
+}
+
+/* ---------- Generation ---------- */
+const ITEM_SHAPE = '{"time":"HH:MM","end":"HH:MM","kind":"meal|activity|free|transit|lodging","category":"Breakfast|Lunch|Dinner|Drinks|Coffee|Tour|Museum|Outdoors|Shopping|Market|Show|Free time|Arrive|Depart|Check in|Check out","name":"Real place name","neighborhood":"...","address":"street address, city","lat":0.0,"lng":0.0,"why":"one sentence selling why this fits THEM","tip":"insider pro tip, specific and a little playful, or empty","cost":0,"costTier":"$|$$|$$$|$$$$","booking":"now|daybefore|walkin|none","booked":false,"anchor":false,"transitFromPrev":{"mode":"walk|transit|rideshare|drive|ferry|train","minutes":0}}';
+
+function prefsText(p) {
+  return [
+    "Destination: " + p.dest,
+    p.from ? "Traveling from: " + p.from : "",
+    "Dates: " + p.start + " to " + p.end + " (" + (Math.round((parseDate(p.end) - parseDate(p.start)) / 864e5) + 1) + " days)",
+    "Travelers: " + p.travelers + " · Trip type: " + (p.tripType || "unspecified") + " · Occasion: " + (p.occasion || "none"),
+    p.arrive ? "Arriving around " + p.arrive + " on day 1" : "Arrival time unknown; start day 1 around midday",
+    p.leave ? "Leaving around " + p.leave + " on the last day" : "Departure time unknown; end the last day mid-afternoon",
+    "Daily hours: start " + (p.dayStart || "09:00") + ", end " + (p.dayEnd || "22:00"),
+    "Pace: " + p.pace + " (Relaxed = 1-2 activities plus meals and long free time; Moderate = 2-3 activities plus meals and one free block; Jam-packed = 4+ activities)",
+    "Budget: " + p.budget + " (about $" + (BUDGET_TARGET[p.budget] || 300) + " per person per day including lodging share, excluding flights)",
+    "Lodging preference: " + (p.lodging || "No preference"),
+    "Interest levels 1-5: Food " + p.food + ", Culture/history " + p.culture + ", Outdoors/adventure " + p.outdoors + ", Drinks/nightlife " + p.nightlife + ", Shopping " + p.shopping,
+    p.mustdo ? "Must-dos: " + p.mustdo : "",
+    p.diet.length ? "Dietary needs: " + p.diet.join(", ") : "",
+    p.notes ? "Other notes: " + p.notes : "",
+    profileText(PROFILE),
+    p.stay ? "Already staying at: " + p.stay + " (use it as homeBase with \"booked\": true)" : "",
+    p.anchors && p.anchors.length
+      ? "ANCHORS the traveler placed (fixed: keep each on exactly this date and time, with the same name, and set \"anchor\": true on it). Build each day around its anchors: pick meals and extra stops close to them so the day doesn't zigzag across the city, and choose sensible transit between them.\n" +
+        p.anchors.map(a => "- " + a.date + " " + a.start + "-" + a.end + " " + a.name + (a.neighborhood ? " (" + a.neighborhood + ")" : "")).join("\n")
+      : "",
+    p.spare && p.spare.length ? "Also on their wish list but not scheduled (add one only where it fits naturally near that day's anchors): " + p.spare.join("; ") : "",
+    p.booked && p.booked.items && p.booked.items.length
+      ? "ALREADY BOOKED (fixed; build around these):\n" + p.booked.items.map(b => "- " + b.type + ": " + b.title + (b.start ? " | " + b.start : "") + (b.end ? " to " + b.end : "") + (b.place ? " | " + b.place : "") + (b.address ? " | " + b.address : "")).join("\n")
+      : ""
+  ].filter(Boolean).join("\n");
+}
+
+function genPrompt(p) {
+  return "You are the trip designer for Mytinerary, a service that turns a traveler's preferences into a finished, day-by-day itinerary so they skip the 25-100 hours of research. " +
+    "Write like a well-traveled friend who lives there: specific, confident, no filler.\n\n" +
+    "TRAVELER PREFERENCES\n" + prefsText(p) + "\n\n" +
+    "RULES\n" +
+    "- Use real, well-established places likely to still be open. Prefer local favorites over tourist traps unless the traveler asked for classics. Mix a few recognizable picks with a few surprises.\n" +
+    "- Choose ONE home base first, placed so most stops are a short walk or ride away, then cluster each day geographically to minimize travel. Give accurate latitude/longitude for every place.\n" +
+    "- Meals are fixed points in time; activities flex between them. Include breakfast/coffee, lunch, dinner each full day, drinks if nightlife >= 3. Respect daily start/end hours and dietary needs.\n" +
+    "- Include free-time blocks (kind \"free\") so the day can breathe. Day 1 starts with an Arrive item (kind \"transit\", no lat/lng) and Check in (kind \"lodging\" with the home base coords). The last day ends with Check out (kind \"lodging\") and Depart (kind \"transit\", no lat/lng).\n" +
+    "- Every item after the first has transitFromPrev with a realistic mode and minutes. Order items by time; no overlaps.\n" +
+    "- cost = estimated US dollars per person for that item (0 if free). booking: \"now\" for things that sell out (popular dinners, timed tours), \"daybefore\" for places that take reservations but rarely fill, \"walkin\" for no reservations, \"none\" for free time/transit/lodging steps.\n" +
+    "- Day titles are 3-6 words. Each day's pitch is a 1-2 sentence elevator pitch of what that day is about.\n" +
+    "- homeBase.routine: 3 go-to spots near the home base (Coffee, a late bite or fallback dinner, and one practical stop such as a market or pharmacy).\n" +
+    "- watchouts: 2-4 timely, specific heads-ups (sell-outs, closures by weekday, weather, local events or crowds on these dates).\n" +
+    "- If ALREADY BOOKED items are listed, they are fixed. Use the booked lodging as homeBase (same name and address, accurate lat/lng, estimated nightly price, \"booked\": true, empty alternatives). Day 1 Arrive and last-day Depart items name the actual flight or train and station at the booked local times. Put booked restaurants or events at their booked times. Set \"booked\": true on every item that matches an existing booking.\n\n" +
+    "Reply with ONLY one JSON object, no prose, in this shape:\n" +
+    '{"title":"short trip name","destination":"' + p.dest.replace(/"/g, "") + '","summary":"one-sentence thesis of the trip","homeBase":{"name":"","type":"Hotel|Boutique hotel|Vacation rental","neighborhood":"","address":"","lat":0.0,"lng":0.0,"nightly":0,"booked":false,"why":"one sentence","alternatives":[{"name":"","nightly":0,"why":""}],"routine":[{"role":"Coffee","name":"","note":""}]},"days":[{"date":"YYYY-MM-DD","title":"","pitch":"","items":[' + ITEM_SHAPE + "]}],\"watchouts\":[\"\"]}\n" +
+    "Provide exactly one day object per date from " + p.start + " to " + p.end + ", with 2 homeBase.alternatives.";
+}
+
+let genCtl = null;
+async function generate(p) {
+  genCtl = new AbortController();
+  S.gen = { dest: p.dest, pct: 4, stops: [], status: "Asking Claude. You may see a prompt to allow it." };
+  location.hash = "trip";
+  S.view = "gen"; render();
+  const days = Math.round((parseDate(p.end) - parseDate(p.start)) / 864e5) + 1;
+  const expected = days * 8;
+  try {
+    const raw = await sampleFn.json(genPrompt(p), {
+      signal: genCtl.signal,
+      modelTier: "default",
+      onText: ({ text }) => {
+        const names = [];
+        const re = /"name"\s*:\s*"([^"]{2,80})"/g; let m;
+        while ((m = re.exec(text))) names.push(m[1]);
+        const dayCount = (text.match(/"pitch"\s*:/g) || []).length;
+        S.gen.stops = names.slice(1);
+        S.gen.pct = Math.min(96, 8 + names.length / (expected + 4) * 88);
+        S.gen.status = dayCount ? "Drawing day " + Math.min(dayCount, days) + " of " + days : "Choosing a home base";
+        updateGen();
+      }
+    });
+    if (!raw || !Array.isArray(raw.days) || !raw.days.length) throw { code: "invalid_json", message: "No days came back" };
+    const trip = normalize(Object.assign(raw, {
+      id: p.tripId || uid(), startDate: p.start, endDate: p.end, travelers: p.travelers, tripType: p.tripType, pace: p.pace, budget: p.budget, occasion: p.occasion,
+      destination: raw.destination || p.dest, prefs: p, created: new Date().toISOString(),
+      plan: p.anchors && DRAFT ? JSON.parse(JSON.stringify(DRAFT)) : null,
+      scanKey: p.booked && p.booked.startDate ? p.booked.destination + "|" + p.booked.startDate : null
+    }));
+    S.trip = trip; S.day = 0; S.gen = null;
+    saveTrip(trip); store("mytin.lastOpened", trip.id);
+    if (p.anchors && DRAFT) { DRAFT.tripId = trip.id; saveDraft(); }
+    if (FORM.booked) { FORM.booked = null; store("mytin.form", FORM); } // the next new trip starts clean
+    if (hasProfile()) applyProfileToForm(); // ...from the profile, not this trip's tweaks
+    S.view = "trip"; render(); window.scrollTo(0, 0);
+    toast("Your trip is ready and saved to My trips.");
+  } catch (e) {
+    S.gen = null;
+    if (e && e.code === "not_granted") sampleBlocked = true;
+    S.formError = e && e.code === "cancelled" ? "" : genErrorCopy(e);
+    location.hash = p.anchors ? "anchors" : "plan";
+    if (p.anchors && S.formError) { toast(S.formError); S.formError = ""; }
+    if (S.view === "plan") render();
+  }
+}
+function genErrorCopy(e) {
+  const c = e && e.code;
+  if (c === "not_granted" || c === "sampling_disabled") return "Claude access isn't allowed for this page, so it can't build trips.";
+  if (c === "rate_limited") return "You've hit a usage limit. Try again in a few minutes.";
+  if (c === "invalid_json") return "Claude's answer didn't come back in a usable shape. Try again.";
+  if (c === "refused") return "Claude declined that request. Try rewording your notes.";
+  return "Something went wrong building the trip. Try again.";
+}
+function renderGen() {
+  const g = S.gen;
+  return '<div class="wrap"><section class="gen"><span class="eyebrow">Building your trip</span><h1 class="dest">' + esc(g.dest) + "</h1>" +
+    '<div class="gen-line"><i id="genBar" style="width:' + g.pct + '%"></i></div>' +
+    '<div class="gen-stops" id="genStops">' + g.stops.map(s => '<span class="chip">' + esc(s) + "</span>").join("") + "</div>" +
+    '<p class="gen-status" id="genStatus">' + esc(g.status) + "</p>" +
+    '<button class="btn small" id="genStop">Stop</button></section></div>';
+}
+function updateGen() {
+  const g = S.gen; if (!g || S.view !== "gen") return;
+  const bar = $("#genBar"); if (bar) bar.style.width = g.pct + "%";
+  const st = $("#genStatus"); if (st) st.textContent = g.status;
+  const box = $("#genStops");
+  if (box) while (box.children.length < g.stops.length) { const c = document.createElement("span"); c.className = "chip"; c.textContent = g.stops[box.children.length]; box.appendChild(c); }
+}
+document.addEventListener("click", e => { if (e.target && e.target.id === "genStop" && genCtl) genCtl.abort(); });
+
+/* ---------- Swap a stop ---------- */
+let swapCtl = null;
+function tripContext(t) {
+  const p = t.prefs;
+  return (p ? prefsText(p) : "Destination: " + t.destination + "\nTravelers: " + t.travelers + " · Pace: " + t.pace + " · Budget: " + t.budget) +
+    "\nHome base: " + (t.homeBase.name || "") + " (" + (t.homeBase.neighborhood || "") + ")";
+}
+function dayList(d) { return d.items.map((it, i) => i + ". " + it.time + "-" + (it.end || "") + " " + (it.category || it.kind) + ": " + it.name + " (" + (it.neighborhood || "") + ")").join("\n"); }
+function openDrawer(eyebrow, title, sub) {
+  $("#drawerEyebrow").textContent = eyebrow; $("#drawerTitle").textContent = title; $("#drawerSub").textContent = sub || "";
+  $("#drawer").classList.add("open"); $("#drawerBg").classList.add("open"); $("#drawer").setAttribute("aria-hidden", "false");
+  $("#drawerClose").focus();
+}
+function closeDrawer() {
+  if (swapCtl) swapCtl.abort();
+  $("#drawer").classList.remove("open"); $("#drawerBg").classList.remove("open"); $("#drawer").setAttribute("aria-hidden", "true");
+}
+$("#drawerClose").addEventListener("click", closeDrawer);
+$("#drawerBg").addEventListener("click", closeDrawer);
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
+
+async function openSwap(di, ii) {
+  const t = S.trip, d = t.days[di], it = d.items[ii];
+  openDrawer("Swap a stop · Day " + (di + 1), it.name, (it.category || "") + " · " + fmtTime(it.time) + (it.end ? " to " + fmtTime(it.end) : ""));
+  const body = $("#drawerBody");
+  if (!sampleFn) {
+    body.innerHTML = '<p class="small">Swapping needs Claude, which is available when this page is open on claude.ai.</p>';
+    return;
+  }
+  body.innerHTML = '<p class="gen-status">Finding three alternatives that fit this slot…</p>';
+  swapCtl = new AbortController();
+  const prompt = "You help Mytinerary travelers swap one stop in their itinerary.\n\nTRIP\n" + tripContext(t) +
+    "\n\nDAY " + (di + 1) + " (" + d.date + ") CURRENT PLAN\n" + dayList(d) +
+    "\n\nReplace item " + ii + " (" + it.name + "). Suggest 3 different real, well-established alternatives of the same kind (" + (it.category || it.kind) + ") that fit the same time slot, stay close to the previous and next stops, match the traveler's budget and interests, and are not already in the plan. Vary them: one safe pick, one local favorite, one wildcard.\n" +
+    "Reply with ONLY a JSON array of 3 objects, each shaped like:\n" + ITEM_SHAPE + "\nKeep time=\"" + it.time + "\" and end=\"" + (it.end || "") + "\". transitFromPrev is from the previous stop in the list.";
+  try {
+    const arr = await sampleFn.json(prompt, { signal: swapCtl.signal, modelTier: "default", cache: false });
+    const alts = (Array.isArray(arr) ? arr : []).slice(0, 3).map(normItem);
+    if (!alts.length) throw { code: "invalid_json" };
+    body.innerHTML = alts.map((a, k) => '<button class="alt" data-k="' + k + '"><span class="cat">' + esc(a.category || "") + (a.neighborhood ? " · " + esc(a.neighborhood) : "") + '</span><span class="name" style="font-family:var(--display);font-weight:600;font-size:18px">' + esc(a.name) + '</span><span class="small">' + esc(a.why || "") + '</span><span class="foot">' + (a.cost ? '<span class="pill">' + esc(a.costTier || "") + " ~" + money(a.cost) + "</span> " : "") + (BOOK[a.booking] ? '<span class="pill ' + a.booking + '">' + BOOK[a.booking] + "</span>" : "") + "</span></button>").join("") +
+      '<p class="note">Pick one to replace ' + esc(it.name) + ".</p>";
+    body.querySelectorAll(".alt").forEach(b => b.addEventListener("click", () => {
+      const a = alts[+b.dataset.k];
+      if (ii === 0) a.transitFromPrev = null;
+      d.items[ii] = a; saveTrip(t); closeDrawer(); render();
+      toast("Swapped in " + a.name);
+    }));
+  } catch (e) {
+    if (e && e.code === "cancelled") return;
+    if (e && e.code === "not_granted") sampleBlocked = true;
+    body.innerHTML = '<p class="err">' + esc(genErrorCopy(e)) + "</p>";
+  }
+}
+
+/* ---------- Rework a day ---------- */
+async function reworkDay() {
+  const input = $("#reworkInput"), note = $("#reworkNote"), btn = $("#reworkBtn");
+  const ask = input.value.trim();
+  if (!ask) { note.textContent = "Say what to change, for example: rainy day, more indoors."; return; }
+  if (!sampleFn) { note.textContent = "Reworking a day needs Claude, which is available when this page is open on claude.ai."; return; }
+  const t = S.trip, di = S.day, d = t.days[di];
+  btn.disabled = true; input.disabled = true; note.textContent = "Reworking day " + (di + 1) + "…";
+  const prompt = "You revise one day of a Mytinerary itinerary.\n\nTRIP\n" + tripContext(t) +
+    "\n\nOTHER DAYS (avoid repeating these places)\n" + t.days.filter((_, i) => i !== di).map(x => x.items.map(i => i.name).join(", ")).join("\n") +
+    "\n\nDAY " + (di + 1) + " (" + d.date + ") CURRENT PLAN\n" + dayList(d) +
+    "\n\nTRAVELER'S REQUEST: " + ask +
+    "\n\nRewrite this day to honor the request. Keep any arrival, check-in, check-out and departure steps and their times. Keep good stops that still fit. Use real, well-established places with accurate lat/lng, and cluster stops near each other.\n" +
+    'Reply with ONLY one JSON object: {"date":"' + d.date + '","title":"3-6 words","pitch":"1-2 sentences","items":[' + ITEM_SHAPE + "]}";
+  try {
+    const nd = await sampleFn.json(prompt, { modelTier: "default", cache: false });
+    if (!nd || !Array.isArray(nd.items) || !nd.items.length) throw { code: "invalid_json" };
+    nd.items.forEach(normItem); nd.date = d.date;
+    t.days[di] = nd; saveTrip(t); render();
+    toast("Day " + (di + 1) + " reworked");
+  } catch (e) {
+    if (e && e.code === "not_granted") sampleBlocked = true;
+    btn.disabled = false; input.disabled = false;
+    note.textContent = genErrorCopy(e);
+  }
+}
+
+/* ---------- Start from Gmail & Google Calendar ---------- */
+// Calendar's "from Gmail" events carry flights and stays with exact times and addresses, so they lead.
+// Gmail search is a backup for lodging that never reached the calendar.
+const GMAIL_Q = 'newer_than:9m (category:reservations OR subject:("your trip" OR "your stay" OR "flight is booked" OR "reservation confirmed" OR "booking confirmation" OR itinerary OR "your reservation")) -category:promotions -category:social';
+const TRAVEL_RE = /flight|trip|travel|vacation|holiday|hotel|stay at|airbnb|vrbo|check[- ]?in|reservation|train|ferry|cruise|out of office|ooo|pto|✈/i;
+function localISO(d) { return isoDate(d) + "T" + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + ":00"; }
+function decodeEntities(s) { const t = document.createElement("textarea"); t.innerHTML = String(s || ""); return t.value; }
+function asObj(payload) { if (typeof payload === "string") { try { return JSON.parse(payload); } catch (e) { return {}; } } return payload || {}; }
+
+function compactEvents(payload) {
+  const evs = asObj(payload).events || [];
+  return evs.filter(e => {
+    if (e.eventType === "FROM_GMAIL") return true;
+    const allDayMulti = e.start && e.start.date && e.end && e.end.date && (parseDate(e.end.date) - parseDate(e.start.date)) / 864e5 >= 2;
+    return allDayMulti || TRAVEL_RE.test((e.summary || "") + " " + (e.location || ""));
+  }).slice(0, 120).map(e => ({
+    title: e.summary || "", start: (e.start && (e.start.dateTime || e.start.date)) || "", end: (e.end && (e.end.dateTime || e.end.date)) || "",
+    where: e.location || "", fromGmail: e.eventType === "FROM_GMAIL"
+  }));
+}
+function compactThreads(payload) {
+  const th = asObj(payload).threads || [];
+  return th.slice(0, 30).map(t => {
+    const m = (t.messages || [])[0] || {};
+    const from = (m.addressDisplayNames && m.addressDisplayNames[0] && m.addressDisplayNames[0].displayName) || m.sender || "";
+    return { id: t.id, date: (m.date || "").slice(0, 10), from, subject: decodeEntities(m.subject), snippet: decodeEntities(m.snippet).replace(/\s+/g, " ").slice(0, 180) };
+  });
+}
+function connectorNote(server, e) {
+  const c = e && e.code;
+  if (c === "server_not_connected" || c === "server_not_found") return server + " isn't connected. Add it in claude.ai Settings → Connectors, then try again.";
+  if (c === "needs_reauth") return server + " needs to be reconnected in claude.ai Settings → Connectors.";
+  if (c === "not_in_manifest" || c === "approval_required") return "You didn't allow " + server + " for this page. Try again and choose Allow to include it.";
+  if (c === "selection_required") return "You have more than one " + server + " connected. Choose one when claude.ai asks, then try again.";
+  if (c === "blocked_by_policy") return "Your organization blocks " + server + " here.";
+  if (c === "server_unavailable" || (e && e.retryable)) return server + " didn't respond. Try again in a minute.";
+  if (c === "not_granted" || c === "capability_disabled") return "Connectors aren't available in this view.";
+  return "Couldn't read " + server + ".";
+}
+
+function scanPrompt(events, threads) {
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
+  return "You find upcoming trips in a traveler's calendar and email for Mytinerary.\n" +
+    "Today is " + isoDate(new Date()) + ". The traveler's time zone is " + tz + ". Only include trips that end on or after today.\n\n" +
+    "CALENDAR EVENTS (next 12 months; timestamps carry their UTC offset; fromGmail events were created from booking emails)\n" +
+    (events.length ? events.map(e => JSON.stringify(e)).join("\n") : "(none)") + "\n\n" +
+    "EMAILS (recent travel-looking emails; ignore marketing, payments, newsletters and anything that isn't a booking)\n" +
+    (threads.length ? threads.map(t => "[" + t.id + "] " + t.date + " · " + t.from + " · " + t.subject + " — " + t.snippet).join("\n") : "(none)") + "\n\n" +
+    "Group related bookings into trips: an outbound flight, a stay and a return flight usually form one trip; layover cities are not destinations. " +
+    "Infer the traveler's home city from where round trips start and end, and skip anything happening in the home city. A stay with no flights (a road trip) is still a trip.\n" +
+    "startDate is the arrival date at the destination; endDate is the departure date. arriveTime and leaveTime are LOCAL times at the destination (convert using the offsets), or \"\" if unknown.\n" +
+    "Do not include confirmation codes, prices or passenger details.\n" +
+    "Reply with ONLY JSON:\n" +
+    '{"homeCity":"","trips":[{"destination":"City, Country","startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","arriveTime":"HH:MM","leaveTime":"HH:MM","summary":"one line","bookings":[{"type":"flight|lodging|car|train|restaurant|event|other","title":"short, e.g. DL 9576 Amsterdam → Lisbon","start":"YYYY-MM-DD HH:MM destination local","end":"","place":"","address":""}],"lodgingThreadIds":["email thread ids likely to hold lodging details missing from the calendar"]}]}\n' +
+    "Order trips by startDate. Use an empty trips array when there are none.";
+}
+
+let scanRunning = false, autoTried = false;
+async function scanTrips(auto) {
+  if (scanRunning || !mcpApi || !sampleFn) return;
+  scanRunning = true;
+  S.scan = { state: "running", step: "Reading travel events from Google Calendar…", trips: [], notes: [], err: "", picking: null, homeCity: "", auto: !!auto };
+  render();
+  const now = new Date(), later = new Date(now.getFullYear() + 1, now.getMonth(), now.getDate());
+  const cache = { staleTime: 30 * 60e3, gcTime: 24 * 3600e3 };
+  let events = [], threads = [], okSources = 0;
+  try {
+    const r = await mcpApi.callTool("Google Calendar", "list_events", { startTime: localISO(now), endTime: localISO(later), eventType: ["FROM_GMAIL", "DEFAULT", "OUT_OF_OFFICE"], pageSize: 250, orderBy: "startTime" }, { cache });
+    events = compactEvents(r.payload); okSources++;
+  } catch (e) { S.scan.notes.push(connectorNote("Google Calendar", e)); }
+  S.scan.step = "Looking for booking confirmations in Gmail…"; render();
+  try {
+    const r = await mcpApi.callTool("Gmail", "search_threads", { query: GMAIL_Q, pageSize: 30, view: "THREAD_VIEW_SUMMARY" }, { cache });
+    threads = compactThreads(r.payload); okSources++;
+  } catch (e) { S.scan.notes.push(connectorNote("Gmail", e)); }
+  if (!okSources) { S.scan.state = "error"; S.scan.err = "Couldn't read Gmail or Google Calendar."; scanRunning = false; render(); return; }
+  if (!events.length && !threads.length) { S.scan.state = "done"; scanRunning = false; render(); return; }
+  S.scan.step = "Grouping " + (events.length + threads.length) + " bookings and events into trips…"; render();
+  try {
+    const res = await sampleFn.json(scanPrompt(events, threads), { modelTier: "default", cache: { gcTime: 12 * 3600e3 } });
+    const today = isoDate(new Date());
+    S.scan.homeCity = (res && res.homeCity) || "";
+    S.scan.trips = ((res && res.trips) || []).filter(tr => tr && tr.destination && parseDate(tr.startDate) && parseDate(tr.endDate) && tr.endDate >= today).map(tr => ({
+      id: uid(), destination: String(tr.destination), startDate: tr.startDate, endDate: tr.endDate,
+      arriveTime: /^\d{1,2}:\d{2}$/.test(tr.arriveTime || "") ? tr.arriveTime.padStart(5, "0") : "",
+      leaveTime: /^\d{1,2}:\d{2}$/.test(tr.leaveTime || "") ? tr.leaveTime.padStart(5, "0") : "",
+      summary: tr.summary || "", bookings: Array.isArray(tr.bookings) ? tr.bookings.filter(b => b && b.title) : [],
+      lodgingThreadIds: Array.isArray(tr.lodgingThreadIds) ? tr.lodgingThreadIds.slice(0, 2).map(String) : []
+    }));
+    S.scan.state = "done";
+    if (!auto && okSources === 2) store("mytin.autoscan", true);
+  } catch (e) {
+    if (e && e.code === "not_granted") sampleBlocked = true;
+    S.scan.state = "error"; S.scan.err = genErrorCopy(e);
+  }
+  scanRunning = false;
+  render();
+}
+function maybeAutoScan() {
+  if (autoTried || !mcpApi || !sampleFn || !store("mytin.autoscan")) return;
+  autoTried = true;
+  scanTrips(true);
+}
+function hasSavedFor(tr) {
+  const key = String(tr.destination).toLowerCase().split(/[ ,]/)[0];
+  const scanKey = tr.destination + "|" + tr.startDate;
+  return savedTrips().some(t => t.scanKey === scanKey || (t.startDate === tr.startDate && String(t.destination || "").toLowerCase().includes(key)));
+}
+
+async function startFromTrip(id) {
+  const tr = S.scan.trips.find(x => x.id === id);
+  if (!tr || S.scan.picking) return;
+  const items = tr.bookings.slice();
+  // Lodging that never reached the calendar: read up to two of the emails Claude flagged.
+  if (!items.some(b => b.type === "lodging") && tr.lodgingThreadIds.length && mcpApi && sampleFn) {
+    S.scan.picking = id; render();
+    try {
+      const texts = [];
+      for (const tid of tr.lodgingThreadIds) {
+        const r = await mcpApi.callTool("Gmail", "get_thread", { threadId: tid, messageFormat: "PLAIN_TEXT" });
+        const msgs = asObj(r.payload).messages || [];
+        texts.push(msgs.map(m => (m.subject || "") + "\n" + (m.plaintextBody || m.snippet || "")).join("\n---\n").slice(0, 5000));
+      }
+      const lod = await sampleFn.json("You extract lodging details from booking emails for Mytinerary.\nTrip: " + tr.destination + ", " + tr.startDate + " to " + tr.endDate +
+        "\n\nEMAILS\n" + texts.join("\n=====\n") +
+        '\n\nReply with ONLY JSON: {"found":true,"name":"","address":"","checkIn":"YYYY-MM-DD","checkOut":"YYYY-MM-DD","checkInTime":"HH:MM"} or {"found":false}. No confirmation codes or prices.', { modelTier: "quick" });
+      if (lod && lod.found && lod.name) items.push({ type: "lodging", title: "Stay at " + lod.name, start: (lod.checkIn || tr.startDate) + (lod.checkInTime ? " " + lod.checkInTime : ""), end: lod.checkOut || tr.endDate, address: lod.address || "" });
+    } catch (e) { /* Lodging stays unknown; the form still prefills. */ }
+    S.scan.picking = null;
+  }
+  const a = parseDate(tr.startDate);
+  let end = tr.endDate;
+  const span = Math.round((parseDate(end) - a) / 864e5);
+  if (span > 6) { const e2 = new Date(a); e2.setDate(a.getDate() + 6); end = isoDate(e2); }
+  FORM = Object.assign({}, FORM, {
+    dest: tr.destination, from: S.scan.homeCity || FORM.from, start: tr.startDate, end,
+    arrive: tr.arriveTime, leave: span > 6 ? "" : tr.leaveTime,
+    mustdo: "", notes: "",
+    lodging: items.some(b => b.type === "lodging") ? "Hotel" : FORM.lodging,
+    booked: { destination: tr.destination, startDate: tr.startDate, items }
+  });
+  store("mytin.form", FORM);
+  S.formError = "";
+  if (location.hash === "#plan") { render(true); window.scrollTo(0, 0); } else location.hash = "plan";
+  toast(span > 6 ? "Prefilled from your bookings. This trip is " + (span + 1) + " days; we'll plan the first 7." : "Prefilled from your bookings. Set your preferences, then build.");
+}
+
+function foundList(trips) {
+  return '<div class="found-list">' + trips.map(tr =>
+    '<div class="found"><span class="eyebrow">' + esc(fmtRange(tr.startDate, tr.endDate)) + '</span><span class="fd">' + esc(tr.destination) + "</span>" +
+    (tr.summary ? '<span class="small muted">' + esc(tr.summary) + "</span>" : "") +
+    (tr.bookings.length ? "<ul>" + tr.bookings.slice(0, 4).map(b => "<li>" + esc(b.title) + "</li>").join("") + (tr.bookings.length > 4 ? "<li>and " + (tr.bookings.length - 4) + " more</li>" : "") + "</ul>" : "") +
+    '<button class="btn small primary" type="button" data-start-trip="' + esc(tr.id) + '"' + (S.scan.picking ? " disabled" : "") + ">" + (S.scan.picking === tr.id ? "Reading the confirmation email…" : "Start this itinerary") + "</button></div>"
+  ).join("") + "</div>";
+}
+function renderImport(where) {
+  const sc = S.scan;
+  const visible = sc.trips.filter(tr => !hasSavedFor(tr));
+  if (where === "trip") {
+    if (!visible.length) return "";
+    return '<section class="import found-strip" aria-label="Upcoming trips"><div class="row2" style="justify-content:space-between"><div><span class="eyebrow">From your calendar and inbox</span><h2>Upcoming trips without an itinerary</h2></div><button class="lnk" type="button" data-autoscan-off>Stop checking automatically</button></div>' + foundList(visible) + "</section>";
+  }
+  const avail = mcpApi && sampleFn;
+  let inner = '<span class="eyebrow">Already booked?</span><h2>Start from your flights and hotel</h2>' +
+    '<p class="small muted" style="margin:0;max-width:64ch">Mytinerary looks through your Google Calendar and Gmail for flights, stays and reservations, groups them into trips, and fills in this form for you. It reads them through your own claude.ai connectors and keeps the results in this browser.</p>';
+  if (sc.state === "running") inner += '<p class="gen-status" role="status">' + esc(sc.step) + "</p>";
+  else inner += '<div class="row2"><button class="btn primary" type="button" data-scan' + (avail ? "" : " disabled") + ">" + (sc.state === "done" ? "Check again" : "Find my trips in Gmail &amp; Calendar") + "</button>" +
+    (avail ? "" : '<span class="note">' + (runtimeSettled ? "Open this page on claude.ai with the Gmail and Google Calendar connectors added to use this." : "Connecting…") + "</span>") + "</div>";
+  if (sc.notes.length) inner += '<ul class="scan-notes">' + sc.notes.map(n => "<li>" + esc(n) + "</li>").join("") + "</ul>";
+  if (sc.state === "done") inner += visible.length ? foundList(visible) : '<p class="small" style="margin:0">' + (sc.trips.length ? "Every upcoming trip we found already has an itinerary in My trips." : "No upcoming trips found in the next 12 months. Fill in the form below instead.") + "</p>";
+  if (sc.state === "error") inner += '<p class="err" style="margin:0">' + esc(sc.err) + "</p>";
+  return '<section class="import" id="importPanel">' + inner + "</section>";
+}
+document.addEventListener("click", e => {
+  const t = e.target.closest && e.target.closest("[data-scan],[data-start-trip],[data-clear-booked],[data-autoscan-off]");
+  if (!t) return;
+  if (t.hasAttribute("data-scan")) scanTrips(false);
+  else if (t.hasAttribute("data-start-trip")) startFromTrip(t.getAttribute("data-start-trip"));
+  else if (t.hasAttribute("data-draft-reset")) { if (confirm("Throw away your wish list and placed picks for " + DRAFT.prefs.dest + "?")) { DRAFT = null; saveDraft(); render(); } }
+  else if (t.hasAttribute("data-clear-booked")) { readForm(); FORM.booked = null; store("mytin.form", FORM); render(true); }
+  else if (t.hasAttribute("data-autoscan-off")) { store("mytin.autoscan", false); S.scan = Object.assign(S.scan, { trips: [], state: "idle" }); render(); toast("Mytinerary won't check your calendar automatically."); }
+});
+
+/* ---------- Local test doubles (only with ?mock on localhost) ---------- */
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function mockMcp() {
+  return {
+    async callTool(server, tool) {
+      await delay(500);
+      if (tool === "list_events") return { payload: { events: [
+        { summary: "Flight to Mexico City (AM 647)", start: { dateTime: "2027-01-14T07:10:00-08:00" }, end: { dateTime: "2027-01-14T13:05:00-08:00" }, location: "Los Angeles LAX", eventType: "FROM_GMAIL" },
+        { summary: "Flight to Los Angeles (AM 646)", start: { dateTime: "2027-01-18T15:30:00-08:00" }, end: { dateTime: "2027-01-18T19:20:00-08:00" }, location: "Mexico City MEX", eventType: "FROM_GMAIL" },
+        { summary: "Dentist", start: { dateTime: "2027-01-05T09:00:00-08:00" }, end: { dateTime: "2027-01-05T10:00:00-08:00" }, eventType: "DEFAULT" }
+      ] } };
+      if (tool === "search_threads") return { payload: { threads: [{ id: "t-mock-1", messages: [{ subject: "Your stay at Casa Mock is confirmed", snippet: "Check-in Jan 14", date: "2026-11-01T00:00:00Z", sender: "stays@example.com" }] }] } };
+      if (tool === "get_thread") return { payload: { messages: [{ subject: "Your stay at Casa Mock is confirmed", plaintextBody: "Casa Mock, Colima 123, Roma Norte, Mexico City. Check-in Jan 14 3pm, check-out Jan 18." }] } };
+      throw { code: "tool_error", message: "unknown mock tool" };
+    }
+  };
+}
+function mockProfileTurn(prompt) {
+  const turns = (prompt.match(/^Them: /gm) || []).length;
+  const steps = [
+    ["LA with your partner, got it. On a trip, do you like an easy pace or a packed day, and are you up early or out late?", { homeCity: "Los Angeles", travelsWith: "Partner" }],
+    ["Slow mornings, late nights. Noted. Roughly what do you like to spend per person per day, and what's worth a splurge?", { pace: "Moderate", dayStart: "09:30", dayEnd: "23:00" }],
+    ["Save on the room, splurge on dinner. Smart. Do you prefer hotels, small boutique places, or a rental with a kitchen?", { budget: "Mid-range", loves: ["One big tasting-menu dinner per trip"] }],
+    ["Boutique it is. How much does food drive a trip for you, and any dietary needs I should know about?", { lodging: "Boutique hotel" }],
+    ["A real food-trip person. How do you feel about museums and history, hiking, bars, and shopping?", { interests: { food: 5 }, diet: ["No shellfish"], loves: ["One big tasting-menu dinner per trip", "Taquerias and street food"] }],
+    ["Good mix. Anything you always skip or can't stand on a trip?", { interests: { food: 5, culture: 3, outdoors: 4, nightlife: 3, shopping: 1 }, loves: ["One big tasting-menu dinner per trip", "Taquerias and street food", "A morning hike"] }],
+    ["No tourist-trap lines, noted. Last one: where have you been lately, and what's next on your list?", { avoids: ["Long lines", "Tourist-trap restaurants"] }],
+    ["That's everything I need. Your profile is saved, and you can come back any time to add more.", { beenTo: ["San Francisco", "Mexico City"], dreamTrips: ["Tokyo", "Lisbon"] }, true]
+  ];
+  const cur = JSON.parse((/THE PROFILE SO FAR\n(.*)\n/.exec(prompt) || [])[1] || "{}");
+  const s = turns <= steps.length ? steps[turns - 1] : ["Happy to add that. Anything else you'd like me to remember?", {}];
+  return { reply: s[0], done: turns >= steps.length, profile: Object.assign(cur, s[1], { interests: Object.assign({}, cur.interests, s[1].interests) }) };
+}
+function mockActivities(more) {
+  const H = (wk, sat, sun) => ({ mon: wk, tue: wk, wed: wk, thu: wk, fri: wk, sat: sat || wk, sun: sun || sat || wk });
+  const all = "00:00-24:00";
+  const list = [
+    { name: "Lands End Trail", category: "Outdoors", neighborhood: "Outer Richmond", lat: 37.7802, lng: -122.5115, why: "Cliffside trail with Golden Gate views, shipwrecks at low tide and the Sutro Baths ruins.", fitWhy: "For the hiker in you", fit: 95, minutes: 120, bestTime: "morning", hours: H(all), cost: 0, booking: "none" },
+    { name: "Ferry Building Marketplace", category: "Food & drink", neighborhood: "Embarcadero", lat: 37.7955, lng: -122.3937, why: "Oysters, coffee and the Saturday farmers market, all in one historic hall on the bay.", fitWhy: "A food lover's first stop", fit: 93, minutes: 90, bestTime: "morning", hours: H("08:00-18:00", "08:00-18:00", "10:00-17:00"), cost: 30, costTier: "$$", booking: "walkin" },
+    { name: "Mission murals walk", category: "Neighborhoods", neighborhood: "Mission", lat: 37.7525, lng: -122.4123, why: "Balmy and Clarion Alleys are open-air galleries, with taquerias on every corner.", fitWhy: "Art plus tacos", fit: 90, minutes: 90, bestTime: "afternoon", hours: H(all), cost: 0, booking: "none" },
+    { name: "Exploratorium", category: "Museums", neighborhood: "Embarcadero", lat: 37.8017, lng: -122.3973, why: "Hands-on science on Pier 15; the Thursday adults-only night is the move.", fitWhy: "Playful, not stuffy", fit: 80, minutes: 180, bestTime: "afternoon", hours: { mon: "closed", tue: "10:00-17:00", wed: "10:00-17:00", thu: "10:00-17:00,18:00-22:00", fri: "10:00-17:00", sat: "10:00-17:00", sun: "10:00-17:00" }, cost: 40, costTier: "$$", booking: "daybefore" },
+    { name: "Muir Woods", category: "Outdoors", neighborhood: "Marin", lat: 37.8970, lng: -122.5811, why: "Old-growth redwoods half an hour north. Reserve parking or the shuttle ahead.", fitWhy: "Big trees, easy trails", fit: 88, minutes: 180, bestTime: "morning", hours: H("08:00-17:00"), cost: 15, costTier: "$", booking: "now" },
+    { name: "de Young Museum", category: "Museums", neighborhood: "Golden Gate Park", lat: 37.7715, lng: -122.4686, why: "American art and a free observation tower over Golden Gate Park.", fitWhy: "Culture with a view", fit: 72, minutes: 150, bestTime: "afternoon", hours: { mon: "closed", tue: "09:30-17:15", wed: "09:30-17:15", thu: "09:30-17:15", fri: "09:30-17:15", sat: "09:30-17:15", sun: "09:30-17:15" }, cost: 20, costTier: "$", booking: "walkin" },
+    { name: "Alcatraz Island", category: "Sights", neighborhood: "Pier 33", lat: 37.8270, lng: -122.4230, why: "The cellhouse audio tour is genuinely great. Tickets sell out weeks ahead.", fitWhy: "The one classic worth it", fit: 70, minutes: 180, bestTime: "morning", hours: H("08:40-18:30"), cost: 45, costTier: "$$", booking: "now" },
+    { name: "Twin Peaks at sunset", category: "Outdoors", neighborhood: "Twin Peaks", lat: 37.7544, lng: -122.4477, why: "The whole city and both bridges from one windy summit. Bring a jacket.", fitWhy: "Golden hour, no crowds", fit: 78, minutes: 60, bestTime: "evening", hours: H("05:00-24:00"), cost: 0, booking: "none" },
+    { name: "Smuggler's Cove", category: "Nightlife", neighborhood: "Hayes Valley", lat: 37.7794, lng: -122.4237, why: "A three-floor tiki bar with one of the best rum lists anywhere.", fitWhy: "Cocktails with character", fit: 74, minutes: 90, bestTime: "evening", hours: H("17:00-01:30"), cost: 30, costTier: "$$", booking: "walkin" },
+    { name: "Chinatown and North Beach", category: "Neighborhoods", neighborhood: "North Beach", lat: 37.7941, lng: -122.4078, why: "Dim sum, City Lights Books and espresso at Caffe Trieste, all walkable.", fitWhy: "Wander and snack", fit: 82, minutes: 150, bestTime: "any", hours: H(all), cost: 20, costTier: "$", booking: "none" },
+    { name: "Golden Gate Bridge walk", category: "Sights", neighborhood: "Presidio", lat: 37.8078, lng: -122.4750, why: "Walk out to the first tower from the Welcome Center; mornings are calmest.", fitWhy: "Iconic, and on foot", fit: 76, minutes: 90, bestTime: "morning", hours: H("05:00-21:00"), cost: 0, booking: "none" },
+    { name: "Swan Oyster Depot", category: "Food & drink", neighborhood: "Polk Gulch", lat: 37.7907, lng: -122.4205, why: "Eighteen stools, cracked crab and a line out the door since 1912.", fitWhy: "A must for seafood fans", fit: 86, minutes: 75, bestTime: "any", hours: { mon: "10:30-17:00", tue: "10:30-17:00", wed: "10:30-17:00", thu: "10:30-17:00", fri: "10:30-17:00", sat: "10:30-17:00", sun: "closed" }, cost: 50, costTier: "$$$", booking: "walkin" }
+  ];
+  const extra = [
+    { name: "Sutro Baths ruins", category: "Sights", neighborhood: "Outer Richmond", lat: 37.7804, lng: -122.5139, why: "Concrete ruins of a Victorian bathhouse right on the surf.", fitWhy: "Pairs with Lands End", fit: 70, minutes: 45, bestTime: "any", hours: H(all), cost: 0, booking: "none" },
+    { name: "Off the Grid at Fort Mason", category: "Food & drink", neighborhood: "Marina", lat: 37.8063, lng: -122.4316, why: "Friday-night food trucks with a bay view.", fitWhy: "Casual food crawl", fit: 68, minutes: 90, bestTime: "evening", hours: { mon: "closed", tue: "closed", wed: "closed", thu: "closed", fri: "17:00-21:00", sat: "closed", sun: "closed" }, cost: 25, costTier: "$", booking: "walkin" }
+  ];
+  return more ? extra : list;
+}
+function mockSample() {
+  async function json(prompt, opts) {
+    await delay(700);
+    let out;
+    if (prompt.startsWith("You find upcoming trips")) out = { homeCity: "Los Angeles", trips: [{ destination: "Mexico City, Mexico", startDate: "2027-01-14", endDate: "2027-01-18", arriveTime: "15:05", leaveTime: "17:30", summary: "Long weekend in CDMX", bookings: [{ type: "flight", title: "AM 647 Los Angeles → Mexico City", start: "2027-01-14 15:05" }, { type: "flight", title: "AM 646 Mexico City → Los Angeles", start: "2027-01-18 17:30" }], lodgingThreadIds: ["t-mock-1"] }] };
+    else if (prompt.startsWith("You extract lodging")) out = { found: true, name: "Casa Mock", address: "Colima 123, Roma Norte, Mexico City", checkIn: "2027-01-14", checkOut: "2027-01-18", checkInTime: "15:00" };
+    else if (prompt.startsWith("You are the trip designer")) {
+      out = JSON.parse(JSON.stringify(EXAMPLE)); delete out.example; out.id = undefined; out.destination = (/"destination":"([^"]*)"/.exec(prompt) || [])[1] || "San Francisco";
+      out.homeBase.booked = true; out.days[0].items[0].booked = true;
+    } else if (prompt.startsWith("You are the travel-profile interviewer")) out = mockProfileTurn(prompt);
+    else if (prompt.startsWith("You are the local expert")) out = { homeBase: prompt.includes('"homeBase":{') ? { name: "Hotel Zephyr", lat: 37.8087, lng: -122.4152 } : null, activities: mockActivities(prompt.includes("ALREADY LISTED")) };
+    else if (prompt.startsWith("You look up one place")) {
+      const q = (/wants to add: (.*)\n/.exec(prompt) || [])[1] || "Somewhere";
+      out = { found: true, activity: { name: q, category: "Nightlife", neighborhood: "North Beach", lat: 37.7983, lng: -122.4075, why: "A friend's pick, so it's going on the list.", minutes: 90, bestTime: "evening", hours: { mon: "17:00-01:00", tue: "17:00-01:00", wed: "17:00-01:00", thu: "17:00-01:00", fri: "16:00-02:00", sat: "16:00-02:00", sun: "closed" }, cost: 25, costTier: "$$", booking: "walkin" } };
+    }
+    else out = [];
+    if (opts && opts.onText) { const s = JSON.stringify(out); opts.onText({ text: s, delta: s }); }
+    return out;
+  }
+  const fn = async p => ({ text: JSON.stringify(await json(p)), truncated: false });
+  fn.json = json;
+  return fn;
+}
+
+/* ---------- Planning flow: wish list → anchor days → filled itinerary ---------- */
+// Each day gets one or two anchors the traveler chooses; Claude fills in meals and nearby stops around them.
+const CATS = { "Sights": "--l1", "Museums": "--l4", "Outdoors": "--l5", "Food & drink": "--l3", "Neighborhoods": "--l2", "Nightlife": "--l6", "Shopping": "--l7", "Experiences": "--l1" };
+const WD = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+const WD_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+const WD_NAME = { sun: "Sundays", mon: "Mondays", tue: "Tuesdays", wed: "Wednesdays", thu: "Thursdays", fri: "Fridays", sat: "Saturdays" };
+const PXH = 46, SNAP = 15; // board: pixels per hour, minutes per drag step
+const ANCHORS_PER_DAY = { Relaxed: 2, Moderate: 3, "Jam-packed": 4 };
+const ACT_SHAPE = '{"name":"","category":"","neighborhood":"","address":"","lat":0.0,"lng":0.0,"why":"one vivid sentence","fitWhy":"","fit":0,"minutes":90,"bestTime":"morning|afternoon|evening|any","hours":{"mon":"","tue":"","wed":"","thu":"","fri":"","sat":"","sun":""},"cost":0,"costTier":"$|$$|$$$|$$$$","booking":"now|daybefore|walkin|none"}';
+let DRAFT = store("mytin.draft");
+S.wishLoad = null; S.wishCat = "All"; S.wishLook = { busy: false, err: "" };
+
+function saveDraft() { store("mytin.draft", DRAFT); }
+const toMin = t => { const m = /^(\d{1,2}):(\d{2})/.exec(t || ""); return m ? +m[1] * 60 + +m[2] : null; };
+const toHM = n => { n = Math.max(0, Math.min(Math.round(n), 1439)); return String(Math.floor(n / 60)).padStart(2, "0") + ":" + String(n % 60).padStart(2, "0"); };
+const px = m => (m / 60 * PXH).toFixed(1);
+const hasLL = o => !!o && Number.isFinite(o.lat) && Number.isFinite(o.lng);
+const candById = id => DRAFT && DRAFT.cands.find(c => c.id === id);
+function fmtShort(n) {
+  const h = Math.floor(n / 60) % 24, m = n % 60;
+  return (h % 12 || 12) + (m ? ":" + String(m).padStart(2, "0") : "") + (h >= 12 ? "pm" : "am");
+}
+function durText(m) { return m < 60 ? m + " min" : (m % 60 ? (m / 60).toFixed(1) : m / 60) + " hr"; }
+function km(a, b) {
+  const r = Math.PI / 180, dLa = (b.lat - a.lat) * r, dLo = (b.lng - a.lng) * r;
+  const s = Math.sin(dLa / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLo / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(s));
+}
+
+function draftDays() {
+  const out = [], a = parseDate(DRAFT.prefs.start), b = parseDate(DRAFT.prefs.end);
+  if (!a || !b) return out;
+  for (const d = new Date(a); d <= b && out.length < 7; d.setDate(d.getDate() + 1)) out.push(isoDate(d));
+  return out;
+}
+// The usable part of a day: daily hours, minus landing on day 1 and getting to the airport on the last day.
+function dayWindow(di, n) {
+  const p = DRAFT.prefs;
+  let s = toMin(p.dayStart) ?? 540, e = toMin(p.dayEnd) ?? 1320;
+  if (e <= s) e = Math.min(s + 600, 1439);
+  let blockBefore = null, blockAfter = null;
+  if (di === 0 && toMin(p.arrive) != null) { blockBefore = toMin(p.arrive) + 90; s = Math.max(s, blockBefore); }
+  if (di === n - 1 && toMin(p.leave) != null) { blockAfter = Math.max(toMin(p.leave) - 150, 0); e = Math.min(e, blockAfter); }
+  return { s, e, blockBefore, blockAfter };
+}
+function gridRange() {
+  const p = DRAFT.prefs;
+  const gs = Math.max(0, Math.floor((toMin(p.dayStart) ?? 540) / 60) * 60 - 60);
+  const ge = Math.min(1440, Math.ceil((toMin(p.dayEnd) ?? 1320) / 60) * 60 + 60);
+  return { gs, ge: Math.max(ge, gs + 360) };
+}
+
+/* Opening hours: Claude's typical weekly hours, e.g. {"mon":"closed","tue":"10:00-17:00,18:00-22:00"}. Unknown = no warning. */
+function hoursOn(c, date) {
+  const h = c.hours && c.hours[WD[parseDate(date).getDay()]];
+  if (h == null || String(h).trim() === "") return null;
+  if (/closed/i.test(h)) return [];
+  const out = [];
+  String(h).split(/[,;]/).forEach(r => {
+    const m = /(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/.exec(r); if (!m) return;
+    const a = toMin(m[1]); let b = toMin(m[2]); if (b <= a) b += 1440;
+    out.push([a, b]);
+  });
+  return out.length ? out : null;
+}
+function openCheck(c, date, start) {
+  const iv = hoursOn(c, date);
+  if (!iv) return "";
+  if (!iv.length) return "Usually closed on " + WD_NAME[WD[parseDate(date).getDay()]];
+  const end = start + c.minutes;
+  if (iv.some(([a, b]) => start >= a && end <= b)) return "";
+  const cur = iv.find(([a, b]) => start >= a && start < b);
+  if (cur) return "Usually closes at " + fmtShort(cur[1]);
+  const later = iv.find(([a]) => a > start);
+  if (later) return "Usually opens at " + fmtShort(later[0]);
+  return "Usually closes at " + fmtShort(iv[iv.length - 1][1]);
+}
+function hoursSummary(c) {
+  if (!c.hours) return "";
+  const val = k => String(c.hours[k] || "").trim();
+  if (WD_ORDER.every(k => !val(k))) return "";
+  const closed = WD_ORDER.filter(k => /closed/i.test(val(k)));
+  const open = WD_ORDER.map(val).filter(v => v && !/closed/i.test(v));
+  const counts = {}; open.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
+  const main = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0];
+  const fmt = v => /^0?0:00\s*[-–]\s*24:00$/.test(v) ? "Open 24 hours" : v.split(/[,;]/).map(r => {
+    const m = /(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})/.exec(r); return m ? fmtShort(toMin(m[1])) + "–" + fmtShort(toMin(m[2])) : r.trim();
+  }).join(", ");
+  let s = main ? fmt(main) + (counts[main] < open.length ? " (varies)" : "") : "";
+  if (closed.length) s += (s ? " · " : "") + "Closed " + closed.map(k => k[0].toUpperCase() + k.slice(1)).join(", ");
+  return s;
+}
+// Problems with placing c on day di at start (minutes). buf pads the overlap check when auto-placing.
+function issuesAt(c, di, start, buf) {
+  const days = draftDays(), out = [], end = start + c.minutes;
+  const oc = openCheck(c, days[di], start); if (oc) out.push(oc);
+  const w = dayWindow(di, days.length);
+  if (w.blockBefore != null && start < w.blockBefore) out.push("Before you'll be in town");
+  if (w.blockAfter != null && end > w.blockAfter) out.push("Runs into your trip home");
+  const clash = Object.keys(DRAFT.place).find(id => {
+    const o = DRAFT.place[id], oc2 = candById(id);
+    if (id === c.id || !oc2 || o.day !== di) return false;
+    const os = toMin(o.start), oe = os + oc2.minutes;
+    return start < oe + (buf || 0) && os < end + (buf || 0);
+  });
+  if (clash) out.push("Overlaps " + candById(clash).name);
+  return out;
+}
+
+function normCand(c, mine) {
+  const out = {
+    id: uid(), name: String(c.name || "").trim(), category: CATS[c.category] ? c.category : "Experiences",
+    neighborhood: String(c.neighborhood || ""), address: String(c.address || ""),
+    lat: Number(c.lat), lng: Number(c.lng), why: String(c.why || ""), fitWhy: String(c.fitWhy || ""),
+    fit: Math.max(0, Math.min(100, Math.round(Number(c.fit) || 0))),
+    minutes: Math.max(30, Math.min(600, Math.round((Number(c.minutes) || 90) / SNAP) * SNAP)),
+    bestTime: ["morning", "afternoon", "evening", "any"].includes(c.bestTime) ? c.bestTime : "any",
+    hours: c.hours && typeof c.hours === "object" ? c.hours : null,
+    cost: Number(c.cost) || 0, costTier: String(c.costTier || "").replace(/[^$]/g, ""),
+    booking: BOOK.hasOwnProperty(c.booking) ? c.booking : "none", mine: !!mine
+  };
+  if (!hasLL(out) || (out.lat === 0 && out.lng === 0)) { out.lat = null; out.lng = null; }
+  return out;
+}
+
+function candPrompt(p, exclude, count) {
+  return "You are the local expert for Mytinerary. The traveler will pick a few anchor activities, one or two per day, and the rest of each day gets filled in around them. List the best things to do in " + p.dest + " for THIS traveler.\n\n" +
+    "TRAVELER\n" + prefsText(p) + "\n\n" +
+    "RULES\n" +
+    "- Exactly " + count + " activities, best fit first. Real, well-established places likely to be open on these dates. Mix a few icons with local favorites.\n" +
+    "- Match their tastes closely. Interests rated 1-2 get at most one item, and only a standout. Never suggest what they avoid. Lean into what they love.\n" +
+    "- Anchors are worth planning a day around: sights, museums, hikes, markets, neighborhoods to wander, shows, tours, and destination restaurants only if food is a big interest. No ordinary meals, hotels or transit.\n" +
+    "- Spread across several neighborhoods so each day can have its own area. Give accurate latitude/longitude.\n" +
+    "- category: one of " + Object.keys(CATS).join(", ") + ".\n" +
+    "- hours: typical opening hours for each weekday as \"HH:MM-HH:MM\" (24-hour; several ranges separated by commas; \"closed\" if closed that day; \"00:00-24:00\" for parks, streets and neighborhoods that are always open).\n" +
+    "- minutes: typical visit length. bestTime: when it's best (morning | afternoon | evening | any).\n" +
+    "- fit: 0-100 match to this traveler. fitWhy: 3-7 friendly words on why it suits them (\"For the hiker in you\").\n" +
+    "- cost: US dollars per person (0 if free). booking: now (sells out) | daybefore | walkin | none.\n" +
+    (exclude.length ? "- ALREADY LISTED, don't repeat: " + exclude.join("; ") + "\n" : "") +
+    "\nReply with ONLY one JSON object, no prose:\n" +
+    '{"homeBase":' + (p.stay ? '{"name":"","lat":0.0,"lng":0.0}' : "null") + ',"activities":[' + ACT_SHAPE + "]}" +
+    (p.stay ? "\nhomeBase is where they're staying, with accurate coordinates." : "");
+}
+function wishErrorCopy(e) {
+  const c = e && e.code;
+  if (c === "not_granted" || c === "sampling_disabled") return "Claude access isn't allowed for this page, so it can't find things to do.";
+  if (c === "rate_limited") return "You've hit a usage limit. Try again in a few minutes.";
+  if (c === "invalid_json") return "Claude's answer didn't come back in a usable shape. Try again.";
+  return "Something went wrong finding things to do. Try again.";
+}
+const noClaudeCopy = what => sampleBlocked ? "Claude access was declined for this page. Reload to be asked again." : what + " needs Claude, which is available when this page is open on claude.ai.";
+
+function startWish(p) {
+  if (DRAFT && DRAFT.prefs.dest === p.dest && DRAFT.cands.length) {
+    DRAFT.prefs = JSON.parse(JSON.stringify(p)); // same place: keep the ideas and picks, drop days that no longer exist
+    const n = draftDays().length;
+    Object.keys(DRAFT.place).forEach(id => { if (DRAFT.place[id].day >= n) delete DRAFT.place[id]; });
+  } else {
+    DRAFT = { id: uid(), prefs: JSON.parse(JSON.stringify(p)), cands: [], wish: [], place: {}, suggested: false, home: null, tripId: null };
+    S.wishCat = "All";
+  }
+  saveDraft();
+  location.hash = "wish";
+  if (!DRAFT.cands.length) loadCandidates(false);
+}
+async function loadCandidates(more) {
+  if (S.wishLoad && S.wishLoad.busy) return;
+  if (!sampleFn) { S.wishLoad = { busy: false, names: [], err: noClaudeCopy("Finding things to do") }; render(); return; }
+  const d = DRAFT;
+  S.wishLoad = { busy: true, more: !!more, names: [], err: "" }; render();
+  try {
+    const raw = await sampleFn.json(candPrompt(d.prefs, more ? d.cands.map(c => c.name) : [], more ? 8 : 18), {
+      modelTier: "default", cache: false,
+      onText: ({ text }) => {
+        if (!S.wishLoad) return;
+        const names = []; const re = /"name"\s*:\s*"([^"]{2,80})"/g; let m;
+        while ((m = re.exec(text))) names.push(m[1]);
+        S.wishLoad.names = names.filter(x => !d.prefs.stay || x !== d.prefs.stay); updateWishLoad();
+      }
+    });
+    const acts = raw && Array.isArray(raw.activities) ? raw.activities : null;
+    if (!acts || !acts.length) throw { code: "invalid_json" };
+    if (DRAFT !== d) return; // a different trip was started meanwhile
+    const have = new Set(d.cands.map(c => c.name.toLowerCase()));
+    acts.map(c => normCand(c)).filter(c => c.name && !have.has(c.name.toLowerCase())).forEach(c => d.cands.push(c));
+    const hb = raw.homeBase;
+    if (hb && Number.isFinite(Number(hb.lat)) && Number(hb.lat) !== 0) d.home = { name: String(hb.name || d.prefs.stay), lat: Number(hb.lat), lng: Number(hb.lng) };
+    saveDraft();
+    S.wishLoad = null;
+  } catch (e) {
+    if (e && e.code === "not_granted") sampleBlocked = true;
+    S.wishLoad = { busy: false, names: [], err: wishErrorCopy(e) };
+  }
+  if (S.view === "wish") render();
+}
+async function lookupPlace(q) {
+  q = String(q || "").trim();
+  if (!q || S.wishLook.busy) return;
+  if (!sampleFn) { S.wishLook = { busy: false, err: noClaudeCopy("Looking up places") }; render(); return; }
+  S.wishLook = { busy: true, err: "" }; render();
+  try {
+    const r = await sampleFn.json("You look up one place for Mytinerary. The traveler is going to " + DRAFT.prefs.dest + " and wants to add: " + q + "\n\n" +
+      "If it's a real place, activity or area there, reply with ONLY JSON: {\"found\":true,\"activity\":" + ACT_SHAPE + "}\n" +
+      "category is one of " + Object.keys(CATS).join(", ") + ". hours are typical weekly hours (\"10:00-17:00\", \"closed\", or \"00:00-24:00\" if always open). fitWhy can be empty. Otherwise reply {\"found\":false}.",
+      { modelTier: "default", cache: false });
+    if (!r || !r.found || !r.activity || !r.activity.name) S.wishLook = { busy: false, err: "Couldn't find \"" + q + "\" in " + DRAFT.prefs.dest + ". Try the full name." };
+    else {
+      const c = normCand(r.activity, true);
+      DRAFT.cands.unshift(c); DRAFT.wish.push(c.id); saveDraft();
+      S.wishLook = { busy: false, err: "" }; S.wishCat = "All";
+      toast("Added " + c.name + " to your wish list.");
+    }
+  } catch (e) {
+    if (e && e.code === "not_granted") sampleBlocked = true;
+    S.wishLook = { busy: false, err: wishErrorCopy(e) };
+  }
+  if (S.view === "wish") render();
+}
+
+// Lay out unplaced wish-list items: hardest-to-fit first, each to the day whose picks are closest, capped by pace.
+function findSlot(c, di) {
+  const w = dayWindow(di, draftDays().length);
+  const pref = { morning: 600, afternoon: 840, evening: 1140, any: 630 }[c.bestTime];
+  const starts = [];
+  for (let s = Math.ceil(w.s / 30) * 30; s + c.minutes <= w.e; s += 30) starts.push(s);
+  starts.sort((a, b) => Math.abs(a - pref) - Math.abs(b - pref));
+  const s = starts.find(x => !issuesAt(c, di, x, 30).length);
+  return s == null ? null : s;
+}
+function suggestPlan(all) {
+  const d = DRAFT, days = draftDays();
+  if (all) d.place = {};
+  const cap = ANCHORS_PER_DAY[d.prefs.pace] || 3;
+  const items = d.wish.map(candById).filter(c => c && !d.place[c.id]);
+  const options = new Map(items.map(c => [c.id, days.filter((_, di) => findSlot(c, di) != null).length]));
+  items.sort((a, b) => options.get(a.id) - options.get(b.id));
+  let placed = 0;
+  items.forEach(c => {
+    let best = null;
+    days.forEach((_, di) => {
+      const mine = Object.keys(d.place).filter(id => d.place[id].day === di).map(candById).filter(Boolean);
+      if (mine.length >= cap) return;
+      const slot = findSlot(c, di); if (slot == null) return;
+      const near = mine.filter(hasLL);
+      const score = mine.length * 5 + (near.length && hasLL(c) ? Math.min(...near.map(o => km(o, c))) : mine.length ? 2 : 0);
+      if (!best || score < best.score) best = { di, slot, score };
+    });
+    if (best) { d.place[c.id] = { day: best.di, start: toHM(best.slot) }; placed++; }
+  });
+  saveDraft();
+  return { placed, left: items.length - placed };
+}
+
+function fillTrip() {
+  const d = DRAFT, days = draftDays();
+  const anchors = Object.keys(d.place).map(id => ({ c: candById(id), pl: d.place[id] })).filter(x => x.c && x.pl.day < days.length)
+    .sort((a, b) => a.pl.day - b.pl.day || toMin(a.pl.start) - toMin(b.pl.start))
+    .map(({ c, pl }) => ({ date: days[pl.day], start: pl.start, end: toHM(toMin(pl.start) + c.minutes), name: c.name, neighborhood: c.neighborhood, address: c.address }));
+  if (!anchors.length) { toast("Place at least one pick on a day first."); return; }
+  if (!sampleFn) { toast(noClaudeCopy("Filling in your days")); return; }
+  const spare = d.wish.map(candById).filter(c => c && !(d.place[c.id] && d.place[c.id].day < days.length)).map(c => c.name + (c.neighborhood ? " (" + c.neighborhood + ")" : ""));
+  generate(Object.assign({}, d.prefs, { anchors, spare, tripId: d.tripId || null }));
+}
+
+/* ---------- Planning views ---------- */
+function stepsHTML(n) {
+  const steps = [["plan", "Trip"], ["wish", "Wish list"], ["anchors", "Anchor days"], ["", "Itinerary"]];
+  return '<ol class="steps">' + steps.map(([h, l], i) => {
+    const st = i + 1 < n ? "done" : i + 1 === n ? "cur" : "";
+    const inner = '<span class="n">' + (i + 1) + "</span>" + l;
+    return '<li class="' + st + '"' + (st === "cur" ? ' aria-current="step"' : "") + ">" + (st === "done" && h && DRAFT ? '<a href="#' + h + '">' + inner + "</a>" : inner) + "</li>";
+  }).join("") + "</ol>";
+}
+function draftBanner() {
+  if (!DRAFT || !DRAFT.cands.length) return "";
+  const placed = Object.keys(DRAFT.place).length;
+  return '<div class="banner prof-banner"><span><strong>You\'re planning ' + esc(DRAFT.prefs.dest) + ".</strong> " + DRAFT.wish.length + " on your wish list" + (placed ? ", " + placed + " placed on days" : "") + '.</span><span class="row2"><button class="lnk" type="button" data-draft-reset>Start fresh</button><a class="btn small primary" href="#' + (placed ? "anchors" : "wish") + '">Continue</a></span></div>';
+}
+// Plain-grid map shared by the planning steps (basemap tiles aren't allowed in the page).
+function planMap(label, points, paths, home, legend) {
+  const ll = points.filter(hasLL), all = ll.concat(hasLL(home) ? [home] : []);
+  if (all.length < 2) return '<section class="panel map"><h3>' + esc(label) + '</h3><p class="note">Pins show up here once there are places to plot.</p></section>';
+  const W = 600, H = 460, P = 36;
+  const { X, Y } = projection(all, W, H, P);
+  let svg = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' + esc(label) + '">';
+  for (let gx = 0; gx <= W; gx += 40) svg += '<line class="gridl" x1="' + gx + '" y1="0" x2="' + gx + '" y2="' + H + '"/>';
+  for (let gy = 0; gy <= H; gy += 40) svg += '<line class="gridl" x1="0" y1="' + gy + '" x2="' + W + '" y2="' + gy + '"/>';
+  paths.forEach(pa => {
+    const ps = pa.pts.filter(hasLL);
+    if (ps.length > 1) svg += '<polyline fill="none" stroke="' + pa.color + '" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" opacity=".75" points="' + ps.map(p => X(p.lng).toFixed(1) + "," + Y(p.lat).toFixed(1)).join(" ") + '"/>';
+  });
+  ll.slice().sort((a, b) => (a.filled ? 1 : 0) - (b.filled ? 1 : 0)).forEach(pt => {
+    const x = X(pt.lng).toFixed(1), y = Y(pt.lat).toFixed(1);
+    svg += '<g class="pin" data-pin="' + pt.id + '"><title>' + esc(pt.title) + '</title><circle cx="' + x + '" cy="' + y + '" r="' + (pt.filled ? 18 : 9) + '" fill="' + (pt.filled ? pt.color : "var(--card)") + '" stroke="' + pt.color + '" stroke-width="3"/>' +
+      (pt.label ? '<text x="' + x + '" y="' + (+y + 7).toFixed(1) + '" text-anchor="middle" style="fill:var(--on-c);font-weight:700;font-size:20px">' + esc(pt.label) + "</text>" : "") + "</g>";
+  });
+  if (hasLL(home)) {
+    const x = X(home.lng), y = Y(home.lat);
+    svg += "<g><title>" + esc(home.name) + '</title><rect x="' + (x - 9) + '" y="' + (y - 9) + '" width="18" height="18" rx="3" fill="var(--ink)"/><text x="' + (x + 14) + '" y="' + (y + 4) + '" style="fill:var(--ink);font-weight:600">' + esc(home.name) + "</text></g>";
+  }
+  return '<section class="panel map"><h3>' + esc(label) + "</h3>" + svg + "</svg>" + (legend ? '<div class="map-legend">' + legend + "</div>" : "") + "</section>";
+}
+
+function tileHTML(c) {
+  return '<div class="tile" aria-hidden="true"><span class="tile-cat">' + esc(c.category) + '</span><span class="tile-name">' + esc(c.name) + '</span><span class="tile-line"><i></i><i></i><i></i></span><span class="tile-hood">' + esc(c.neighborhood || " ") + "</span></div>";
+}
+function wishCard(c) {
+  const on = DRAFT.wish.includes(c.id), hs = hoursSummary(c);
+  return '<article class="wcard' + (on ? " on" : "") + '" data-pin="' + c.id + '" style="--c:var(' + CATS[c.category] + ')">' + tileHTML(c) +
+    '<div class="wbody"><h2 class="hidden">' + esc(c.name) + "</h2>" +
+      (c.fitWhy ? '<span class="fitwhy">' + esc(c.fitWhy) + "</span>" : c.mine ? '<span class="fitwhy">Your idea</span>' : "") +
+      (c.why ? '<p class="why">' + esc(c.why) + "</p>" : "") +
+      '<div class="wmeta">' + (hs ? "<span>" + esc(hs) + "</span>" : "") + "<span>~" + durText(c.minutes) + " · " + (c.cost ? "~" + money(c.cost) + "/person" : "Free") + (c.booking === "now" ? " · Book ahead" : "") + "</span></div>" +
+      '<div class="foot"><button class="btn small' + (on ? " primary" : "") + '" data-wish="' + c.id + '" aria-pressed="' + on + '">' + (on ? "✓ On your list" : "+ Add to wish list") + "</button></div>" +
+    "</div></article>";
+}
+function renderWish() {
+  const d = DRAFT, p = d.prefs, n = draftDays().length, L = S.wishLoad;
+  const cats = ["All"].concat(Object.keys(CATS).filter(k => d.cands.some(c => c.category === k)));
+  if (!cats.includes(S.wishCat)) S.wishCat = "All";
+  const list = d.cands.filter(c => S.wishCat === "All" || c.category === S.wishCat);
+  let main;
+  if (L && L.busy && !L.more) {
+    main = '<div class="wish-load"><div class="gen-line"><i id="wishBar" style="width:6%"></i></div><div class="gen-stops" id="wishNames"></div><p class="gen-status">Finding the best things to do in ' + esc(p.dest) + " for you…</p></div>";
+  } else if (!d.cands.length) {
+    main = '<p class="err">' + esc((L && L.err) || "No ideas yet.") + '</p><button class="btn" id="wishRetry">Try again</button>';
+  } else {
+    main = '<div class="filters" role="group" aria-label="Filter by type">' + cats.map(k => '<button type="button" data-cat="' + esc(k) + '" aria-pressed="' + (S.wishCat === k) + '">' + esc(k) + "</button>").join("") + "</div>" +
+      '<div class="wish-grid">' + list.map(wishCard).join("") + "</div>" +
+      '<div class="wish-more"><button class="btn" id="moreBtn"' + (L && L.busy ? " disabled" : "") + ">" + (L && L.busy ? "Finding more…" : "Show me more ideas") + "</button>" +
+        '<form class="look" id="lookForm"><label for="lookInput" class="hidden">Add a place you already have in mind</label><input id="lookInput" placeholder="Something else in mind? e.g. a friend\'s favorite bar" autocomplete="off"><button class="btn" type="submit"' + (S.wishLook.busy ? " disabled" : "") + ">" + (S.wishLook.busy ? "Looking…" : "Add") + "</button></form></div>" +
+      (L && L.err ? '<p class="err">' + esc(L.err) + "</p>" : "") + (S.wishLook.err ? '<p class="err">' + esc(S.wishLook.err) + "</p>" : "");
+  }
+  const pts = d.cands.map(c => { const on = d.wish.includes(c.id); return { id: c.id, lat: c.lat, lng: c.lng, title: c.name, color: on ? "var(--accent)" : "var(--muted)", filled: on }; });
+  const k = d.wish.length;
+  return '<div class="wrap planflow">' + stepsHTML(2) +
+    '<h1 class="pf-title">What do you want to do in ' + esc(p.dest) + "?</h1>" +
+    '<p class="lede">The top things to do, ranked for you. Add anything that looks good. Aim for at least ' + n + " (one per day); next you'll place them on your days.</p>" +
+    '<div class="grid"><section aria-label="Ideas">' + main + '</section><aside class="rail">' +
+      planMap("Where everything is", pts, [], d.home, '<span><i style="background:var(--accent)"></i>On your wish list</span><span><i style="background:var(--muted)"></i>Other ideas</span>' + (d.home ? '<span><i style="background:var(--ink);width:10px;height:10px"></i>Where you\'re staying</span>' : "")) +
+    "</aside></div></div>" +
+    '<div class="nextbar"><div class="wrap"><span><strong>' + k + " picked</strong>" + (k < n ? " · aim for at least " + n : " · nice") + "</span>" +
+      (k ? '<a class="btn primary" href="#anchors">Plan my days →</a>' : '<button class="btn primary" disabled>Plan my days →</button>') + "</div></div>";
+}
+function updateWishLoad() {
+  const box = $("#wishNames"); if (!box || !S.wishLoad) return;
+  box.innerHTML = S.wishLoad.names.map(s => '<span class="chip">' + esc(s) + "</span>").join("");
+  $("#wishBar").style.width = Math.min(95, 6 + S.wishLoad.names.length / 19 * 90) + "%";
+}
+function bindWish() {
+  document.querySelectorAll("[data-wish]").forEach(b => b.addEventListener("click", () => {
+    const id = b.dataset.wish, i = DRAFT.wish.indexOf(id);
+    if (i >= 0) { DRAFT.wish.splice(i, 1); delete DRAFT.place[id]; } else DRAFT.wish.push(id);
+    saveDraft(); render();
+  }));
+  document.querySelectorAll("[data-cat]").forEach(b => b.addEventListener("click", () => { S.wishCat = b.dataset.cat; render(); }));
+  const more = $("#moreBtn"); if (more) more.addEventListener("click", () => loadCandidates(true));
+  const retry = $("#wishRetry"); if (retry) retry.addEventListener("click", () => loadCandidates(false));
+  const lf = $("#lookForm"); if (lf) lf.addEventListener("submit", e => { e.preventDefault(); lookupPlace($("#lookInput").value); });
+  bindPins();
+}
+function bindPins() {
+  const hl = id => document.querySelectorAll("[data-pin]").forEach(el => el.classList.toggle("hl", el.dataset.pin === id));
+  document.querySelectorAll(".wcard[data-pin], .anc[data-pin], .tray-item[data-pin]").forEach(el => {
+    el.addEventListener("mouseenter", () => hl(el.dataset.pin)); el.addEventListener("mouseleave", () => hl(null));
+  });
+  document.querySelectorAll(".pin").forEach(g => g.addEventListener("click", () => {
+    const el = document.querySelector('.wcard[data-pin="' + g.dataset.pin + '"], .anc[data-pin="' + g.dataset.pin + '"], .tray-item[data-pin="' + g.dataset.pin + '"]');
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1200); hl(g.dataset.pin);
+  }));
+}
+
+// Overlapping picks sit side by side instead of hiding each other.
+function lanes(ids) {
+  const items = ids.map(id => ({ id, s: toMin(DRAFT.place[id].start), e: toMin(DRAFT.place[id].start) + candById(id).minutes })).sort((a, b) => a.s - b.s);
+  const out = {}; let group = [], ends = [], groupEnd = -1;
+  const close = () => group.forEach(g => { out[g.id].of = ends.length; });
+  items.forEach(it => {
+    if (it.s >= groupEnd) { close(); group = []; ends = []; }
+    let lane = ends.findIndex(e => e <= it.s); if (lane < 0) { lane = ends.length; ends.push(0); }
+    ends[lane] = it.e; groupEnd = Math.max(groupEnd, it.e);
+    out[it.id] = { lane, of: 1 }; group.push(it);
+  });
+  close();
+  return out;
+}
+function ancCard(c, di, gs, ln) {
+  const pl = DRAFT.place[c.id], s = toMin(pl.start), iss = issuesAt(c, di, s);
+  const h = Math.max(c.minutes / 60 * PXH, 34);
+  const pos = ln && ln.of > 1 ? "left:calc(5px + " + ln.lane + " * (100% - 10px) / " + ln.of + ");right:auto;width:calc((100% - 10px) / " + ln.of + " - 2px);" : "";
+  return '<div class="anc' + (iss.length ? " warn" : "") + '" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" style="' + pos + "top:" + px(s - gs) + "px;height:" + h + 'px"' +
+    ' aria-label="' + esc(c.name + ", " + fmtShort(s) + " to " + fmtShort(s + c.minutes) + (iss.length ? ". Warning: " + iss.join(". ") : "") + ". Press Enter to move.") + '">' +
+    "<b>" + esc(c.name) + '</b><span class="t">' + fmtShort(s) + "–" + fmtShort(s + c.minutes) + "</span>" + (iss.length ? '<span class="w">⚠ ' + esc(iss[0]) + "</span>" : "") +
+    '<button class="anc-x" type="button" data-unplace="' + c.id + '" aria-label="Move ' + esc(c.name) + ' back to the wish list">×</button></div>';
+}
+function trayItem(c) {
+  const hs = hoursSummary(c);
+  return '<div class="tray-item" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" style="--c:var(' + CATS[c.category] + ')" aria-label="' + esc(c.name) + '. Press Enter to place it on a day.">' +
+    "<b>" + esc(c.name) + "</b><small>~" + durText(c.minutes) + (hs ? " · " + esc(hs) : "") + "</small></div>";
+}
+function spreadText(di) {
+  const pts = Object.keys(DRAFT.place).filter(id => DRAFT.place[id].day === di).map(candById).filter(Boolean);
+  if (!pts.length) return ["Nothing anchored yet. Drag a pick here, or leave the day open.", ""];
+  const ll = pts.filter(hasLL);
+  let max = 0; ll.forEach(a => ll.forEach(b => { max = Math.max(max, km(a, b)); }));
+  const names = pts.sort((a, b) => toMin(DRAFT.place[a.id].start) - toMin(DRAFT.place[b.id].start)).map(c => c.name).join(", ");
+  if (pts.length === 1 || ll.length < 2) return [names, "The rest of the day stays nearby."];
+  if (max < 2.5) return [names, "Close together, all within " + max.toFixed(1) + " km."];
+  if (max < 7) return [names, max.toFixed(1) + " km apart, a short ride between them."];
+  return [names, max.toFixed(0) + " km apart. Consider moving one to another day.", "far"];
+}
+function renderAnchors() {
+  const d = DRAFT, p = d.prefs, days = draftDays(), n = days.length, { gs, ge } = gridRange();
+  const H = (ge - gs) / 60 * PXH;
+  const isPlaced = id => d.place[id] && d.place[id].day < n && candById(id);
+  const placedIds = d.wish.filter(isPlaced);
+  const unplaced = d.wish.map(candById).filter(c => c && !isPlaced(c.id));
+  const head = '<div class="wrap planflow">' + stepsHTML(3) + '<h1 class="pf-title">Anchor your days</h1>';
+  if (!d.wish.length) return head + '<p class="lede">Your wish list is empty. <a href="#wish">Pick a few things to do</a> first.</p></div>';
+  const ds = toMin(p.dayStart) ?? 540, de = toMin(p.dayEnd) ?? 1320;
+  let labels = "";
+  for (let h = gs; h <= ge; h += 60) labels += '<span style="top:' + px(h - gs) + 'px">' + fmtShort(h) + "</span>";
+  const cols = days.map((date, di) => {
+    const w = dayWindow(di, n);
+    const box = (a, b, cls, txt) => { const t = Math.max(a, gs), u = Math.min(b, ge); return u > t ? '<div class="' + cls + '" style="top:' + px(t - gs) + "px;height:" + px(u - t) + 'px">' + (txt ? "<span>" + esc(txt) + "</span>" : "") + "</div>" : ""; };
+    let inner = box(gs, ds, "offhours") + box(de, ge, "offhours");
+    if (w.blockBefore != null) inner += box(gs, w.blockBefore, "blocked", "Landing ~" + fmtTime(p.arrive));
+    if (w.blockAfter != null) inner += box(w.blockAfter, ge, "blocked top", "Head out for your " + fmtTime(p.leave) + " departure");
+    const mine = placedIds.filter(id => d.place[id].day === di), ln = lanes(mine);
+    inner += mine.map(id => ancCard(candById(id), di, gs, ln[id])).join("");
+    return '<div class="day-col" style="--c:' + lineVar(di) + '"><div class="day-h"><span class="bullet">' + (di + 1) + "</span><span><b>Day " + (di + 1) + "</b><small>" + esc(fmtDay(date)) + "</small></span></div>" +
+      '<div class="day-body" data-day="' + di + '" style="height:' + H + "px;--pxh:" + PXH + 'px">' + inner + '<div class="drop-ghost hidden"></div></div></div>';
+  }).join("");
+  const warnCount = placedIds.filter(id => issuesAt(candById(id), d.place[id].day, toMin(d.place[id].start)).length).length;
+  const pts = d.wish.map(candById).filter(Boolean).map(c => {
+    const pl = isPlaced(c.id) ? d.place[c.id] : null;
+    return { id: c.id, lat: c.lat, lng: c.lng, title: c.name + (pl ? " · Day " + (pl.day + 1) : " · not placed yet"), color: pl ? lineVar(pl.day) : "var(--muted)", filled: !!pl, label: pl ? String(pl.day + 1) : "" };
+  });
+  const paths = days.map((_, di) => ({ color: lineVar(di), pts: placedIds.filter(id => d.place[id].day === di).sort((a, b) => toMin(d.place[a].start) - toMin(d.place[b].start)).map(candById) }));
+  const sums = days.map((date, di) => { const [names, note, far] = spreadText(di); return '<div style="--c:' + lineVar(di) + '"><span class="bullet">' + (di + 1) + "</span><span><strong>" + esc(fmtDay(date)) + "</strong> " + esc(names) + (note ? '<br><span class="' + (far ? "far" : "muted") + '">' + esc(note) + "</span>" : "") + "</span></div>"; }).join("");
+  return head +
+    '<p class="lede">Drag each pick to a day and time. We started you off with a layout that keeps each day in one part of town. While you drag, green bands show when a place is usually open.</p>' +
+    '<div class="grid wide"><section aria-label="Days">' +
+      '<section class="panel tray" id="tray" aria-label="Wish list, not yet placed"><h3>Wish list <small>' + (unplaced.length ? "drag onto a day, or tap to place" : "everything is placed · drag a card here to unschedule it") + "</small></h3>" +
+        '<div class="tray-items">' + unplaced.map(trayItem).join("") + "</div>" +
+        '<div class="row2"><button class="btn small" id="suggestBtn">' + (placedIds.length ? "Re-suggest a layout" : "Suggest a layout") + '</button><a class="lnk" href="#wish">Add more to the wish list</a></div></section>' +
+      '<div class="board-scroll"><div class="board" style="grid-template-columns:52px repeat(' + n + ', minmax(150px, 1fr))"><div class="gutter"><div class="day-h"></div><div class="gutter-l" style="height:' + H + 'px">' + labels + "</div></div>" + cols + "</div></div>" +
+      '<div class="board-foot"><button class="btn primary" id="fillBtn"' + (placedIds.length ? "" : " disabled") + ">Fill in my days →</button>" +
+        '<span class="note">' + (warnCount ? '<strong class="warn-t">⚠ ' + warnCount + (warnCount === 1 ? " pick has a timing warning" : " picks have timing warnings") + ".</strong> You can still go ahead. " : "") + "Claude keeps your picks where they are and adds meals, nearby stops and how to get between them.</span></div>" +
+    '</section><aside class="rail">' +
+      planMap("Your days on the map", pts, paths, d.home, days.map((_, i) => '<span style="--c:' + lineVar(i) + '"><i></i>Day ' + (i + 1) + "</span>").join("") + '<span><i style="background:var(--muted)"></i>Not placed</span>') +
+      '<section class="panel"><h3>How each day hangs together</h3><div class="day-sum">' + sums + "</div></section>" +
+    "</aside></div></div>";
+}
+
+let drag = null;
+function bindAnchors() {
+  bindPins();
+  document.querySelectorAll("[data-drag]").forEach(el => {
+    el.addEventListener("pointerdown", e => {
+      if (e.button !== 0 || e.target.closest("button")) return;
+      const r = el.getBoundingClientRect();
+      drag = { id: el.dataset.drag, el, x0: e.clientX, y0: e.clientY, offY: el.classList.contains("anc") ? e.clientY - r.top : 14, active: false, target: null };
+      el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener("pointermove", e => { if (drag && drag.el === el) dragMove(e); });
+    el.addEventListener("pointerup", () => { if (drag && drag.el === el) dragEnd(false); });
+    el.addEventListener("pointercancel", () => { if (drag && drag.el === el) dragEnd(true); });
+    el.addEventListener("keydown", e => { if (e.target === el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPlace(el.dataset.drag); } });
+  });
+  document.querySelectorAll("[data-unplace]").forEach(b => b.addEventListener("click", () => { delete DRAFT.place[b.dataset.unplace]; saveDraft(); render(); }));
+  const sb = $("#suggestBtn");
+  if (sb) sb.addEventListener("click", () => {
+    if (Object.keys(DRAFT.place).length && !confirm("Replace your current layout with a suggested one?")) return;
+    const r = suggestPlan(true); render();
+    toast(r.left ? "Placed " + r.placed + ". " + r.left + " didn't fit, so they'll be ideas when we fill in." : "Laid out " + r.placed + " picks, keeping each day in one area.");
+  });
+  const fb = $("#fillBtn"); if (fb) fb.addEventListener("click", fillTrip);
+}
+function showBands(c) {
+  const { gs, ge } = gridRange(), days = draftDays();
+  document.querySelectorAll(".day-body").forEach(col => {
+    const iv = hoursOn(c, days[+col.dataset.day]);
+    if (!iv) return;
+    if (!iv.length) { col.insertAdjacentHTML("beforeend", '<div class="closed-note">Usually closed</div>'); return; }
+    iv.forEach(([a, b]) => { const t = Math.max(a, gs), u = Math.min(b, ge); if (u > t) col.insertAdjacentHTML("beforeend", '<div class="band" style="top:' + px(t - gs) + "px;height:" + px(u - t) + 'px"></div>'); });
+  });
+}
+function dragMove(e) {
+  const c = candById(drag.id); if (!c) return;
+  const h = Math.max(c.minutes / 60 * PXH, 34);
+  if (!drag.active) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 5) return;
+    drag.active = true;
+    drag.el.classList.add("lifted");
+    const f = document.createElement("div");
+    f.className = "drag-float"; f.style.setProperty("--c", "var(" + CATS[c.category] + ")"); f.style.height = h + "px"; f.textContent = c.name;
+    document.body.appendChild(f); drag.float = f;
+    showBands(c);
+  }
+  drag.float.style.left = (e.clientX - 24) + "px"; drag.float.style.top = (e.clientY - drag.offY) + "px";
+  if (e.clientY < 70) window.scrollBy(0, -12); else if (e.clientY > innerHeight - 70) window.scrollBy(0, 12);
+  const sc = $(".board-scroll"), r = sc.getBoundingClientRect();
+  if (e.clientX < r.left + 40) sc.scrollLeft -= 12; else if (e.clientX > r.right - 40) sc.scrollLeft += 12;
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const col = under && under.closest(".day-body"), tray = under && under.closest("#tray");
+  document.querySelectorAll(".drop-ghost").forEach(g => g.classList.add("hidden"));
+  $("#tray").classList.toggle("over", !!tray && !!DRAFT.place[drag.id]);
+  drag.target = tray ? { tray: true } : null;
+  if (!col) return;
+  const { gs, ge } = gridRange(), di = +col.dataset.day;
+  let s = gs + Math.round((e.clientY - drag.offY - col.getBoundingClientRect().top) / PXH * 60 / SNAP) * SNAP;
+  s = Math.max(gs, Math.min(s, ge - c.minutes));
+  const iss = issuesAt(c, di, s);
+  const g = col.querySelector(".drop-ghost");
+  g.classList.remove("hidden"); g.classList.toggle("warn", iss.length > 0);
+  g.style.top = px(s - gs) + "px"; g.style.height = h + "px";
+  g.textContent = fmtShort(s) + "–" + fmtShort(s + c.minutes) + (iss.length ? " · " + iss[0] : "");
+  drag.target = { day: di, start: s, iss };
+}
+function dragEnd(cancel) {
+  const d = drag; drag = null;
+  if (d.float) d.float.remove();
+  if (!d.active) { if (!cancel) openPlace(d.id); return; }
+  if (!cancel && d.target) {
+    if (d.target.tray) delete DRAFT.place[d.id];
+    else {
+      DRAFT.place[d.id] = { day: d.target.day, start: toHM(d.target.start) };
+      if (d.target.iss.length) toast("Heads up: " + candById(d.id).name + ". " + d.target.iss[0] + ".");
+    }
+    saveDraft();
+  }
+  render();
+}
+// Keyboard and tap alternative to dragging.
+function openPlace(id) {
+  const c = candById(id); if (!c) return;
+  const days = draftDays(), pl = DRAFT.place[id] && DRAFT.place[id].day < days.length ? DRAFT.place[id] : null;
+  const pref = { morning: "10:00", afternoon: "14:00", evening: "19:00", any: "10:30" }[c.bestTime];
+  openDrawer(pl ? "Move a pick" : "Place on a day", c.name, hoursSummary(c));
+  $("#drawerBody").innerHTML = '<form id="placeForm" class="place-form">' +
+    '<label class="f" for="plDay">Day<select class="inp" id="plDay">' + days.map((dt, i) => '<option value="' + i + '"' + (pl && pl.day === i ? " selected" : "") + ">Day " + (i + 1) + " · " + esc(fmtDay(dt)) + "</option>").join("") + "</select></label>" +
+    '<label class="f" for="plTime">Start time<input class="inp" type="time" step="900" id="plTime" value="' + (pl ? pl.start : pref) + '"></label>' +
+    '<p class="note warn-t" id="plWarn" role="status"></p>' +
+    '<div class="row2"><button class="btn primary" type="submit">' + (pl ? "Move" : "Place") + "</button>" + (pl ? '<button class="btn" type="button" id="plUnplace">Back to wish list</button>' : "") + '<button class="lnk" type="button" id="plRemove">Remove from wish list</button></div></form>' +
+    '<p class="small muted">~' + durText(c.minutes) + (c.neighborhood ? " · " + esc(c.neighborhood) : "") + '</p><p class="small">' + esc(c.why) + "</p>";
+  const chk = () => { const s = toMin($("#plTime").value); $("#plWarn").textContent = s == null ? "" : issuesAt(c, +$("#plDay").value, s).map(x => "⚠ " + x).join(" · "); };
+  $("#plDay").addEventListener("change", chk); $("#plTime").addEventListener("input", chk); chk();
+  $("#placeForm").addEventListener("submit", e => {
+    e.preventDefault(); const s = toMin($("#plTime").value); if (s == null) return;
+    DRAFT.place[id] = { day: +$("#plDay").value, start: toHM(Math.round(s / SNAP) * SNAP) }; saveDraft(); closeDrawer(); render();
+  });
+  const un = $("#plUnplace"); if (un) un.addEventListener("click", () => { delete DRAFT.place[id]; saveDraft(); closeDrawer(); render(); });
+  $("#plRemove").addEventListener("click", () => { DRAFT.wish = DRAFT.wish.filter(x => x !== id); delete DRAFT.place[id]; saveDraft(); closeDrawer(); render(); });
+}
+
+/* ---------- Travel profile (a chat that learns how someone likes to travel; prefills every new trip) ---------- */
+const DIETS = ["Vegetarian", "Vegan", "Gluten-free", "Pescatarian", "Kosher", "Halal", "No shellfish"];
+const INTERESTS = [["food", "Food"], ["culture", "Culture & history"], ["outdoors", "Outdoors & adventure"], ["nightlife", "Drinks & nightlife"], ["shopping", "Shopping"]];
+const PROF_ENUM = { pace: ["Relaxed", "Moderate", "Jam-packed"], budget: ["Budget", "Mid-range", "Splurge"], lodging: ["Hotel", "Boutique hotel", "Vacation rental", "No preference"] };
+const PROF_LISTS = ["loves", "avoids", "diet", "beenTo", "dreamTrips"];
+
+function emptyProfile() {
+  return { homeCity: "", travelsWith: "", pace: "", budget: "", lodging: "", dayStart: "", dayEnd: "", interests: {}, loves: [], avoids: [], diet: [], needs: "", beenTo: [], dreamTrips: [], notes: "" };
+}
+function normProfile(raw) {
+  const p = Object.assign(emptyProfile(), raw || {});
+  ["homeCity", "travelsWith", "needs", "notes"].forEach(k => { p[k] = String(p[k] || "").trim(); });
+  Object.keys(PROF_ENUM).forEach(k => { if (!PROF_ENUM[k].includes(p[k])) p[k] = ""; });
+  ["dayStart", "dayEnd"].forEach(k => { p[k] = /^\d{2}:\d{2}$/.test(p[k]) ? p[k] : ""; });
+  const ints = {};
+  INTERESTS.forEach(([k]) => { const n = Math.round(Number((p.interests || {})[k])); if (n >= 1 && n <= 5) ints[k] = n; });
+  p.interests = ints;
+  PROF_LISTS.forEach(k => {
+    const seen = new Set();
+    p[k] = (Array.isArray(p[k]) ? p[k] : []).map(v => String(v || "").trim()).filter(v => v && !seen.has(v.toLowerCase()) && seen.add(v.toLowerCase())).slice(0, 20);
+  });
+  p.diet = p.diet.filter(d => DIETS.includes(d));
+  return p;
+}
+let PROFILE = normProfile(store("mytin.profile"));
+let CHAT = store("mytin.profileChat") || { messages: [], done: false };
+let profBusy = false, profErr = "";
+
+function hasProfile() { return JSON.stringify(PROFILE) !== JSON.stringify(emptyProfile()); }
+function saveChat() { store("mytin.profileChat", CHAT); }
+function saveProfile(p) { PROFILE = normProfile(p); store("mytin.profile", PROFILE); applyProfileToForm(); }
+// The profile is the default for every new trip; the plan form can still be changed per trip.
+function applyProfileToForm() {
+  const p = PROFILE;
+  if (p.homeCity) FORM.from = p.homeCity;
+  ["pace", "budget", "lodging", "dayStart", "dayEnd"].forEach(k => { if (p[k]) FORM[k] = p[k]; });
+  INTERESTS.forEach(([k]) => { if (p.interests[k]) FORM[k] = p.interests[k]; });
+  if (p.diet.length) FORM.diet = p.diet.slice();
+  store("mytin.form", FORM);
+}
+// The parts of the profile the plan form doesn't already carry.
+function profileText(p) {
+  const L = [];
+  if (p.travelsWith) L.push("Usually travels with: " + p.travelsWith);
+  if (p.loves.length) L.push("Seeks out: " + p.loves.join("; "));
+  if (p.avoids.length) L.push("Avoid: " + p.avoids.join("; "));
+  if (p.needs) L.push("Planning needs: " + p.needs);
+  if (p.beenTo.length) L.push("Has already been to: " + p.beenTo.join(", "));
+  if (p.notes) L.push("Other: " + p.notes);
+  return L.length ? "TRAVELER PROFILE (long-standing tastes; the trip details above win if they conflict):\n" + L.map(x => "- " + x).join("\n") : "";
+}
+function profileBanner() {
+  return hasProfile()
+    ? '<div class="banner prof-banner"><span><strong>Pre-filled from your travel profile.</strong> Changes here only apply to this trip.</span><a class="btn small" href="#profile">Edit profile</a></div>'
+    : '<div class="banner prof-banner"><span><strong>New here?</strong> Tell us how you like to travel once, and every trip starts from your answers.</span><a class="btn small primary" href="#profile">Set up your travel profile</a></div>';
+}
+
+function profileOpener() {
+  return hasProfile()
+    ? "Welcome back. Everything I know about how you travel is on the right. What would you like to add or change?"
+    : "Hi! I'm going to learn how you like to travel, so every trip starts from you instead of a blank form. It's about eight quick questions. Skip any you like, and if you change your mind later, just say so.\n\nTo start: where do you usually travel from, and who usually comes with you?";
+}
+function profilePrompt() {
+  const transcript = CHAT.messages.slice(-40).map(m => (m.role === "user" ? "Them: " : "You: ") + m.text).join("\n");
+  return "You are the travel-profile interviewer for Mytinerary, an app that builds day-by-day trip itineraries. Through a short, friendly chat you learn how this person likes to travel, so every future trip starts from their tastes.\n\n" +
+    "HOW TO TALK\n" +
+    "- One question per message, in one to three short sentences. Warm and plain, like a well-traveled friend. No lists, no emoji.\n" +
+    "- Briefly react to their last answer before asking the next thing (a few words, specific to what they said).\n" +
+    "- About 8 to 10 questions in all. Skip anything earlier answers already settle. If they skip a question, move on without fuss.\n" +
+    "- If they change an earlier answer, update the profile and confirm in a few words (\"Updated: no red-eyes.\").\n" +
+    "- Cover roughly in this order: where they travel from and who usually comes; pace, and whether they're an early bird or a night owl; budget and what's worth splurging on; where they like to stay; food (how much it drives a trip, favorite kinds of meals, dietary needs); how they feel about museums and history, the outdoors, nightlife and shopping; things they always seek out and things they avoid; places they've been and places on their list; anything that affects planning (mobility, kids, motion sickness).\n" +
+    "- When everything is covered, set done to true and close in two sentences: the profile is saved, and they can come back any time to add more. If they keep talking after that, keep helping.\n\n" +
+    "PROFILE RULES\n" +
+    "- Return the WHOLE profile every time, carrying forward everything already in it. Record only what they said or clearly implied; leave unknown fields empty and unknown interests 0.\n" +
+    "- pace: Relaxed | Moderate | Jam-packed. budget: Budget (about $200 per person per day) | Mid-range (about $300) | Splurge (about $500+). lodging: Hotel | Boutique hotel | Vacation rental | No preference. dayStart, dayEnd: HH:MM, 24-hour.\n" +
+    "- interests: 1-5 for food, culture, outdoors, nightlife, shopping (5 = a reason to take the trip, 1 = skip it).\n" +
+    "- loves and avoids: short, specific phrases (\"natural wine bars\", \"long lines\"). diet: only from " + DIETS.join(", ") + ". beenTo and dreamTrips: place names.\n\n" +
+    "THE PROFILE SO FAR\n" + JSON.stringify(PROFILE) + "\n\n" +
+    "THE CONVERSATION\n" + transcript + "\n\n" +
+    'Reply with ONLY one JSON object, no prose: {"reply":"your next message","done":false,"profile":{"homeCity":"","travelsWith":"","pace":"","budget":"","lodging":"","dayStart":"","dayEnd":"","interests":{"food":0,"culture":0,"outdoors":0,"nightlife":0,"shopping":0},"loves":[],"avoids":[],"diet":[],"needs":"","beenTo":[],"dreamTrips":[],"notes":""}}';
+}
+function profErrorCopy(e) {
+  const c = e && e.code;
+  if (c === "not_granted" || c === "sampling_disabled") return "Claude access isn't allowed for this page, so the profile chat can't run.";
+  if (c === "rate_limited") return "You've hit a usage limit. Try again in a few minutes.";
+  if (c === "invalid_json") return "Claude's answer didn't come back in a usable shape. Send it again.";
+  return "Something went wrong. Send it again.";
+}
+async function sendProfile(text) {
+  text = String(text || "").trim();
+  if (!text || profBusy) return;
+  if (!sampleFn) {
+    profErr = sampleBlocked ? "Claude access was declined for this page. Reload to be asked again." : "The profile chat needs Claude, which is available when this page is open on claude.ai.";
+    updateProfileUI(); return;
+  }
+  CHAT.messages.push({ role: "user", text });
+  profBusy = true; profErr = ""; saveChat(); updateProfileUI();
+  try {
+    const r = await sampleFn.json(profilePrompt(), { modelTier: "default", cache: false });
+    if (!r || typeof r.reply !== "string" || !r.reply.trim()) throw { code: "invalid_json" };
+    if (r.profile) saveProfile(r.profile);
+    CHAT.messages.push({ role: "assistant", text: r.reply.trim() });
+    CHAT.messages = CHAT.messages.slice(-60);
+    CHAT.done = CHAT.done || r.done === true;
+  } catch (e) {
+    CHAT.messages.pop(); // put their words back so nothing is lost
+    if (e && e.code === "not_granted") sampleBlocked = true;
+    profErr = profErrorCopy(e);
+    const ta = $("#profInput"); if (ta && !ta.value) ta.value = text;
+  }
+  profBusy = false; saveChat(); updateProfileUI();
+  const ta = $("#profInput"); if (ta) ta.focus();
+}
+
+function renderProfile() {
+  return '<div class="wrap prof"><span class="eyebrow">Travel profile</span><h1>How do you like to travel?</h1>' +
+    '<p class="lede">A short chat, about three minutes. What you tell me is saved in this browser and becomes the starting point for every trip you plan.</p>' +
+    '<div class="prof-grid"><section class="chat" aria-label="Profile chat">' +
+      '<div class="chat-log" id="profLog" aria-live="polite"></div>' +
+      '<form class="chat-input" id="profForm"><textarea id="profInput" rows="1" placeholder="Type your answer" aria-label="Your answer"></textarea><button class="btn primary" type="submit" id="profSend">Send</button></form>' +
+      '<div class="chat-foot"><button class="lnk" type="button" id="profSkip">Skip this question</button><span class="err" id="profErr" role="alert"></span></div>' +
+    '</section><aside class="panel prof-panel" id="profPanel" aria-label="What I know about you"></aside></div></div>';
+}
+function profLogHTML() {
+  return CHAT.messages.map(m => '<div class="msg ' + (m.role === "user" ? "user" : "assistant") + '">' + esc(m.text) + "</div>").join("") +
+    (profBusy ? '<div class="msg assistant typing" aria-label="Claude is typing"><i></i><i></i><i></i></div>' : "") +
+    (CHAT.done && !profBusy ? '<div class="prof-done"><span>Your profile is saved.</span><a class="btn small primary" href="#plan">Plan a trip with it</a></div>' : "");
+}
+function profPanelHTML() {
+  const p = PROFILE;
+  const row = (k, v) => v ? '<div class="pf-row"><span class="pf-k">' + k + "</span><span>" + esc(v) + "</span></div>" : "";
+  const chips = (key, label) => p[key].length ? '<div class="pf-sec"><span class="pf-k">' + label + '</span><div class="pf-chips">' +
+    p[key].map((v, i) => '<span class="pf-chip">' + esc(v) + '<button type="button" data-rm="' + key + '" data-i="' + i + '" aria-label="Remove ' + esc(v) + '">×</button></span>').join("") + "</div></div>" : "";
+  const hours = p.dayStart || p.dayEnd ? (fmtTime(p.dayStart) || "?") + " to " + (fmtTime(p.dayEnd) || "?") : "";
+  const basics = row("Home", p.homeCity) + row("Travels with", p.travelsWith) + row("Pace", p.pace) + row("Budget", p.budget) + row("Stays", p.lodging) + row("Day", hours) + row("Needs", p.needs) + row("Also", p.notes);
+  const ints = INTERESTS.filter(([k]) => p.interests[k]).map(([k, l]) => '<div class="pf-int"><span>' + esc(l) + '</span><span class="dots" role="img" aria-label="' + p.interests[k] + ' out of 5">' +
+    [1, 2, 3, 4, 5].map(n => "<i" + (n <= p.interests[k] ? ' class="on"' : "") + "></i>").join("") + "</span></div>").join("");
+  const body = hasProfile()
+    ? (basics ? '<div class="pf-sec">' + basics + "</div>" : "") + (ints ? '<div class="pf-sec"><span class="pf-k">Interests</span>' + ints + "</div>" : "") +
+      chips("loves", "Seeks out") + chips("avoids", "Avoids") + chips("diet", "Diet") + chips("beenTo", "Been to") + chips("dreamTrips", "On the list") +
+      '<div class="pf-actions"><a class="btn small primary" href="#plan">Plan a trip with this</a><button class="btn small ghost" type="button" id="profReset">Start over</button></div>'
+    : '<p class="pf-empty">Nothing yet. What I learn shows up here as we talk, and it\'s saved right away.</p>';
+  return "<h3>What I know about you <small>saved in this browser</small></h3>" + body;
+}
+function updateProfileUI() {
+  const log = $("#profLog"); if (!log) return; // they navigated away mid-reply
+  log.innerHTML = profLogHTML(); log.scrollTop = log.scrollHeight;
+  $("#profPanel").innerHTML = profPanelHTML();
+  $("#profErr").textContent = profErr;
+  $("#profSend").disabled = profBusy; $("#profSkip").disabled = profBusy;
+  $("#profPanel").querySelectorAll("[data-rm]").forEach(b => b.addEventListener("click", () => {
+    const p = JSON.parse(JSON.stringify(PROFILE)); p[b.dataset.rm].splice(+b.dataset.i, 1);
+    saveProfile(p); updateProfileUI();
+  }));
+  const reset = $("#profReset");
+  if (reset) reset.addEventListener("click", () => {
+    if (!confirm("Clear your travel profile and start the chat over?")) return;
+    PROFILE = emptyProfile(); store("mytin.profile", PROFILE);
+    CHAT = { messages: [{ role: "assistant", text: profileOpener() }], done: false }; saveChat();
+    profErr = ""; updateProfileUI();
+  });
+}
+function bindProfile() {
+  if (!CHAT.messages.length) { CHAT.messages.push({ role: "assistant", text: profileOpener() }); saveChat(); }
+  updateProfileUI();
+  const ta = $("#profInput");
+  const fit = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight + 2, 140) + "px"; };
+  ta.addEventListener("input", fit);
+  ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("#profForm").requestSubmit(); } });
+  $("#profForm").addEventListener("submit", e => { e.preventDefault(); const v = ta.value; if (!v.trim() || profBusy) return; ta.value = ""; fit(); sendProfile(v); });
+  $("#profSkip").addEventListener("click", () => sendProfile("I'd rather skip this one."));
+  if (window.matchMedia("(pointer: fine)").matches) ta.focus();
+}
+
+/* ---------- My trips menu ---------- */
+function renderTripsMenu() {
+  const list = savedTrips();
+  const pop = $("#tripsMenu");
+  pop.innerHTML = '<button data-load="example"><strong>San Francisco weekend</strong><small>Example from the 2020 template</small></button>' +
+    (list.length ? list.map(t => '<button data-load="' + esc(t.id) + '"><strong>' + esc(t.destination) + "</strong><small>" + esc(fmtRange(t.startDate, t.endDate)) + "</small></button>").join("") : '<div class="empty">Trips you build are saved here, in this browser.</div>');
+  pop.querySelectorAll("[data-load]").forEach(b => b.addEventListener("click", () => {
+    const id = b.dataset.load;
+    S.trip = id === "example" ? normalize(JSON.parse(JSON.stringify(EXAMPLE))) : normalize(savedTrips().find(x => x.id === id));
+    S.day = 0; closeMenu(); store("mytin.lastOpened", id);
+    if (location.hash === "#trip") { S.view = "trip"; render(); } else location.hash = "trip";
+  }));
+}
+function closeMenu() { $("#tripsMenu").classList.remove("open"); $("#tripsBtn").setAttribute("aria-expanded", "false"); }
+$("#tripsBtn").addEventListener("click", e => {
+  e.stopPropagation();
+  const open = $("#tripsMenu").classList.toggle("open");
+  $("#tripsBtn").setAttribute("aria-expanded", String(open));
+});
+document.addEventListener("click", e => { if (!e.target.closest(".menu")) closeMenu(); });
+
+/* ---------- Boot ---------- */
+if (DEMO) $("#demoBar").classList.remove("hidden");
+const last = savedTrips()[0];
+S.trip = normalize(JSON.parse(JSON.stringify(EXAMPLE)));
+if (last && store("mytin.lastOpened") === last.id) S.trip = normalize(last);
+route();
+})();
+</script>
+</body>
+</html>
