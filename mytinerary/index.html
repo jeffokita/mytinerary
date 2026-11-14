@@ -476,6 +476,17 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .share-cta { justify-content: space-between; background: var(--card); border-style: solid; }
 .share-cta .look { flex: 1 1 320px; max-width: 460px; }
 
+/* Weather */
+.wx { display: inline-flex; gap: 4px; align-items: center; font-family: var(--mono); font-size: 12px; white-space: nowrap; color: var(--ink); }
+.wx.typ { color: var(--muted); }
+.day-wx { margin-top: -2px; }
+.day-h .wx { display: block; font-size: 10px; margin-top: 1px; }
+.wx-days { display: grid; gap: 6px; }
+.wx-day { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; padding: 4px 6px; border-radius: 8px; }
+.wx-day.on { background: var(--paper); }
+.wx-line { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 0; }
+.wx-line span { display: inline-flex; gap: 6px; font-size: 13px; color: var(--muted); }
+
 /* Real map */
 .gmap-slot { border-radius: 10px; overflow: hidden; background: var(--paper); }
 .gmap { width: 100%; aspect-ratio: 600 / 460; }
@@ -1084,6 +1095,98 @@ function handleGoogleReturn() {
   else toast("Connecting Google didn't work. Try again.");
 }
 
+/* ---------- Weather (Open-Meteo: free, no key) ---------- */
+// Real forecasts only reach about 16 days out. Days inside that window get the forecast; days beyond it get
+// "typical" weather: the average of the same dates over the last five years.
+const FORECAST_DAYS = 15;
+const WX = [[0, "☀", "Sunny"], [2, "⛅", "Partly cloudy"], [3, "☁", "Cloudy"], [48, "🌫", "Fog"], [57, "☂", "Drizzle"], [67, "☂", "Rain"], [77, "❄", "Snow"], [82, "☂", "Showers"], [86, "❄", "Snow showers"], [99, "⛈", "Storms"]];
+const wxLabel = code => (WX.find(([max]) => code <= max) || WX[WX.length - 1]).slice(1);
+const daysFrom = (a, b) => Math.round((parseDate(b) - parseDate(a)) / 864e5);
+async function geocode(name) {
+  const q = String(name || "").split(",")[0].trim(); if (!q) return null;
+  const r = await fetch("https://geocoding-api.open-meteo.com/v1/search?count=1&name=" + encodeURIComponent(q)).then(x => x.json()).catch(() => null);
+  const g = r && r.results && r.results[0];
+  return g ? { lat: g.latitude, lng: g.longitude } : null;
+}
+async function fetchWeather(lat, lng, dates) {
+  if (!Number.isFinite(lat) || !dates.length) return null;
+  const today = isoDate(new Date()), out = {};
+  const soon = dates.filter(d => daysFrom(today, d) >= 0 && daysFrom(today, d) <= FORECAST_DAYS);
+  const later = dates.filter(d => !soon.includes(d) && d >= today);
+  const base = "latitude=" + lat + "&longitude=" + lng + "&temperature_unit=fahrenheit&timezone=auto";
+  if (soon.length) {
+    const r = await fetch("https://api.open-meteo.com/v1/forecast?" + base + "&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&start_date=" + soon[0] + "&end_date=" + soon[soon.length - 1]).then(x => x.json()).catch(() => null);
+    const dl = r && r.daily;
+    if (dl) dl.time.forEach((d, i) => { out[d] = { kind: "forecast", hi: Math.round(dl.temperature_2m_max[i]), lo: Math.round(dl.temperature_2m_min[i]), rain: dl.precipitation_probability_max[i], code: dl.weather_code[i] }; });
+  }
+  if (later.length) {
+    // Same calendar days in each of the last five years, averaged.
+    const years = [1, 2, 3, 4, 5].map(n => new Date().getFullYear() - n);
+    const shift = (d, y) => y + d.slice(4);
+    const runs = await Promise.all(years.map(y => fetch("https://archive-api.open-meteo.com/v1/archive?" + base + "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&start_date=" + shift(later[0], y) + "&end_date=" + shift(later[later.length - 1], y)).then(x => x.json()).catch(() => null)));
+    later.forEach((d, i) => {
+      const hi = [], lo = [], wet = [];
+      runs.forEach(r => { const dl = r && r.daily; if (dl && dl.temperature_2m_max[i] != null) { hi.push(dl.temperature_2m_max[i]); lo.push(dl.temperature_2m_min[i]); wet.push((dl.precipitation_sum[i] || 0) >= 1); } });
+      if (hi.length) {
+        const avg = a => Math.round(a.reduce((x, y) => x + y, 0) / a.length), rain = Math.round(wet.filter(Boolean).length / wet.length * 100);
+        out[d] = { kind: "typical", hi: avg(hi), lo: avg(lo), rain, code: rain >= 50 ? 61 : rain >= 25 ? 2 : 0 };
+      }
+    });
+  }
+  return Object.keys(out).length ? { days: out, at: Date.now() } : null;
+}
+// Refetch when missing, or when a cached forecast is old or a "typical" day has come within forecast range.
+function weatherStale(w, dates) {
+  if (!w || !w.days) return true;
+  const today = isoDate(new Date());
+  return dates.some(d => d >= today && (!w.days[d] || (w.days[d].kind === "typical" && daysFrom(today, d) <= FORECAST_DAYS))) || Date.now() - w.at > 6 * 3600e3;
+}
+function wxChip(w, opts) {
+  if (!w) return "";
+  const [icon, label] = wxLabel(w.code);
+  return '<span class="wx' + (w.kind === "typical" ? " typ" : "") + '" title="' + (w.kind === "typical" ? "Typical for this date (5-year average)" : "Forecast") + '">' + icon + " " + w.hi + "°/" + w.lo + "°" +
+    (w.rain ? " · " + w.rain + "% rain" : "") + (opts && opts.label ? " · " + (w.kind === "typical" ? "typical" : label.toLowerCase()) : "") + "</span>";
+}
+function wxPrompt(w) {
+  if (!w) return "";
+  const [, label] = wxLabel(w.code);
+  return "- WEATHER " + (w.kind === "typical" ? "(typical for this date, not a forecast)" : "(forecast)") + ": " + label + ", high " + w.hi + "°F, low " + w.lo + "°F, " + w.rain + "% chance of rain." +
+    (w.rain >= 50 ? " Favor indoor stops and keep outdoor ones short with an indoor backup nearby." : w.hi >= 92 ? " It's hot: outdoor time early or late, indoors midday." : w.hi <= 40 ? " It's cold: keep outdoor time short and warm up indoors." : "") + "\n";
+}
+let wxBusy = new Set();
+async function ensureTripWeather(t) {
+  if (!t || t.example || wxBusy.has(t.id)) return;
+  const dates = t.days.map(d => d.date);
+  if (!weatherStale(t.weather, dates)) return;
+  wxBusy.add(t.id);
+  let ll = hasLL(t.homeBase) ? t.homeBase : await geocode(t.destination);
+  const w = ll ? await fetchWeather(ll.lat, ll.lng, dates) : null;
+  wxBusy.delete(t.id);
+  if (!w) return;
+  t.weather = w;
+  if (!S.readOnly) saveTrip(t);
+  if (S.trip === t && S.view === "trip") render();
+}
+async function ensureDraftWeather() {
+  const d = DRAFT; if (!d || wxBusy.has(d.id)) return;
+  const dates = draftDays();
+  if (!weatherStale(d.weather, dates)) return;
+  wxBusy.add(d.id);
+  const ll = hasLL(d.home) ? d.home : await geocode(d.prefs.dest);
+  const w = ll ? await fetchWeather(ll.lat, ll.lng, dates) : null;
+  wxBusy.delete(d.id);
+  if (!w || DRAFT !== d) return;
+  d.weather = w; saveDraft();
+  if (S.view === "anchors" || S.view === "wish") render();
+}
+function weatherPanel(t) {
+  const w = t.weather; if (!w) return "";
+  const kinds = new Set(Object.values(w.days).map(x => x.kind));
+  return '<section class="panel"><h3>Weather <small>' + (kinds.has("typical") ? (kinds.has("forecast") ? "forecast and typical" : "typical for these dates") : "forecast") + "</small></h3>" +
+    '<div class="wx-days">' + t.days.map((d, i) => w.days[d.date] ? '<div class="wx-day' + (i === S.day ? " on" : "") + '"><span class="pf-k">' + esc(fmtDay(d.date)) + "</span>" + wxChip(w.days[d.date], { label: true }) + "</div>" : "").join("") + "</div>" +
+    (kinds.has("typical") ? '<p class="note" style="margin:8px 0 0">Real forecasts arrive about two weeks before each day. Until then, this is the average for those dates over the last five years.</p>' : "") + "</section>";
+}
+
 /* ---------- Real Google Map (hosted, when the server has a browser key) ---------- */
 let GMAPS_KEY = "", GMAP_ID = "DEMO_MAP_ID", gmapsP = null, gm = null, PENDING_MAP = null;
 function loadGmaps() {
@@ -1373,7 +1476,7 @@ function renderTrip() {
     '<div class="grid">' +
       '<section aria-label="Day plan">' +
         '<div class="day-head">' +
-          '<span class="eyebrow" style="color:' + c + '">Day ' + (S.day + 1) + " · " + esc(fmtDay(d.date)) + "</span>" +
+          '<span class="eyebrow" style="color:' + c + '">Day ' + (S.day + 1) + " · " + esc(fmtDay(d.date)) + "</span>" + (t.weather && t.weather.days[d.date] ? '<div class="day-wx">' + wxChip(t.weather.days[d.date], { label: true }) + "</div>" : "") +
           "<h2>" + esc(d.title) + "</h2>" +
           '<p class="pitch">' + esc(d.pitch) + "</p>" +
           '<div class="day-tools">' +
@@ -1390,6 +1493,7 @@ function renderTrip() {
       "</section>" +
       '<aside class="rail">' +
         renderMap(t) +
+        weatherPanel(t) +
         renderHome(t) +
         renderBookings(t) +
         renderBudget(t) +
@@ -1608,6 +1712,7 @@ function renderBudget(t) {
 }
 
 function bindTrip() {
+  ensureTripWeather(S.trip);
   document.querySelectorAll("[data-retry-day]").forEach(b => b.addEventListener("click", () => retryDay(+b.dataset.retryDay)));
   document.querySelectorAll("[data-who]").forEach(b => b.addEventListener("click", () => { S.who = b.dataset.who; render(); }));
   document.querySelectorAll("[data-remove]").forEach(b => b.addEventListener("click", () => {
@@ -1891,6 +1996,7 @@ function dayPrompt(t, di) {
     (di === 0 ? "- Arrival day: start with an Arrive item (kind \"transit\", no lat/lng) and Check in (kind \"lodging\" with the home base coords).\n" : "") +
     (di === n - 1 ? "- Departure day: end with Check out (kind \"lodging\") and Depart (kind \"transit\", no lat/lng).\n" : "") +
     "- Include this day's ANCHORS, placeholders and fixed blocks from the list above at their exact times.\n" +
+    wxPrompt(t.weather && t.weather.days[date]) +
     (routineBlocks(di, t.shift || 0).length ? "- TODAY'S ROUTINES, already converted to local time (use these exact times, not the home-time ones above): " + routineBlocks(di, t.shift || 0).map(r => r.label.split(" ·")[0] + " " + fmtTime(toHM(r.a)) + (r.b - r.a > 60 ? "–" + fmtTime(toHM(r.b)) : "")).join("; ") + ".\n" : "") +
     (others.length ? "- Other days already use these places, so don't repeat them: " + others.join("; ") + "\n" : "") +
     "\nRULES\n" +
@@ -1963,6 +2069,7 @@ async function generate(p) {
   }
   clearInterval(tick);
   S.trip = trip; S.day = 0; S.gen = null;
+  if (hasLL(trip.homeBase)) trip.weather = await fetchWeather(trip.homeBase.lat, trip.homeBase.lng, trip.days.map(d => d.date)).catch(() => null) || (DRAFT && DRAFT.weather) || null;
   saveTrip(trip); store("mytin.lastOpened", trip.id);
   if (p.anchors && DRAFT) { DRAFT.tripId = trip.id; saveDraft(); }
   if (FORM.booked || FORM.prefill) { FORM.booked = null; FORM.prefill = null; store("mytin.form", FORM); } // the next new trip starts clean
@@ -2887,6 +2994,7 @@ function renderWish() {
   const k = d.wish.length;
   return '<div class="wrap planflow">' + stepsHTML(2) +
     '<h1 class="pf-title">What do you want to do in ' + esc(p.dest) + "?</h1>" +
+    (d.weather ? '<p class="wx-line">' + draftDays().map(x => d.weather.days[x] ? "<span>" + esc(fmtDay(x).split(" ")[0]) + " " + wxChip(d.weather.days[x]) + "</span>" : "").join("") + "</p>" : "") +
     '<p class="lede">The top things to do, ranked for you. Add anything that looks good. Aim for at least ' + n + " (one per day); next you'll place them on your days.</p>" +
     '<div class="grid"><section aria-label="Ideas">' + main + '</section><aside class="rail">' +
       planMap("Where everything is", pts, [], d.home, '<span><i style="background:var(--accent)"></i>On your wish list</span><span><i style="background:var(--muted)"></i>Other ideas</span>' + (d.home ? '<span><i style="background:var(--ink);width:10px;height:10px"></i>Where you\'re staying</span>' : "")) +
@@ -2905,6 +3013,7 @@ function updateWishLoad() {
   else if (S.wishLoad.names.length) { const st = document.querySelectorAll(".wait-steps li"); if (st[1]) st[1].innerHTML = '<span class="st"></span>Finding the best of ' + esc(DRAFT.prefs.dest) + " · " + S.wishLoad.names.length + " so far"; }
 }
 function bindWish() {
+  ensureDraftWeather();
   document.querySelectorAll("[data-wish]").forEach(b => b.addEventListener("click", () => {
     const id = b.dataset.wish, i = DRAFT.wish.indexOf(id);
     if (i >= 0) { DRAFT.wish.splice(i, 1); delete DRAFT.place[id]; } else DRAFT.wish.push(id);
@@ -2993,7 +3102,7 @@ function renderAnchors() {
     routineBlocks(di).forEach(rb => { inner += box(rb.a, rb.b, "blocked routine top", rb.label); });
     const mine = placedIds.filter(id => d.place[id].day === di), ln = lanes(mine);
     inner += mine.map(id => ancCard(candById(id), di, gs, ln[id])).join("");
-    return '<div class="day-col" style="--c:' + lineVar(di) + '"><div class="day-h"><span class="bullet">' + (di + 1) + "</span><span><b>Day " + (di + 1) + "</b><small>" + esc(fmtDay(date)) + "</small></span></div>" +
+    return '<div class="day-col" style="--c:' + lineVar(di) + '"><div class="day-h"><span class="bullet">' + (di + 1) + "</span><span><b>Day " + (di + 1) + "</b><small>" + esc(fmtDay(date)) + "</small>" + (d.weather && d.weather.days[date] ? wxChip(d.weather.days[date]) : "") + "</span></div>" +
       '<div class="day-body" data-day="' + di + '" style="height:' + H + "px;--pxh:" + PXH + 'px">' + inner + '<div class="drop-ghost hidden"></div></div></div>';
   }).join("");
   const warnCount = placedIds.filter(id => issuesAt(candById(id), d.place[id].day, toMin(d.place[id].start)).length).length;
@@ -3022,6 +3131,7 @@ function renderAnchors() {
 
 let drag = null;
 function bindAnchors() {
+  ensureDraftWeather();
   bindPins();
   document.querySelectorAll("[data-drag]").forEach(el => {
     el.addEventListener("pointerdown", e => {
