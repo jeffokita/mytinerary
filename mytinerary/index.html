@@ -472,6 +472,14 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .aw-pics figcaption { font-size: 12px; color: var(--muted); line-height: 1.3; }
 .anchor-why-link { margin: 10px 0 0; }
 
+/* Anchor board: click-to-add */
+.day-body { cursor: cell; }
+.slot-sel { position: absolute; left: 5px; right: 5px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 14%, transparent); border: 2px solid var(--accent); font-family: var(--mono); font-size: 11px; padding: 3px 7px; z-index: 4; pointer-events: none; }
+.slot-pop { position: fixed; z-index: 75; width: 300px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 14px; box-shadow: 0 16px 40px rgba(0,0,0,.18); display: grid; gap: 10px; }
+.sp-time { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.sp-fill { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.slot-tip { margin: 0; }
+
 /* Anchor board: placeholders and routines */
 .ph-row { display: grid; gap: 6px; }
 .ph-add { cursor: pointer; background: var(--card); font-family: var(--body); font-size: 13px; }
@@ -1418,6 +1426,7 @@ window.addEventListener("hashchange", route);
 
 /* ---------- Render ---------- */
 function render(fresh) {
+  closeSlot();
   if (!fresh && $("#planForm")) readForm(); // keep unsent form edits across re-renders
   const app = $("#app");
   const bs = $(".board-scroll"), bsl = bs ? bs.scrollLeft : 0;
@@ -3070,6 +3079,81 @@ function lanes(ids) {
   close();
   return out;
 }
+// Calendar-style adding: click an empty time on a day (or drag to set the length), type what it is.
+const NO_FILL = /\b(nap|rest|free time|downtime|bedtime|sleep|pool|hotel|unwind|break)\b/i;
+function guessCategory(name) {
+  const n = name.toLowerCase();
+  if (/breakfast|brunch|lunch|dinner|coffee|drinks?|bar|snack|dessert|tacos?|bbq|barbecue|pizza/.test(n)) return "Food & drink";
+  if (/hike|walk|park|garden|trail|run|swim|beach|bike/.test(n)) return "Outdoors";
+  if (/shop|market|mall|boutique/.test(n)) return "Shopping";
+  if (/museum|gallery|history/.test(n)) return "Museums";
+  if (/show|concert|club|game|music/.test(n)) return "Nightlife";
+  return "Experiences";
+}
+function closeSlot() { const p = $("#slotPop"); if (p) p.remove(); document.querySelectorAll(".slot-sel").forEach(x => x.remove()); }
+function openSlot(di, start, minutes, x, y, dragged) {
+  closeSlot();
+  const date = draftDays()[di], end = start + minutes;
+  const pop = document.createElement("form");
+  pop.id = "slotPop"; pop.className = "slot-pop"; pop.setAttribute("role", "dialog"); pop.setAttribute("aria-label", "Add to day " + (di + 1));
+  pop.innerHTML = '<div class="sp-time" id="spTime">Day ' + (di + 1) + " · " + esc(fmtDay(date)) + " · " + fmtShort(start) + "–" + fmtShort(end) + "</div>" +
+    '<label for="spName" class="hidden">What is it?</label><input id="spName" class="inp" autocomplete="off" placeholder="Add something, e.g. Lunch, Hike, Nap">' +
+    '<div class="pf-chips">' + PLACEHOLDERS.map(([n], i) => '<button type="button" class="pill ph-add" data-sp="' + i + '">' + n + "</button>").join("") + "</div>" +
+    '<label class="sp-fill"><input type="checkbox" id="spFill" checked> Suggest a real place for this</label>' +
+    '<div class="row2"><button class="btn small primary" type="submit">Add</button><button class="lnk" type="button" id="spCancel">Cancel</button></div>';
+  document.body.appendChild(pop);
+  const w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.left = Math.max(8, Math.min(x + 12, innerWidth - w - 8)) + "px";
+  pop.style.top = Math.max(8, Math.min(y - 20, innerHeight - h - 8)) + "px";
+  let mins = minutes, fillTouched = false;
+  const name = $("#spName"), fill = $("#spFill");
+  const setTime = () => { $("#spTime").textContent = "Day " + (di + 1) + " · " + fmtDay(date) + " · " + fmtShort(start) + "–" + fmtShort(start + mins); };
+  name.addEventListener("input", () => { if (!fillTouched) fill.checked = !NO_FILL.test(name.value); });
+  fill.addEventListener("change", () => { fillTouched = true; });
+  pop.querySelectorAll("[data-sp]").forEach(b => b.addEventListener("click", () => {
+    const [n, m, , f] = PLACEHOLDERS[+b.dataset.sp];
+    name.value = n; if (!fillTouched) fill.checked = f;
+    if (!dragged) { mins = m; setTime(); }
+    name.focus();
+  }));
+  $("#spCancel").addEventListener("click", closeSlot);
+  pop.addEventListener("keydown", e => { if (e.key === "Escape") closeSlot(); });
+  pop.addEventListener("submit", e => {
+    e.preventDefault();
+    const n = name.value.trim(); if (!n) { name.focus(); return; }
+    const label = n[0].toUpperCase() + n.slice(1), preset = PLACEHOLDERS.find(([p]) => p.toLowerCase() === n.toLowerCase());
+    const c = { id: uid(), name: label, category: preset ? preset[2] : guessCategory(n), minutes: mins, placeholder: true, fill: fill.checked, fixed: !fill.checked,
+      neighborhood: "", why: fill.checked ? "We'll suggest a real place near your other stops." : "We'll plan around this.", hours: null, lat: null, lng: null, bestTime: "any", cost: 0, booking: "none" };
+    DRAFT.cands.push(c); DRAFT.wish.push(c.id); DRAFT.place[c.id] = { day: di, start: toHM(start) }; saveDraft();
+    if (HOSTED && !preset) fetch("/api/answers", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ field: "placeholder", value: n }) }).catch(() => {});
+    closeSlot(); render();
+    const iss = issuesAt(c, di, start); if (iss.length) toast("Added " + label + ". Heads up: " + iss[0] + ".");
+  });
+  setTimeout(() => name.focus(), 0);
+}
+function bindSlots() {
+  const { gs, ge } = gridRange();
+  document.querySelectorAll(".day-body").forEach(col => col.addEventListener("pointerdown", e => {
+    if (e.button !== 0 || e.target.closest(".anc")) return;
+    closeSlot();
+    const di = +col.dataset.day, top = () => col.getBoundingClientRect().top;
+    const at = y => Math.max(gs, Math.min(ge - SNAP, gs + Math.floor((y - top()) / PXH * 60 / SNAP) * SNAP));
+    const s0 = at(e.clientY); let s1 = s0 + 60, moved = false;
+    const sel = document.createElement("div"); sel.className = "slot-sel"; col.appendChild(sel);
+    const draw = () => { sel.style.top = px(s0 - gs) + "px"; sel.style.height = px(s1 - s0) + "px"; sel.textContent = fmtShort(s0) + "–" + fmtShort(s1); };
+    draw();
+    col.setPointerCapture(e.pointerId);
+    const move = ev => { const s = at(ev.clientY) + SNAP; if (Math.abs(ev.clientY - e.clientY) > 6) moved = true; if (moved) { s1 = Math.max(s0 + 30, Math.min(s, ge)); draw(); } };
+    const done = ev => {
+      col.removeEventListener("pointermove", move); col.removeEventListener("pointerup", done); col.removeEventListener("pointercancel", cancel);
+      openSlot(di, s0, s1 - s0, ev.clientX, ev.clientY, moved);
+    };
+    const cancel = () => { col.removeEventListener("pointermove", move); col.removeEventListener("pointerup", done); col.removeEventListener("pointercancel", cancel); sel.remove(); };
+    col.addEventListener("pointermove", move); col.addEventListener("pointerup", done); col.addEventListener("pointercancel", cancel);
+  }));
+}
+document.addEventListener("pointerdown", e => { if ($("#slotPop") && !e.target.closest("#slotPop, .day-body")) closeSlot(); });
+
 // Why anchors: shown the first time someone reaches the board, then tucked behind a link.
 function anchorExplainer() {
   const open = !store("mytin.anchorTipSeen");
@@ -3148,8 +3232,7 @@ function renderAnchors() {
     '<div class="grid wide"><section aria-label="Days">' +
       '<section class="panel tray" id="tray" aria-label="Wish list, not yet placed"><h3>Wish list <small>' + (unplaced.length ? "drag onto a day, or tap to place" : "everything is placed · drag a card here to unschedule it") + "</small></h3>" +
         '<div class="tray-items">' + unplaced.map(trayItem).join("") + "</div>" +
-        '<div class="ph-row"><span class="pf-k">Add a placeholder</span><div class="pf-chips">' + PLACEHOLDERS.map(([n], i) => '<button type="button" class="pill ph-add" data-ph="' + i + '">+ ' + n + "</button>").join("") +
-          '<form id="phCustom" class="ph-custom"><label for="phName" class="hidden">Custom placeholder</label><input id="phName" placeholder="Something else…" maxlength="40"><button class="pill ph-add" type="submit">Add</button></form></div></div>' +
+        '<p class="note slot-tip">Tip: click any empty time on a day to add something, like lunch, a hike or nap time. Drag down to set how long.</p>' +
         '<div class="row2"><button class="btn small" id="suggestBtn">' + (placedIds.length ? "Re-suggest a layout" : "Suggest a layout") + '</button><a class="lnk" href="#wish">Add more to the wish list</a></div></section>' +
       '<div class="board-scroll"><div class="board" style="grid-template-columns:52px repeat(' + n + ', minmax(150px, 1fr))"><div class="gutter"><div class="day-h"></div><div class="gutter-l" style="height:' + H + 'px">' + labels + "</div></div>" + cols + "</div></div>" +
       '<div class="board-foot"><button class="btn primary" id="fillBtn"' + (placedIds.length ? "" : " disabled") + ">Fill in my days →</button>" +
@@ -3186,8 +3269,7 @@ function bindAnchors() {
   const fb = $("#fillBtn"); if (fb) fb.addEventListener("click", fillTrip);
   const awc = $("#anchorWhyClose"); if (awc) awc.addEventListener("click", () => { store("mytin.anchorTipSeen", true); render(); });
   const awo = $("#anchorWhyOpen"); if (awo) awo.addEventListener("click", () => { store("mytin.anchorTipSeen", false); render(); });
-  document.querySelectorAll("[data-ph]").forEach(b => b.addEventListener("click", () => { const [n, m, c, f] = PLACEHOLDERS[+b.dataset.ph]; addPlaceholder(n, m, c, f); }));
-  const pc = $("#phCustom"); if (pc) pc.addEventListener("submit", e => { e.preventDefault(); const n = $("#phName").value.trim(); if (n) addPlaceholder(n[0].toUpperCase() + n.slice(1), 60, "Experiences", true); });
+  bindSlots();
 }
 function showBands(c) {
   const { gs, ge } = gridRange(), days = draftDays();
