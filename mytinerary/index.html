@@ -429,6 +429,10 @@ body.signed-out #profileBtn, body.signed-out .menu, body.signed-out #planBtn { d
 .prof-card { width: 100%; height: auto; display: block; border-radius: 12px; aspect-ratio: 1080 / 1350; background: #111722; }
 
 /* Plan form extras */
+.prefill-note { background: color-mix(in srgb, var(--l2) 10%, var(--card)); border: 1px solid var(--l2); color: var(--ink); justify-content: space-between; margin: 0 0 22px; }
+.pre-tag { display: inline-block; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--l2); border: 1px solid var(--l2); border-radius: 999px; padding: 1px 7px; margin-left: 6px; font-weight: 600; vertical-align: 1px; }
+label.f .pre-tag { justify-self: start; margin-left: 0; }
+label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(--l2) 5%, var(--card)); }
 .diet-lvl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: 14px; }
 .diet-lvl > span { min-width: 110px; font-weight: 600; }
 .seg.small span { padding: 5px 11px; font-size: 13px; }
@@ -744,7 +748,7 @@ function updateWho() {
 
 /* Sync (hosted only): profile, plan in progress, form defaults and trips are saved to the server under your
    sign-in, so they follow you across devices. This browser keeps a copy too; the newest save wins. */
-const SYNC_KEYS = { "mytin.profile": "profile", "mytin.profileChat": "profileChat", "mytin.draft": "draft", "mytin.form": "form" };
+const SYNC_KEYS = { "mytin.profile": "profile", "mytin.profileChat": "profileChat", "mytin.draft": "draft", "mytin.form": "form", "mytin.found": "found" };
 let syncReady = false, syncTimer = null, syncSent = {}; // syncSent: doc key -> JSON last known to match the server
 function localDocs() {
   const out = {};
@@ -793,6 +797,7 @@ async function pullSync() {
     DRAFT = store("mytin.draft");
     FORM = store("mytin.form") || defaultForm();
     if (!store("mytin.form") && hasProfile()) applyProfileToForm(); // a fresh plan starts from the travel profile
+    S.scan.trips = loadFound();
     const list = savedTrips();
     const last = list.find(t => t.id === store("mytin.lastOpened")) || (S.trip && !S.trip.example ? list.find(t => t.id === S.trip.id) : list[0]);
     if (last) S.trip = normalize(last);
@@ -823,6 +828,8 @@ function renderStart() {
       ? '<p class="lede">Planning as <strong>' + esc(persona || "you") + '</strong>. <a href="#profile">See your travel card</a></p>'
       : '<p class="lede"><a href="#profile">Tell us how you travel</a> and every suggestion will fit you better.</p>') +
     draftBanner() +
+    (S.scan.trips.filter(tr => !hasSavedFor(tr)).length ? '<section class="import found-strip" aria-label="Upcoming trips we found"><span class="eyebrow">From your calendar and inbox</span><h2>Upcoming trips we found</h2>' +
+      '<p class="small muted" style="margin:0">Pick one to plan next. They stay here until you plan them or hide them.</p>' + foundList(S.scan.trips.filter(tr => !hasSavedFor(tr))) + "</section>" : "") +
     '<div class="choices">' +
       '<section class="choice" style="--c:var(--l2)"><span class="choice-line" aria-hidden="true"><i></i><i></i><i></i></span><h2>I have a trip coming up</h2>' +
         "<p>Already know where and when? Bring in your flights and hotel, pick what you want to do, and we'll build the days around them.</p>" +
@@ -1702,7 +1709,8 @@ function renderPlan() {
     stepsHTML(1) +
     "<h1>Where to next?</h1>" +
     '<p class="lede">Tell us about the trip, pick the things you most want to do, and place them on your days. We\'ll fill in meals, nearby stops and how to get between them.</p>' +
-    draftBanner() + profileBanner() +
+    (FORM.prefill ? '<div class="banner prefill-note" role="status"><span><strong>We filled in this form from your ' + esc(FORM.prefill.dest) + " bookings.</strong> Fields marked <span class=\"pre-tag\">From your booking</span> came from your calendar and email. Check them, fill in the rest, then continue." +
+      (S.scan.trips.filter(tr => !hasSavedFor(tr) && tr.destination !== FORM.prefill.dest).length ? " Your other upcoming trips are saved on your home screen for later." : "") + '</span><button class="lnk" type="button" data-clear-booked>Start blank instead</button></div>' : draftBanner()) + profileBanner() +
     renderImport("plan") +
     (bk ? '<fieldset><legend>Already booked · we\'ll build around these</legend><ul class="booked-list">' +
       bk.items.map(b => '<li><span class="pill booked">' + esc(b.type || "booking") + "</span><span>" + esc(b.title) + (b.start ? ' <span class="muted">· ' + esc(b.start) + (b.end ? " to " + esc(b.end) : "") + "</span>" : "") + "</span></li>").join("") +
@@ -1756,7 +1764,7 @@ function readForm() {
     mustdo: g("mustdo"), notes: g("notes"), stay: g("stay"), occasionOther: g("occasionOther"), who: g("who"), plans: g("plans"),
     diet: Array.from(f.querySelectorAll('input[name="diet"]:checked')).map(x => x.value),
     dietLevel: Object.fromEntries(Array.from(f.querySelectorAll('input[name="diet"]:checked')).map(x => [x.value, r("lvl-" + x.value.replace(/\W/g, "")) || ((FORM.dietLevel || {})[x.value]) || "restriction"])),
-    booked: FORM.booked || null
+    booked: FORM.booked || null, prefill: FORM.prefill || null
   };
   FORM.travelers = Math.max(FORM.travelers, travelerNames(FORM).length); // four names means at least four travelers
   store("mytin.form", FORM);
@@ -1771,6 +1779,11 @@ function bindPlan() {
     if (cb.checked) f.querySelectorAll('input[name="diet"]').forEach(o => { if (o !== cb && (cb.value === "No restrictions" || o.value === "No restrictions")) o.checked = false; });
     render();
   }));
+  // Tag the fields we filled from the booking, so it's clear what came from where.
+  ((FORM.prefill && FORM.prefill.fields) || []).forEach(k => {
+    const lab = f.querySelector('label[for="' + k + '"]');
+    if (lab && !lab.querySelector(".pre-tag")) { lab.classList.add("pre"); lab.firstChild.after(Object.assign(document.createElement("span"), { className: "pre-tag", textContent: "From your booking" })); }
+  });
   const go = quick => {
     const p = readForm();
     const a = parseDate(p.start), b = parseDate(p.end);
@@ -1952,7 +1965,7 @@ async function generate(p) {
   S.trip = trip; S.day = 0; S.gen = null;
   saveTrip(trip); store("mytin.lastOpened", trip.id);
   if (p.anchors && DRAFT) { DRAFT.tripId = trip.id; saveDraft(); }
-  if (FORM.booked) { FORM.booked = null; store("mytin.form", FORM); } // the next new trip starts clean
+  if (FORM.booked || FORM.prefill) { FORM.booked = null; FORM.prefill = null; store("mytin.form", FORM); } // the next new trip starts clean
   if (hasProfile()) applyProfileToForm(); // ...from the profile, not this trip's tweaks
   S.view = "trip"; render(); window.scrollTo(0, 0);
   toast("Home base chosen. Planning all " + trip.days.length + " days now…");
@@ -2233,6 +2246,7 @@ async function scanTrips(auto) {
       lodgingThreadIds: Array.isArray(tr.lodgingThreadIds) ? tr.lodgingThreadIds.slice(0, 2).map(String) : []
     }));
     S.scan.state = "done";
+    saveFound(S.scan.trips); S.scan.trips = loadFound();
     if (!auto && okSources === 2) store("mytin.autoscan", true);
   } catch (e) {
     if (e && e.code === "not_granted") sampleBlocked = true;
@@ -2246,6 +2260,25 @@ function maybeAutoScan() {
   if (autoTried || !mcpApi || !sampleFn || !store("mytin.autoscan")) return;
   autoTried = true;
   scanTrips(true);
+}
+// Upcoming trips found in Gmail & Calendar, kept so the ones you didn't start are still there later.
+const foundKey = tr => String(tr.destination).toLowerCase() + "|" + tr.startDate;
+function loadFound() {
+  const f = store("mytin.found") || {}, today = isoDate(new Date()), gone = new Set(f.dismissed || []);
+  return (f.trips || []).filter(tr => tr.endDate >= today && !gone.has(foundKey(tr)));
+}
+function saveFound(trips) {
+  const f = store("mytin.found") || {}, byKey = new Map((f.trips || []).map(tr => [foundKey(tr), tr]));
+  trips.forEach(tr => byKey.set(foundKey(tr), Object.assign({}, byKey.get(foundKey(tr)), tr)));
+  const today = isoDate(new Date());
+  store("mytin.found", { trips: [...byKey.values()].filter(tr => tr.endDate >= today).sort((a, b) => a.startDate.localeCompare(b.startDate)).slice(0, 20), dismissed: (f.dismissed || []).slice(-50) });
+}
+function dismissFound(id) {
+  const tr = S.scan.trips.find(x => x.id === id); if (!tr) return;
+  const f = store("mytin.found") || {};
+  store("mytin.found", Object.assign({}, f, { dismissed: (f.dismissed || []).concat(foundKey(tr)) }));
+  S.scan.trips = S.scan.trips.filter(x => x.id !== id); render();
+  toast("Hidden. It won't show up again.");
 }
 function hasSavedFor(tr) {
   const key = String(tr.destination).toLowerCase().split(/[ ,]/)[0];
@@ -2283,12 +2316,14 @@ async function startFromTrip(id) {
     arrive: tr.arriveTime, leave: span > 6 ? "" : tr.leaveTime,
     mustdo: "", notes: "",
     lodging: items.some(b => b.type === "lodging") ? "Hotel" : FORM.lodging,
-    booked: { destination: tr.destination, startDate: tr.startDate, items }
+    booked: { destination: tr.destination, startDate: tr.startDate, items },
+    stay: (items.find(b => b.type === "lodging") || {}).title ? items.find(b => b.type === "lodging").title.replace(/^stay at\s+/i, "") : FORM.stay,
+    prefill: { dest: tr.destination, fields: ["dest", "start", "end"].concat(tr.arriveTime ? ["arrive"] : [], tr.leaveTime && span <= 6 ? ["leave"] : [], items.some(b => b.type === "lodging") ? ["stay"] : []) }
   });
   store("mytin.form", FORM);
   S.formError = "";
   if (location.hash === "#plan") { render(true); window.scrollTo(0, 0); } else location.hash = "plan";
-  toast(span > 6 ? "Prefilled from your bookings. This trip is " + (span + 1) + " days; we'll plan the first 7." : "Prefilled from your bookings. Set your preferences, then build.");
+  toast(span > 6 ? "We filled in the form from your bookings. This trip is " + (span + 1) + " days; we'll plan the first 7." : "We filled in the form from your " + tr.destination + " bookings. Check it, then continue.");
 }
 
 function foundList(trips) {
@@ -2296,7 +2331,7 @@ function foundList(trips) {
     '<div class="found"><span class="eyebrow">' + esc(fmtRange(tr.startDate, tr.endDate)) + '</span><span class="fd">' + esc(tr.destination) + "</span>" +
     (tr.summary ? '<span class="small muted">' + esc(tr.summary) + "</span>" : "") +
     (tr.bookings.length ? "<ul>" + tr.bookings.slice(0, 4).map(b => "<li>" + esc(b.title) + "</li>").join("") + (tr.bookings.length > 4 ? "<li>and " + (tr.bookings.length - 4) + " more</li>" : "") + "</ul>" : "") +
-    '<button class="btn small primary" type="button" data-start-trip="' + esc(tr.id) + '"' + (S.scan.picking ? " disabled" : "") + ">" + (S.scan.picking === tr.id ? "Reading the confirmation email…" : "Start this itinerary") + "</button></div>"
+    '<div class="row2"><button class="btn small primary" type="button" data-start-trip="' + esc(tr.id) + '"' + (S.scan.picking ? " disabled" : "") + ">" + (S.scan.picking === tr.id ? "Reading the confirmation email…" : "Start this itinerary") + '</button><button class="lnk" type="button" data-dismiss-found="' + esc(tr.id) + '">Not a trip</button></div></div>'
   ).join("") + "</div>";
 }
 function renderImport(where) {
@@ -2307,6 +2342,7 @@ function renderImport(where) {
     if (!visible.length) return "";
     return '<section class="import found-strip" aria-label="Upcoming trips"><div class="row2" style="justify-content:space-between"><div><span class="eyebrow">From your calendar and inbox</span><h2>Upcoming trips without an itinerary</h2></div><button class="lnk" type="button" data-autoscan-off>Stop checking automatically</button></div>' + foundList(visible) + "</section>";
   }
+  if (FORM.prefill && where === "plan") return "";
   const avail = mcpApi && sampleFn;
   let inner = '<span class="eyebrow">Already booked?</span><h2>Start from your flights and hotel</h2>' +
     '<p class="small muted" style="margin:0;max-width:64ch">Mytinerary looks through your Google Calendar and Gmail for flights, stays and reservations, groups them into trips, and fills in this form for you. ' +
@@ -2322,9 +2358,10 @@ function renderImport(where) {
   return '<section class="import" id="importPanel">' + inner + "</section>";
 }
 document.addEventListener("click", e => {
-  const t = e.target.closest && e.target.closest("[data-scan],[data-start-trip],[data-clear-booked],[data-autoscan-off],[data-draft-reset],[data-find-trip],[data-open-trip],[data-google-off]");
+  const t = e.target.closest && e.target.closest("[data-dismiss-found],[data-scan],[data-start-trip],[data-clear-booked],[data-autoscan-off],[data-draft-reset],[data-find-trip],[data-open-trip],[data-google-off]");
   if (!t) return;
-  if (t.hasAttribute("data-scan")) scanTrips(false);
+  if (t.hasAttribute("data-dismiss-found")) dismissFound(t.dataset.dismissFound);
+  else if (t.hasAttribute("data-scan")) scanTrips(false);
   else if (t.hasAttribute("data-find-trip")) findTrip();
   else if (t.hasAttribute("data-open-trip")) { S.trip = normalize(savedTrips().find(x => x.id === t.dataset.openTrip)); S.day = 0; store("mytin.lastOpened", S.trip.id); location.hash = "trip"; if (S.view === "trip") route(); }
   else if (t.hasAttribute("data-google-off")) {
@@ -2333,7 +2370,7 @@ document.addEventListener("click", e => {
   }
   else if (t.hasAttribute("data-start-trip")) startFromTrip(t.getAttribute("data-start-trip"));
   else if (t.hasAttribute("data-draft-reset")) { if (confirm("Throw away your wish list and placed picks for " + DRAFT.prefs.dest + "?")) { DRAFT = null; saveDraft(); render(); } }
-  else if (t.hasAttribute("data-clear-booked")) { readForm(); FORM.booked = null; store("mytin.form", FORM); render(true); }
+  else if (t.hasAttribute("data-clear-booked")) { readForm(); const p = FORM.prefill; FORM.booked = null; FORM.prefill = null; if (p) Object.assign(FORM, { dest: "", stay: "", arrive: "", leave: "" }); store("mytin.form", FORM); render(true); }
   else if (t.hasAttribute("data-autoscan-off")) { store("mytin.autoscan", false); S.scan = Object.assign(S.scan, { trips: [], state: "idle" }); render(); toast("Mytinerary won't check your calendar automatically."); }
 });
 
@@ -3296,6 +3333,7 @@ $("#tripsBtn").addEventListener("click", e => {
 document.addEventListener("click", e => { if (!e.target.closest(".menu")) closeMenu(); });
 
 /* ---------- Boot ---------- */
+S.scan.trips = loadFound();
 if (DEMO) $("#demoBar").classList.remove("hidden");
 const last = savedTrips()[0];
 S.trip = normalize(JSON.parse(JSON.stringify(EXAMPLE)));

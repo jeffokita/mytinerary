@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS docs (
 `);
 startDailySnapshots(db, dbPath);
 
-const VALID_KEY = /^(profile|profileChat|draft|form|trip:[\w-]{1,40})$/;
+const VALID_KEY = /^(profile|profileChat|draft|form|found|trip:[\w-]{1,40})$/;
 export function loadDocs(email: string) {
   return (db.prepare("SELECT key, value, updated FROM docs WHERE email = ?").all(email) as { key: string; value: string | null; updated: number }[])
     .map(r => ({ key: r.key, value: r.value == null ? null : JSON.parse(r.value), updated: Number(r.updated) }));
