@@ -645,22 +645,36 @@ function applyPlace(o, g) {
   } else if (meal && lv) { o.cost = /coffee|breakfast/i.test(o.category || "") ? Math.round(lv[0] * 0.6) : lv[0]; o.priceFrom = "google"; }
   return o;
 }
-// Google lists some of Claude's picks as closed: swap each for a real, open place of the same kind in the same slot.
-async function replaceClosed(t) {
-  const bad = [];
-  t.days.forEach((d, di) => d.items.forEach((it, ii) => { if (closedOnGoogle(it)) bad.push({ di, ii, it }); }));
+// Swap specific stops for real, open places of the same kind in the same slot (closed on Google, or repeated on another day).
+async function replaceItems(t, bad, why) {
   if (!bad.length || !sampleFn) return 0;
-  const prompt = "You fix a Mytinerary itinerary. Google Maps lists these places as closed, so replace each one with a real, currently open place of the same kind, near the stops before and after it, in the same time slot.\n\nTRIP\n" + tripContext(t) + "\n\n" +
-    bad.map((b, k) => k + ". Day " + (b.di + 1) + " (" + t.days[b.di].date + ") " + b.it.time + "-" + (b.it.end || "") + " " + (b.it.category || b.it.kind) + ": " + b.it.name + "\nThat day's plan:\n" + dayList(t.days[b.di])).join("\n\n") +
+  const prompt = "You fix a Mytinerary itinerary. " + why + " Replace each one with a different real, currently open place of the same kind, near the stops before and after it, in the same time slot, and not used anywhere else in the trip.\n\nTRIP\n" + tripContext(t) +
+    "\n\nPLACES ALREADY IN THE TRIP (don't use these)\n" + t.days.map(d => d.items.map(i => i.name).join(", ")).join("\n") + "\n\n" +
+    bad.map((x, k) => k + ". Day " + (x.di + 1) + " (" + t.days[x.di].date + ") " + x.it.time + "-" + (x.it.end || "") + " " + (x.it.category || x.it.kind) + ": " + x.it.name + "\nThat day's plan:\n" + dayList(t.days[x.di])).join("\n\n") +
     "\n\nReply with ONLY a JSON array with one replacement per numbered item, in order, each shaped like:\n" + ITEM_SHAPE;
-  const arr = await sampleFn.json(prompt, { modelTier: "default", cache: false }).catch(() => null);
+  const arr = await sampleFn.json(prompt, { modelTier: "quick", cache: false }).catch(() => null);
   if (!Array.isArray(arr)) return 0;
-  const reps = bad.map((b, k) => arr[k] && arr[k].name ? Object.assign(normItem(arr[k]), { time: b.it.time, end: b.it.end, transitFromPrev: b.it.transitFromPrev, anchor: b.it.anchor, who: b.it.who }) : null);
+  const reps = bad.map((x, k) => arr[k] && arr[k].name ? Object.assign(normItem(arr[k]), { time: x.it.time, end: x.it.end, transitFromPrev: x.it.transitFromPrev, anchor: false, who: x.it.who }) : null);
   const live = reps.filter(Boolean), res = await placesMatch(t.destination, live);
   if (res) live.forEach((r, i) => applyPlace(r, res[i]));
   let n = 0;
   reps.forEach((r, i) => { if (r && !closedOnGoogle(r)) { t.days[bad[i].di].items[bad[i].ii] = r; n++; } });
   return n;
+}
+async function replaceClosed(t) {
+  const bad = [];
+  t.days.forEach((d, di) => d.items.forEach((it, ii) => { if (closedOnGoogle(it)) bad.push({ di, ii, it }); }));
+  return replaceItems(t, bad, "Google Maps lists these places as closed.");
+}
+// Days are planned in parallel, so two days can pick the same spot. Keep the first, swap the later ones (never anchors or the hotel).
+async function fixRepeats(t) {
+  const seen = new Set(), bad = [];
+  t.days.forEach((d, di) => d.items.forEach((it, ii) => {
+    if (["transit", "lodging", "free"].includes(it.kind) || !it.name) return;
+    const k = it.name.toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]+/g, " ").trim();
+    if (seen.has(k) && !it.anchor) bad.push({ di, ii, it }); else seen.add(k);
+  }));
+  return replaceItems(t, bad, "These places are repeated from an earlier day of the same trip.");
 }
 const closedOnGoogle = o => o.gStatus === "CLOSED_PERMANENTLY" || o.gStatus === "CLOSED_TEMPORARILY";
 async function enrichTrip(t) {
@@ -1087,7 +1101,7 @@ async function mountMap(slot, data) {
   const { AdvancedMarkerElement } = await maps.importLibrary("marker");
   if (!gm) {
     const el = document.createElement("div"); el.className = "gmap";
-    gm = { el, map: new maps.Map(el, { mapId: GMAP_ID, disableDefaultUI: true, zoomControl: true, gestureHandling: "cooperative", clickableIcons: false }), overlays: [], pins: {} };
+    gm = { el, map: new maps.Map(el, { mapId: GMAP_ID, colorScheme: maps.ColorScheme ? maps.ColorScheme.FOLLOW_SYSTEM : undefined, disableDefaultUI: true, zoomControl: true, gestureHandling: "cooperative", clickableIcons: false }), overlays: [], pins: {} };
   }
   slot.appendChild(gm.el);
   gm.overlays.forEach(o => { if (o.setMap) o.setMap(null); else o.map = null; });
@@ -1868,15 +1882,24 @@ function dayPrompt(t, di) {
     "- Keep the day in one part of town, close to its anchors, so it doesn't zigzag.\n" +
     "- Meals are fixed points; activities flex between them. Breakfast or coffee, lunch and dinner on full days; drinks if nightlife >= 3. Respect daily hours and dietary needs.\n" +
     "- Include a free-time block so the day can breathe. Every item after the first has transitFromPrev with a realistic mode and minutes. Order by time.\n" +
+    "- No two items may overlap in time, unless it's a split: both have non-empty who lists with no names in common.\n" +
+    "- Getting between places is never its own item: put the drive, ride or walk in the next item's transitFromPrev. Arrive and Depart items are only for the trip's first arrival and final departure.\n" +
     "- booking: \"now\" for things that sell out, \"daybefore\" for reservations that rarely fill, \"walkin\", or \"none\".\n" +
     extraRules(p) + "\n\n" +
     'Reply with ONLY one JSON object: {"date":"' + date + '","title":"3-6 words","pitch":"1-2 sentences","items":[' + ITEM_SHAPE + "]}";
 }
 async function planDay(t, di, signal) {
-  const nd = await sampleFn.json(dayPrompt(t, di), { signal, modelTier: "default", cache: false });
+  const nd = await sampleFn.json(dayPrompt(t, di), { signal, modelTier: "quick", cache: false });
   if (!nd || !Array.isArray(nd.items) || !nd.items.length) throw { code: "invalid_json" };
   nd.items.forEach(normItem);
   nd.items.sort((a, b) => (toMin(a.time) ?? 0) - (toMin(b.time) ?? 0));
+  // A "drive to the arena" item mid-trip becomes the next stop's travel leg instead.
+  const n = t.days.length;
+  nd.items = nd.items.filter((it, k, arr) => {
+    const keep = it.kind !== "transit" || (di === 0 && k === 0) || (di === n - 1 && k === arr.length - 1);
+    if (!keep && arr[k + 1]) arr[k + 1].transitFromPrev = { mode: /walk/i.test(it.name) ? "walk" : "drive", minutes: Math.max(5, (toMin(it.end) ?? 0) - (toMin(it.time) ?? 0)) || 15 };
+    return keep;
+  });
   t.days[di] = { date: t.days[di].date, title: nd.title || t.days[di].title, pitch: nd.pitch || "", items: nd.items };
 }
 async function retryDay(di) {
@@ -1929,6 +1952,8 @@ async function generate(p) {
     saveTrip(trip);
     if (S.trip === trip && S.view === "trip") render();
   }));
+  const repeats = await fixRepeats(trip);
+  if (repeats) { saveTrip(trip); if (S.trip === trip && S.view === "trip") render(); }
   const failed = trip.days.filter(d => d.failed).length;
   toast(failed ? failed + (failed === 1 ? " day" : " days") + " didn't come back. Tap Try again on " + (failed === 1 ? "it" : "them") + "." : "Your trip is ready and saved to My trips.");
   if (PLACES) enrichTrip(trip);
@@ -2369,7 +2394,10 @@ function mockSample() {
     } else if (prompt.startsWith("You are the trip designer")) {
       out = JSON.parse(JSON.stringify(EXAMPLE)); delete out.example; out.id = undefined; out.destination = (/"destination":"([^"]*)"/.exec(prompt) || [])[1] || "San Francisco";
       out.homeBase.booked = true; out.dayThemes = EXAMPLE.days.map(d => d.title); delete out.days;
-    } else if (prompt.startsWith("You fix a Mytinerary itinerary")) out = []; else if (prompt.startsWith("You are the travel-profile interviewer")) out = mockProfileTurn(prompt);
+    } else if (prompt.startsWith("You fix a Mytinerary itinerary")) {
+      const n = (prompt.match(/^\d+\. Day /gm) || []).length;
+      out = Array.from({ length: n }, (_, k) => ({ time: "12:00", kind: "activity", category: "Museum", name: "Replacement stop " + (k + 1), neighborhood: "Downtown", lat: 37.79, lng: -122.4, why: "Not used elsewhere in the trip." }));
+    } else if (prompt.startsWith("You are the travel-profile interviewer")) out = mockProfileTurn(prompt);
     else if (prompt.startsWith("You are the trip inspiration editor")) out = { ideas: [
       { destination: "Oaxaca, Mexico", title: "Mole, Mezcal and Markets", pitch: "Seven moles, smoky mezcal and a market on every corner.", why: "A food-first trip with a morning hike to Hierve el Agua.", tags: ["food", "markets", "hiking"], days: "4-5 days", bestMonths: "Oct–Apr", getThere: "4h flight from Los Angeles", dailyCost: 180, sampleDay: [{ time: "08:00", name: "Mercado 20 de Noviembre", what: "Breakfast tlayudas" }, { time: "11:00", name: "Templo de Santo Domingo", what: "Church and garden" }, { time: "14:00", name: "In Situ Mezcalería", what: "Tasting flight" }, { time: "20:00", name: "Criollo", what: "Tasting menu" }] },
       { destination: "Asheville, North Carolina", title: "Blue Ridge Eats and Trails", pitch: "Mountain hikes by day, biscuits and craft beer by night.", why: "Hiking plus a serious food scene, without crowds.", tags: ["outdoors", "food"], days: "3-4 days", bestMonths: "Apr–Jun, Sep–Oct", getThere: "5h flight from Los Angeles", dailyCost: 260, sampleDay: [{ time: "08:30", name: "Biscuit Head", what: "Breakfast" }, { time: "10:00", name: "Craggy Gardens Trail", what: "Ridge hike" }, { time: "15:00", name: "River Arts District", what: "Studios" }, { time: "19:30", name: "Cúrate", what: "Spanish tapas" }] },
