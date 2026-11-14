@@ -459,6 +459,19 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 @media (prefers-reduced-motion: reduce) { .wait-steps li.now .st, .skel > div, .skel-rows > div { animation: none; } }
 .pill.only { justify-self: start; border-color: var(--accent); color: var(--accent); font-weight: 600; }
 
+/* Anchor board: why we anchor */
+.anchor-why { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 22px; align-items: center; margin: 18px 0 4px; border-left: 4px solid var(--l2); }
+@media (max-width: 760px) { .anchor-why { grid-template-columns: 1fr; } }
+.anchor-why h2 { font-family: var(--display); font-weight: 600; font-size: 22px; margin-bottom: 6px; }
+.anchor-why p { margin: 0 0 10px; font-size: 15px; }
+.aw-points { margin: 0 0 14px; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; color: var(--muted); }
+.aw-points b { color: var(--ink); }
+.aw-pics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.aw-pics figure { margin: 0; display: grid; gap: 6px; }
+.aw-pics svg { width: 100%; height: auto; background: var(--paper); border-radius: 10px; }
+.aw-pics figcaption { font-size: 12px; color: var(--muted); line-height: 1.3; }
+.anchor-why-link { margin: 10px 0 0; }
+
 /* Anchor board: placeholders and routines */
 .ph-row { display: grid; gap: 6px; }
 .ph-add { cursor: pointer; background: var(--card); font-family: var(--body); font-size: 13px; }
@@ -2995,11 +3008,11 @@ function renderWish() {
   return '<div class="wrap planflow">' + stepsHTML(2) +
     '<h1 class="pf-title">What do you want to do in ' + esc(p.dest) + "?</h1>" +
     (d.weather ? '<p class="wx-line">' + draftDays().map(x => d.weather.days[x] ? "<span>" + esc(fmtDay(x).split(" ")[0]) + " " + wxChip(d.weather.days[x]) + "</span>" : "").join("") + "</p>" : "") +
-    '<p class="lede">The top things to do, ranked for you. Add anything that looks good. Aim for at least ' + n + " (one per day); next you'll place them on your days.</p>" +
+    '<p class="lede">The top things to do, ranked for you. Add the things you\'d plan a day around: <strong>one, maybe two, per day</strong>. Those become your anchors, and we fill in meals and nearby stops around them so each day stays in one part of town.</p>' +
     '<div class="grid"><section aria-label="Ideas">' + main + '</section><aside class="rail">' +
       planMap("Where everything is", pts, [], d.home, '<span><i style="background:var(--accent)"></i>On your wish list</span><span><i style="background:var(--muted)"></i>Other ideas</span>' + (d.home ? '<span><i style="background:var(--ink);width:10px;height:10px"></i>Where you\'re staying</span>' : "")) +
     "</aside></div></div>" +
-    '<div class="nextbar"><div class="wrap"><span><strong>' + k + " picked</strong>" + (k < n ? " · aim for at least " + n : " · nice") + "</span>" +
+    '<div class="nextbar"><div class="wrap"><span><strong>' + k + " picked</strong>" + (k < n ? " · aim for one or two per day (" + n + "–" + 2 * n + ")" : k <= 2 * n ? " · great, that's one or two per day" : " · plenty: extras become ideas for filling in") + "</span>" +
       (k ? '<a class="btn primary" href="#anchors">Plan my days →</a>' : '<button class="btn primary" disabled>Plan my days →</button>') + "</div></div>";
 }
 function appendChips(box, names) {
@@ -3057,6 +3070,23 @@ function lanes(ids) {
   close();
   return out;
 }
+// Why anchors: shown the first time someone reaches the board, then tucked behind a link.
+function anchorExplainer() {
+  const open = !store("mytin.anchorTipSeen");
+  if (!open) return '<p class="anchor-why-link"><button class="lnk" type="button" id="anchorWhyOpen">How anchoring works</button></p>';
+  const zig = '<svg viewBox="0 0 120 80" aria-hidden="true"><polyline points="12,62 98,16 22,22 104,66 60,40" fill="none" stroke="var(--muted)" stroke-width="2.5" stroke-dasharray="4 4" stroke-linejoin="round"/>' +
+    [[12, 62], [98, 16], [22, 22], [104, 66], [60, 40]].map(([x, y]) => '<circle cx="' + x + '" cy="' + y + '" r="5" fill="var(--card)" stroke="var(--muted)" stroke-width="2.5"/>').join("") + "</svg>";
+  const hub = '<svg viewBox="0 0 120 80" aria-hidden="true"><circle cx="60" cy="40" r="30" fill="color-mix(in srgb, var(--l2) 10%, transparent)"/><polyline points="38,28 48,52 60,40 74,54 82,30" fill="none" stroke="var(--l2)" stroke-width="2.5" stroke-linejoin="round"/>' +
+    [[38, 28], [48, 52], [74, 54], [82, 30]].map(([x, y]) => '<circle cx="' + x + '" cy="' + y + '" r="5" fill="var(--card)" stroke="var(--l2)" stroke-width="2.5"/>').join("") +
+    '<circle cx="60" cy="40" r="9" fill="var(--l2)"/><text x="60" y="44" text-anchor="middle" font-size="10" font-weight="700" fill="var(--on-c)">★</text></svg>';
+  return '<section class="panel anchor-why" aria-label="Why we anchor each day"><div class="aw-text"><h2>Why we anchor each day</h2>' +
+    "<p>Pick <strong>one, maybe two, things you really want to do</strong> each day. Those are your anchors. Then we plan everything else around them.</p>" +
+    '<ol class="aw-points"><li><b>The big things come first.</b> Your must-dos get the best time slots, not whatever is left over.</li>' +
+    "<li><b>One part of town per day.</b> Meals and extra stops are picked near each day's anchor, so you aren't crossing the city and back.</li>" +
+    "<li><b>Less driving, more doing.</b> Keeping a day in one area saves hours of back-and-forth over a trip.</li></ol>" +
+    '<button class="btn small" type="button" id="anchorWhyClose">Got it</button></div>' +
+    '<div class="aw-pics"><figure>' + zig + "<figcaption>Without anchors: zigzagging across town</figcaption></figure><figure>" + hub + "<figcaption>With an anchor: the day stays close by</figcaption></figure></div></section>";
+}
 function ancCard(c, di, gs, ln) {
   const pl = DRAFT.place[c.id], s = toMin(pl.start), iss = issuesAt(c, di, s);
   const h = Math.max(c.minutes / 60 * PXH, 34);
@@ -3113,7 +3143,8 @@ function renderAnchors() {
   const paths = days.map((_, di) => ({ color: lineVar(di), pts: placedIds.filter(id => d.place[id].day === di).sort((a, b) => toMin(d.place[a].start) - toMin(d.place[b].start)).map(candById) }));
   const sums = days.map((date, di) => { const [names, note, far] = spreadText(di); return '<div style="--c:' + lineVar(di) + '"><span class="bullet">' + (di + 1) + "</span><span><strong>" + esc(fmtDay(date)) + "</strong> " + esc(names) + (note ? '<br><span class="' + (far ? "far" : "muted") + '">' + esc(note) + "</span>" : "") + "</span></div>"; }).join("");
   return head +
-    '<p class="lede">Drag each pick to a day and time. We started you off with a layout that keeps each day in one part of town. While you drag, green bands show when a place is usually open.</p>' +
+    anchorExplainer() +
+    '<p class="lede">Drag each pick to a day and time. We started you off with one or two anchors per day, each day in its own part of town. While you drag, green bands show when a place is usually open.</p>' +
     '<div class="grid wide"><section aria-label="Days">' +
       '<section class="panel tray" id="tray" aria-label="Wish list, not yet placed"><h3>Wish list <small>' + (unplaced.length ? "drag onto a day, or tap to place" : "everything is placed · drag a card here to unschedule it") + "</small></h3>" +
         '<div class="tray-items">' + unplaced.map(trayItem).join("") + "</div>" +
@@ -3153,6 +3184,8 @@ function bindAnchors() {
     toast(r.left ? "Placed " + r.placed + ". " + r.left + " didn't fit, so they'll be ideas when we fill in." : "Laid out " + r.placed + " picks, keeping each day in one area.");
   });
   const fb = $("#fillBtn"); if (fb) fb.addEventListener("click", fillTrip);
+  const awc = $("#anchorWhyClose"); if (awc) awc.addEventListener("click", () => { store("mytin.anchorTipSeen", true); render(); });
+  const awo = $("#anchorWhyOpen"); if (awo) awo.addEventListener("click", () => { store("mytin.anchorTipSeen", false); render(); });
   document.querySelectorAll("[data-ph]").forEach(b => b.addEventListener("click", () => { const [n, m, c, f] = PLACEHOLDERS[+b.dataset.ph]; addPlaceholder(n, m, c, f); }));
   const pc = $("#phCustom"); if (pc) pc.addEventListener("submit", e => { e.preventDefault(); const n = $("#phName").value.trim(); if (n) addPlaceholder(n[0].toUpperCase() + n.slice(1), 60, "Experiences", true); });
 }
