@@ -1897,8 +1897,14 @@ async function planDay(t, di, signal) {
   nd.items.sort((a, b) => (toMin(a.time) ?? 0) - (toMin(b.time) ?? 0));
   // A "drive to the arena" item mid-trip becomes the next stop's travel leg instead.
   const n = t.days.length;
+  const isArrive = it => it.kind === "transit" && /arriv/i.test((it.category || "") + " " + it.name);
+  const isDepart = it => it.kind === "transit" && /depart|fly home|flight home/i.test((it.category || "") + " " + it.name);
+  if (di === n - 1) { // nothing happens in the city after the flight home
+    const dep = nd.items.find(isDepart);
+    if (dep) nd.items = nd.items.filter(it => it === dep || (toMin(it.time) ?? 0) < (toMin(dep.time) ?? 1440));
+  }
   nd.items = nd.items.filter((it, k, arr) => {
-    const keep = it.kind !== "transit" || (di === 0 && k === 0) || (di === n - 1 && k === arr.length - 1);
+    const keep = it.kind !== "transit" || (di === 0 && (k === 0 || isArrive(it))) || (di === n - 1 && (k === arr.length - 1 || isDepart(it)));
     if (!keep && arr[k + 1]) arr[k + 1].transitFromPrev = { mode: /walk/i.test(it.name) ? "walk" : "drive", minutes: Math.max(5, (toMin(it.end) ?? 0) - (toMin(it.time) ?? 0)) || 15 };
     return keep;
   });
