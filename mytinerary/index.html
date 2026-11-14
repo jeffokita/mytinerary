@@ -472,6 +472,37 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .aw-pics figcaption { font-size: 12px; color: var(--muted); line-height: 1.3; }
 .anchor-why-link { margin: 10px 0 0; }
 
+/* Plan your days: suggestions panel */
+.sug { display: grid; gap: 10px; }
+.sug-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rule); margin: -4px 0 2px; }
+.sug-tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 6px 10px 8px; font: 600 14px var(--body); color: var(--muted); cursor: pointer; }
+.sug-tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.sug-hint { margin: 0; }
+.sug-cats { margin: 0; }
+.sug-cats button { padding: 4px 10px; font-size: 12px; }
+.sug-list { display: grid; gap: 4px; max-height: 62vh; overflow-y: auto; margin: 0 -6px; padding: 0 6px; }
+.sug-item { border-left-color: transparent; }
+.sug-item.added { border-left-color: var(--c); }
+.sug-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 6px 4px; border-radius: 8px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.sug-row:hover { background: var(--paper); }
+.sug-row img, .sug-row .pick-dot { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; display: block; }
+.sug-txt { display: grid; gap: 1px; min-width: 0; }
+.sug-txt b { font-size: 14px; font-weight: 600; line-height: 1.25; }
+.sug-txt small { font-size: 12px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sug-txt .pill.only { justify-self: start; font-size: 10px; padding: 1px 6px; }
+.sug-meta { font-family: var(--mono); font-size: 11px !important; color: var(--muted); }
+.sug-add { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--ink); background: var(--card); font-size: 18px; line-height: 1; cursor: pointer; }
+.sug-add:hover { background: var(--ink); color: var(--paper); }
+.sug-state { font-family: var(--mono); font-size: 11px; color: var(--c); font-weight: 600; white-space: nowrap; }
+.sug .chev { background: none; border: 0; cursor: pointer; padding: 4px; }
+.sug-foot { display: grid; gap: 8px; }
+.sug .wait-steps { font-size: 14px; }
+.sug .wait-qs { gap: 10px; }
+.sug .wait-q .filters button { padding: 4px 10px; font-size: 12px; }
+.sug-row.lifted { opacity: .35; }
+.pick-item.sug-item:not(.added) { border-left-color: transparent; }
+#topPicks { justify-self: start; }
+
 /* Anchor board: pick reminders */
 .pick-card { position: fixed; z-index: 72; width: 280px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,.18); pointer-events: none; }
 .pd-photo { display: block; width: 100%; height: 130px; object-fit: cover; background: var(--paper); }
@@ -1442,7 +1473,7 @@ function normItem(it) {
 /* ---------- Routing ---------- */
 function route() {
   const h = location.hash.replace("#", "");
-  S.view = ["plan", "profile", "start", "discover"].includes(h) ? h : (h === "wish" || h === "anchors") ? (DRAFT ? h : "plan") : S.gen ? "gen" : homeView();
+  S.view = ["plan", "profile", "start", "discover"].includes(h) ? h : (h === "wish" || h === "anchors") ? (DRAFT ? "anchors" : "plan") : S.gen ? "gen" : homeView();
   if (S.view === "anchors" && !DRAFT.suggested && !Object.keys(DRAFT.place).length && DRAFT.wish.length) { placeRoutines(); suggestPlan(false); DRAFT.suggested = true; saveDraft(); }
   else if (S.view === "anchors" && DRAFT) placeRoutines();
   render();
@@ -1459,7 +1490,6 @@ function render(fresh) {
   updateWho();
   if (HOSTED && !ME && !S.shared) { app.innerHTML = renderLogin(); bindLogin(); return; }
   if (S.view === "plan") app.innerHTML = renderPlan();
-  else if (S.view === "wish") app.innerHTML = renderWish();
   else if (S.view === "anchors") app.innerHTML = renderAnchors();
   else if (S.view === "gen" && S.gen) app.innerHTML = renderGen();
   else if (S.view === "profile") app.innerHTML = renderProfile();
@@ -1468,7 +1498,6 @@ function render(fresh) {
   else app.innerHTML = renderTrip();
   if (S.view === "plan") bindPlan();
   if (S.view === "profile") bindProfile();
-  if (S.view === "wish") bindWish();
   if (S.view === "discover") bindDiscover();
   if (S.view === "anchors") bindAnchors();
   if ($(".board-scroll")) $(".board-scroll").scrollLeft = bsl;
@@ -2831,7 +2860,7 @@ function startWish(p) {
     S.wishCat = "All";
   }
   saveDraft();
-  location.hash = "wish";
+  location.hash = "anchors";
   if (!DRAFT.cands.length) loadCandidates(false);
 }
 async function loadCandidates(more) {
@@ -2870,7 +2899,7 @@ async function loadCandidates(more) {
     if (e && e.code === "not_granted") sampleBlocked = true;
     S.wishLoad = { busy: false, names: [], err: wishErrorCopy(e) };
   }
-  if (S.view === "wish") render();
+  if (S.view === "anchors") render();
 }
 async function lookupPlace(q) {
   q = String(q || "").trim();
@@ -2894,7 +2923,7 @@ async function lookupPlace(q) {
     if (e && e.code === "not_granted") sampleBlocked = true;
     S.wishLook = { busy: false, err: wishErrorCopy(e) };
   }
-  if (S.view === "wish") render();
+  if (S.view === "anchors") render();
 }
 
 // Lay out unplaced wish-list items: hardest-to-fit first, each to the day whose picks are closest, capped by pace.
@@ -2961,23 +2990,6 @@ const WAIT_QS = [
   ["splurge", "One splurge meal on this trip?", ["Yes, make it special", "Keep it casual"]],
   ["vibe", "This trip, you want to…", ["See the highlights", "Live like a local", "A bit of both"]]
 ];
-function waitHTML(p) {
-  const L = S.wishLoad || {}, x = (DRAFT && DRAFT.extra) || {};
-  const found = (L.names || []).length, checking = !!L.status;
-  const step = (txt, state) => '<li class="' + state + '"><span class="st"></span>' + txt + "</li>";
-  return '<div class="wait">' +
-    '<div class="wait-head"><ol class="wait-steps">' +
-      step("Reading your travel profile", "done") +
-      step("Finding the best of " + esc(p.dest) + (found ? " · " + found + " so far" : ""), checking ? "done" : "now") +
-      step(PLACES ? "Checking hours and photos on Google Maps" : "Checking the details", checking ? "now" : "") +
-      step("Ranking them for you", "") +
-    '</ol><div class="gen-line"><i id="wishBar" style="width:6%"></i></div><div class="gen-stops" id="wishNames"></div><p class="gen-status" id="wishStatus">This takes about a minute. Hold tight, and help us tune it while you wait.</p></div>' +
-    '<section class="wait-qs"><h2 class="sec-h">While we look: a few quick questions</h2>' +
-      WAIT_QS.map(([k, q, opts]) => '<div class="wait-q"><div class="qlabel">' + q + '</div><div class="filters" role="group">' + opts.map(o => '<button type="button" data-wq="' + k + '" data-v="' + esc(o) + '" aria-pressed="' + (x[k] === o) + '">' + esc(o) + "</button>").join("") + "</div></div>").join("") +
-      '<label class="f" for="wqFor">Anything you\'d cross town for? <input class="inp" id="wqFor" value="' + esc(x.crossTown || "") + '" placeholder="e.g. the best tacos, a speakeasy, a great view"></label>' +
-    "</section>" +
-    '<div class="wish-grid skel" aria-hidden="true">' + "<div></div>".repeat(6) + "</div></div>";
-}
 function extraText(x) {
   if (!x) return "";
   const L = [];
@@ -3023,7 +3035,7 @@ function routineBlocks(di, shiftHours) {
 
 /* ---------- Planning views ---------- */
 function stepsHTML(n) {
-  const steps = [["plan", "Trip"], ["wish", "Wish list"], ["anchors", "Anchor days"], ["", "Itinerary"]];
+  const steps = [["plan", "Trip"], ["anchors", "Plan your days"], ["", "Itinerary"]];
   return '<ol class="steps">' + steps.map(([h, l], i) => {
     const st = i + 1 < n ? "done" : i + 1 === n ? "cur" : "";
     const inner = '<span class="n">' + (i + 1) + "</span>" + l;
@@ -3033,7 +3045,7 @@ function stepsHTML(n) {
 function draftBanner() {
   if (!DRAFT || !DRAFT.cands.length) return "";
   const placed = Object.keys(DRAFT.place).length;
-  return '<div class="banner prof-banner"><span><strong>You\'re planning ' + esc(DRAFT.prefs.dest) + ".</strong> " + DRAFT.wish.length + " on your wish list" + (placed ? ", " + placed + " placed on days" : "") + '.</span><span class="row2"><button class="lnk" type="button" data-draft-reset>Start fresh</button><a class="btn small primary" href="#' + (placed ? "anchors" : "wish") + '">Continue</a></span></div>';
+  return '<div class="banner prof-banner"><span><strong>You\'re planning ' + esc(DRAFT.prefs.dest) + ".</strong> " + (placed ? placed + " things on your days so far" : "Your suggestions are ready") + '.</span><span class="row2"><button class="lnk" type="button" data-draft-reset>Start fresh</button><a class="btn small primary" href="#anchors">Continue</a></span></div>';
 }
 // Plain-grid map shared by the planning steps (basemap tiles aren't allowed in the page).
 function planMap(label, points, paths, home, legend) {
@@ -3062,53 +3074,6 @@ function planMap(label, points, paths, home, legend) {
   return '<section class="panel map"><h3>' + esc(label) + "</h3>" + svg + "</svg>" + (legend ? '<div class="map-legend">' + legend + "</div>" : "") + "</section>";
 }
 
-function tileHTML(c) {
-  const photo = c.photo && PLACES ? ' style="background-image:linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.72)), url(&quot;/api/places/photo?name=' + encodeURIComponent(c.photo) + '&amp;w=640&quot;)"' : "";
-  return '<div class="tile' + (photo ? " photo" : "") + '" aria-hidden="true"' + photo + '><span class="tile-cat">' + esc(c.category) + '</span><span class="tile-name">' + esc(c.name) + '</span><span class="tile-line"><i></i><i></i><i></i></span><span class="tile-hood">' + esc(c.neighborhood || " ") + "</span></div>";
-}
-function wishCard(c) {
-  const on = DRAFT.wish.includes(c.id), hs = hoursSummary(c);
-  return '<article class="wcard' + (on ? " on" : "") + '" data-pin="' + c.id + '" style="--c:var(' + CATS[c.category] + ')">' + tileHTML(c) +
-    '<div class="wbody"><h2 class="hidden">' + esc(c.name) + "</h2>" +
-      (c.unique ? '<span class="pill only">Only in ' + esc(String(DRAFT.prefs.dest).split(",")[0]) + "</span>" : "") +
-      (c.fitWhy ? '<span class="fitwhy">' + esc(c.fitWhy) + "</span>" : c.mine ? '<span class="fitwhy">Your idea</span>' : "") +
-      (c.why ? '<p class="why">' + esc(c.why) + "</p>" : "") +
-      (c.verified === false && PLACES ? '<span class="unverified">Not found on Google Maps. Double-check it exists.</span>' : "") +
-      '<div class="wmeta">' + (typeof c.rating === "number" ? "<span>★ " + c.rating.toFixed(1) + (c.ratingCount ? " · " + c.ratingCount.toLocaleString() + " Google reviews" : "") + "</span>" : "") +
-        (hs ? "<span>" + esc(hs) + (PLACES && c.hoursFrom !== "google" ? " (estimated)" : "") + "</span>" : "") + "<span>~" + durText(c.minutes) + " · " + (c.cost ? "~" + money(c.cost) + "/person" : "Free") + (c.booking === "now" ? " · Book ahead" : "") + "</span></div>" +
-      '<div class="foot"><button class="btn small' + (on ? " primary" : "") + '" data-wish="' + c.id + '" aria-pressed="' + on + '">' + (on ? "✓ On your list" : "+ Add to wish list") + "</button>" + (c.mapsUrl ? '<a class="lnk" href="' + esc(c.mapsUrl) + '" target="_blank" rel="noopener">Google Maps</a>' : "") + "</div>" +
-    "</div></article>";
-}
-function renderWish() {
-  const d = DRAFT, p = d.prefs, n = draftDays().length, L = S.wishLoad;
-  const real = d.cands.filter(c => !c.placeholder);
-  const cats = ["All"].concat(Object.keys(CATS).filter(k => real.some(c => c.category === k)));
-  if (!cats.includes(S.wishCat)) S.wishCat = "All";
-  const list = real.filter(c => S.wishCat === "All" || c.category === S.wishCat);
-  let main;
-  if (L && L.busy && !L.more) {
-    main = waitHTML(p);
-  } else if (!real.length) {
-    main = '<p class="err">' + esc((L && L.err) || "No ideas yet.") + '</p><button class="btn" id="wishRetry">Try again</button>';
-  } else {
-    main = '<div class="filters" role="group" aria-label="Filter by type">' + cats.map(k => '<button type="button" data-cat="' + esc(k) + '" aria-pressed="' + (S.wishCat === k) + '">' + esc(k) + "</button>").join("") + "</div>" +
-      '<div class="wish-grid">' + list.map(wishCard).join("") + "</div>" +
-      '<div class="wish-more"><button class="btn" id="moreBtn"' + (L && L.busy ? " disabled" : "") + ">" + (L && L.busy ? "Finding more…" : "Show me more ideas") + "</button>" +
-        '<form class="look" id="lookForm"><label for="lookInput" class="hidden">Add a place you already have in mind</label><input id="lookInput" placeholder="Something else in mind? e.g. a friend\'s favorite bar" autocomplete="off"><button class="btn" type="submit"' + (S.wishLook.busy ? " disabled" : "") + ">" + (S.wishLook.busy ? "Looking…" : "Add") + "</button></form></div>" +
-      (L && L.err ? '<p class="err">' + esc(L.err) + "</p>" : "") + (S.wishLook.err ? '<p class="err">' + esc(S.wishLook.err) + "</p>" : "");
-  }
-  const pts = real.map(c => { const on = d.wish.includes(c.id); return { id: c.id, lat: c.lat, lng: c.lng, title: c.name, color: on ? "var(--accent)" : "var(--muted)", filled: on }; });
-  const k = d.wish.length;
-  return '<div class="wrap planflow">' + stepsHTML(2) +
-    '<h1 class="pf-title">What do you want to do in ' + esc(p.dest) + "?</h1>" +
-    (d.weather ? '<p class="wx-line">' + draftDays().map(x => d.weather.days[x] ? "<span>" + esc(fmtDay(x).split(" ")[0]) + " " + wxChip(d.weather.days[x]) + "</span>" : "").join("") + "</p>" : "") +
-    '<p class="lede">The top things to do, ranked for you. Add the things you\'d plan a day around: <strong>one, maybe two, per day</strong>. Those become your anchors, and we fill in meals and nearby stops around them so each day stays in one part of town.</p>' +
-    '<div class="grid"><section aria-label="Ideas">' + main + '</section><aside class="rail">' +
-      planMap("Where everything is", pts, [], d.home, '<span><i style="background:var(--accent)"></i>On your wish list</span><span><i style="background:var(--muted)"></i>Other ideas</span>' + (d.home ? '<span><i style="background:var(--ink);width:10px;height:10px"></i>Where you\'re staying</span>' : "")) +
-    "</aside></div></div>" +
-    '<div class="nextbar"><div class="wrap"><span><strong>' + k + " picked</strong>" + (k < n ? " · aim for one or two per day (" + n + "–" + 2 * n + ")" : k <= 2 * n ? " · great, that's one or two per day" : " · plenty: extras become ideas for filling in") + "</span>" +
-      (k ? '<a class="btn primary" href="#anchors">Plan my days →</a>' : '<button class="btn primary" disabled>Plan my days →</button>') + "</div></div>";
-}
 function appendChips(box, names) {
   for (let i = box.children.length; i < names.length; i++) { const c = document.createElement("span"); c.className = "chip"; c.textContent = names[i]; box.appendChild(c); }
 }
@@ -3118,24 +3083,6 @@ function updateWishLoad() {
   $("#wishBar").style.width = Math.min(95, 6 + S.wishLoad.names.length / 19 * 90) + "%";
   if (S.wishLoad.status) { $("#wishStatus").textContent = S.wishLoad.status; const st = document.querySelectorAll(".wait-steps li"); if (st[1]) st[1].className = "done"; if (st[2]) st[2].className = "now"; }
   else if (S.wishLoad.names.length) { const st = document.querySelectorAll(".wait-steps li"); if (st[1]) st[1].innerHTML = '<span class="st"></span>Finding the best of ' + esc(DRAFT.prefs.dest) + " · " + S.wishLoad.names.length + " so far"; }
-}
-function bindWish() {
-  ensureDraftWeather();
-  document.querySelectorAll("[data-wish]").forEach(b => b.addEventListener("click", () => {
-    const id = b.dataset.wish, i = DRAFT.wish.indexOf(id);
-    if (i >= 0) { DRAFT.wish.splice(i, 1); delete DRAFT.place[id]; } else DRAFT.wish.push(id);
-    saveDraft(); render();
-  }));
-  document.querySelectorAll("[data-cat]").forEach(b => b.addEventListener("click", () => { S.wishCat = b.dataset.cat; render(); }));
-  document.querySelectorAll("[data-wq]").forEach(b => b.addEventListener("click", () => {
-    DRAFT.extra = Object.assign({}, DRAFT.extra, { [b.dataset.wq]: b.dataset.v }); saveDraft();
-    b.parentNode.querySelectorAll("button").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
-  }));
-  const wf = $("#wqFor"); if (wf) wf.addEventListener("input", () => { DRAFT.extra = Object.assign({}, DRAFT.extra, { crossTown: wf.value.trim() }); saveDraft(); });
-  const more = $("#moreBtn"); if (more) more.addEventListener("click", () => loadCandidates(true));
-  const retry = $("#wishRetry"); if (retry) retry.addEventListener("click", () => loadCandidates(false));
-  const lf = $("#lookForm"); if (lf) lf.addEventListener("submit", e => { e.preventDefault(); lookupPlace($("#lookInput").value); });
-  bindPins();
 }
 function bindPins() {
   const hl = id => { document.querySelectorAll("[data-pin]").forEach(el => el.classList.toggle("hl", el.dataset.pin === id)); highlightPin(id); };
@@ -3261,7 +3208,7 @@ function hidePickCard() { const b = $("#pickCard"); if (b) b.remove(); }
 function picksPanel(d, days, isPlaced) {
   const picks = d.wish.map(candById).filter(c => c && !c.placeholder);
   if (!picks.length) return "";
-  return '<section class="panel"><h3>Your picks <small>' + picks.length + " on your wish list</small></h3><div class=\"pick-list\">" + picks.map(c => {
+  return '<div class="pick-list">' + picks.map(c => {
     const pl = isPlaced(c.id) ? d.place[c.id] : null, ph = photoUrl(c, 160);
     const open = S.pickOpen === c.id;
     return '<div class="pick-item' + (open ? " open" : "") + '" style="--c:' + (pl ? lineVar(pl.day) : "var(--muted)") + '">' +
@@ -3272,8 +3219,69 @@ function picksPanel(d, days, isPlaced) {
       (open ? '<div class="pick-more">' + pickDetailHTML(c) + '<div class="row2"><button class="btn small" type="button" data-goto="' + c.id + '">Show on board</button>' +
         (c.mapsUrl ? '<a class="btn small" href="' + esc(c.mapsUrl) + '" target="_blank" rel="noopener">Google Maps</a>' : "") +
         '<button class="lnk" type="button" data-unwish="' + c.id + '">Remove</button></div></div>' : "") + "</div>";
-  }).join("") + "</div></section>";
+  }).join("") + "</div>";
 }
+// The suggestions panel beside the board: ideas ranked for you, draggable straight onto a day.
+function sugRow(c) {
+  const d = DRAFT, n = draftDays().length, inWish = d.wish.includes(c.id), pl = inWish && d.place[c.id] && d.place[c.id].day < n ? d.place[c.id] : null;
+  const open = S.pickOpen === c.id, ph = photoUrl(c, 160), hs = hoursSummary(c);
+  return '<div class="pick-item sug-item' + (open ? " open" : "") + (inWish ? " added" : "") + '" style="--c:' + (pl ? lineVar(pl.day) : "var(" + (CATS[c.category] || "--l1") + ")") + '">' +
+    '<div class="sug-row" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" aria-label="' + esc(c.name) + '. Drag onto a day, or press Enter to choose a day.">' +
+      (ph ? '<img src="' + ph + '" alt="" loading="lazy">' : '<span class="pick-dot"></span>') +
+      '<span class="sug-txt"><b>' + esc(c.name) + "</b>" + (c.unique ? '<span class="pill only">Only here</span>' : "") +
+        '<small class="muted">' + esc(c.fitWhy || c.category) + "</small>" +
+        '<small class="sug-meta">' + [typeof c.rating === "number" ? "★ " + c.rating.toFixed(1) : "", "~" + durText(c.minutes), hs.split(" · ")[0]].filter(Boolean).map(esc).join(" · ") + "</small></span>" +
+      (pl ? '<span class="sug-state">Day ' + (pl.day + 1) + "</span>" : inWish ? '<span class="sug-state">Added</span>' : '<button type="button" class="sug-add" data-add="' + c.id + '" aria-label="Add ' + esc(c.name) + ' where it fits best">+</button>') +
+      '<button type="button" class="chev" data-pick="' + c.id + '" aria-expanded="' + open + '" aria-label="More about ' + esc(c.name) + '">' + (open ? "▴" : "▾") + "</button></div>" +
+    (open ? '<div class="pick-more">' + pickDetailHTML(c) + '<div class="row2">' + (inWish ? '<button class="btn small" type="button" data-goto="' + c.id + '">Show on board</button>' : '<button class="btn small primary" type="button" data-add="' + c.id + '">Add to my days</button>') +
+      (c.mapsUrl ? '<a class="btn small" href="' + esc(c.mapsUrl) + '" target="_blank" rel="noopener">Google Maps</a>' : "") + (inWish ? '<button class="lnk" type="button" data-unwish="' + c.id + '">Remove</button>' : "") + "</div></div>" : "") +
+    "</div>";
+}
+function suggestionsPanel(d, isPlaced) {
+  const L = S.wishLoad, real = d.cands.filter(c => !c.placeholder), nPicks = d.wish.filter(id => { const c = candById(id); return c && !c.placeholder; }).length;
+  const tabs = '<div class="sug-tabs" role="tablist"><button type="button" role="tab" data-tab="sug" aria-selected="' + (S.sugTab !== "picks") + '">Suggestions</button><button type="button" role="tab" data-tab="picks" aria-selected="' + (S.sugTab === "picks") + '">Your picks (' + nPicks + ")</button></div>";
+  if (S.sugTab === "picks") return '<section class="panel sug">' + tabs + (picksPanel(d, draftDays(), isPlaced) || '<p class="note">Nothing yet. Drag suggestions onto your days, or click an empty time to add your own.</p>') + "</section>";
+  let body;
+  if (L && L.busy && !L.more) {
+    const x = d.extra || {};
+    body = '<ol class="wait-steps"><li class="done"><span class="st"></span>Reading your travel profile</li><li class="' + (L.status ? "done" : "now") + '"><span class="st"></span>Finding the best of ' + esc(String(d.prefs.dest).split(",")[0]) + "</li>" +
+      '<li class="' + (L.status ? "now" : "") + '"><span class="st"></span>' + (PLACES ? "Checking hours and photos" : "Checking the details") + "</li></ol>" +
+      '<div class="gen-line"><i id="wishBar" style="width:6%"></i></div><div class="gen-stops" id="wishNames"></div><p class="gen-status" id="wishStatus">About a minute. Your board works already: click any time to add something.</p>' +
+      '<div class="wait-qs"><span class="pf-k">While we look</span>' + WAIT_QS.map(([k, q, opts]) => '<div class="wait-q"><div class="qlabel">' + q + '</div><div class="filters" role="group">' + opts.map(o => '<button type="button" data-wq="' + k + '" data-v="' + esc(o) + '" aria-pressed="' + (x[k] === o) + '">' + esc(o) + "</button>").join("") + "</div></div>").join("") + "</div>";
+  } else if (!real.length) {
+    body = '<p class="err">' + esc((L && L.err) || "No suggestions yet.") + '</p><button class="btn small" type="button" id="wishRetry">Try again</button>';
+  } else {
+    const cats = ["All"].concat(Object.keys(CATS).filter(k => real.some(c => c.category === k)));
+    if (!cats.includes(S.sugCat)) S.sugCat = "All";
+    const list = real.filter(c => S.sugCat === "All" || c.category === S.sugCat);
+    body = '<p class="note sug-hint">Drag one onto a day, or tap <b>+</b> to add it where it fits best.</p>' +
+      (!nPicks ? '<button class="btn small primary" type="button" id="topPicks">Start me off with top picks</button>' : "") +
+      '<div class="filters sug-cats" role="group" aria-label="Filter by type">' + cats.map(k => '<button type="button" data-sugcat="' + esc(k) + '" aria-pressed="' + (S.sugCat === k) + '">' + esc(k) + "</button>").join("") + "</div>" +
+      '<div class="sug-list">' + list.map(sugRow).join("") + "</div>" +
+      '<div class="sug-foot"><button class="btn small" type="button" id="moreBtn"' + (L && L.busy ? " disabled" : "") + ">" + (L && L.busy ? "Finding more…" : "More ideas") + "</button>" +
+      '<form class="look" id="lookForm"><label for="lookInput" class="hidden">Add a place you already have in mind</label><input id="lookInput" placeholder="Something else in mind?" autocomplete="off"><button class="btn small" type="submit"' + (S.wishLook.busy ? " disabled" : "") + ">" + (S.wishLook.busy ? "Looking…" : "Add") + "</button></form></div>" +
+      (L && L.err ? '<p class="err">' + esc(L.err) + "</p>" : "") + (S.wishLook.err ? '<p class="err">' + esc(S.wishLook.err) + "</p>" : "");
+  }
+  return '<section class="panel sug">' + tabs + body + "</section>";
+}
+// "+": add a suggestion and drop it where it fits best (nearest to that day's other picks, open at that time).
+function addSuggestion(id) {
+  const c = candById(id); if (!c) return;
+  if (!DRAFT.wish.includes(id)) DRAFT.wish.push(id);
+  suggestPlan(false); saveDraft();
+  const pl = DRAFT.place[id];
+  S.pickOpen = null; render();
+  toast(pl ? "Added " + c.name + " to day " + (pl.day + 1) + " at " + fmtShort(toMin(pl.start)) + ". Drag it to change." : "Added " + c.name + ". No open slot fits, so drag it onto a day.");
+  const el = document.querySelector('.anc[data-drag="' + id + '"]'); if (el) { el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1200); }
+}
+// One best-fitting suggestion per day, laid out by area, as a starting point.
+function topPicks() {
+  const d = DRAFT, n = draftDays().length;
+  d.cands.filter(c => !c.placeholder && !d.wish.includes(c.id)).sort((a, b) => b.fit - a.fit).slice(0, n).forEach(c => d.wish.push(c.id));
+  const r = suggestPlan(false); saveDraft(); render();
+  toast("Placed " + r.placed + " top picks, one area per day. Drag, remove or add more.");
+}
+
 // Why anchors: shown the first time someone reaches the board, then tucked behind a link.
 function anchorExplainer() {
   const open = !store("mytin.anchorTipSeen");
@@ -3322,8 +3330,7 @@ function renderAnchors() {
   const isPlaced = id => d.place[id] && d.place[id].day < n && candById(id);
   const placedIds = d.wish.filter(isPlaced);
   const unplaced = d.wish.map(candById).filter(c => c && !isPlaced(c.id));
-  const head = '<div class="wrap planflow">' + stepsHTML(3) + '<h1 class="pf-title">Anchor your days</h1>';
-  if (!d.wish.length) return head + '<p class="lede">Your wish list is empty. <a href="#wish">Pick a few things to do</a> first.</p></div>';
+  const head = '<div class="wrap planflow">' + stepsHTML(2) + '<h1 class="pf-title">Plan your days in ' + esc(String(p.dest).split(",")[0]) + "</h1>";
   const ds = toMin(p.dayStart) ?? 540, de = toMin(p.dayEnd) ?? 1320;
   let labels = "";
   for (let h = gs; h <= ge; h += 60) labels += '<span style="top:' + px(h - gs) + 'px">' + fmtShort(h) + "</span>";
@@ -3340,7 +3347,8 @@ function renderAnchors() {
       '<div class="day-body" data-day="' + di + '" style="height:' + H + "px;--pxh:" + PXH + 'px">' + inner + '<div class="drop-ghost hidden"></div></div></div>';
   }).join("");
   const warnCount = placedIds.filter(id => issuesAt(candById(id), d.place[id].day, toMin(d.place[id].start)).length).length;
-  const pts = d.wish.map(candById).filter(Boolean).map(c => {
+  const pts = d.cands.filter(c => !c.placeholder && (d.wish.includes(c.id) || S.sugTab !== "picks")).map(c => {
+    if (!d.wish.includes(c.id)) return { id: c.id, lat: c.lat, lng: c.lng, title: c.name + " · suggestion", color: "var(--muted)", filled: false, label: "" };
     const pl = isPlaced(c.id) ? d.place[c.id] : null;
     return { id: c.id, lat: c.lat, lng: c.lng, title: c.name + (pl ? " · Day " + (pl.day + 1) : " · not placed yet"), color: pl ? lineVar(pl.day) : "var(--muted)", filled: !!pl, label: pl ? String(pl.day + 1) : "" };
   });
@@ -3348,18 +3356,17 @@ function renderAnchors() {
   const sums = days.map((date, di) => { const [names, note, far] = spreadText(di); return '<div style="--c:' + lineVar(di) + '"><span class="bullet">' + (di + 1) + "</span><span><strong>" + esc(fmtDay(date)) + "</strong> " + esc(names) + (note ? '<br><span class="' + (far ? "far" : "muted") + '">' + esc(note) + "</span>" : "") + "</span></div>"; }).join("");
   return head +
     anchorExplainer() +
-    '<p class="lede">Drag each pick to a day and time. We started you off with one or two anchors per day, each day in its own part of town. While you drag, green bands show when a place is usually open.</p>' +
+    '<p class="lede">Choose one, maybe two, anchors for each day: drag a suggestion onto a day, or click any empty time to add your own. While you drag, green bands show when a place is usually open.</p>' +
     '<div class="grid wide"><section aria-label="Days">' +
-      '<section class="panel tray" id="tray" aria-label="Wish list, not yet placed"><h3>Wish list <small>' + (unplaced.length ? "drag onto a day, or tap to place" : "everything is placed · drag a card here to unschedule it") + "</small></h3>" +
+      '<section class="panel tray" id="tray" aria-label="Picks not on a day yet"><h3>Not on a day yet <small>' + (unplaced.length ? "drag onto a day, or tap to place" : "drag a card here to take it off its day") + "</small></h3>" +
         '<div class="tray-items">' + unplaced.map(trayItem).join("") + "</div>" +
         '<p class="note slot-tip">Tip: click any empty time on a day to add something, like lunch, a hike or nap time. Drag down to set how long.</p>' +
-        '<div class="row2"><button class="btn small" id="suggestBtn">' + (placedIds.length ? "Re-suggest a layout" : "Suggest a layout") + '</button><a class="lnk" href="#wish">Add more to the wish list</a></div></section>' +
+        (unplaced.length ? '<div class="row2"><button class="btn small" id="suggestBtn">Lay these out for me</button></div>' : "") + "</section>" +
       '<div class="board-scroll"><div class="board" style="grid-template-columns:52px repeat(' + n + ', minmax(150px, 1fr))"><div class="gutter"><div class="day-h"></div><div class="gutter-l" style="height:' + H + 'px">' + labels + "</div></div>" + cols + "</div></div>" +
       '<div class="board-foot"><button class="btn primary" id="fillBtn"' + (placedIds.length ? "" : " disabled") + ">Fill in my days →</button>" +
         '<span class="note">' + (warnCount ? '<strong class="warn-t">⚠ ' + warnCount + (warnCount === 1 ? " pick has a timing warning" : " picks have timing warnings") + ".</strong> You can still go ahead. " : "") + "Claude keeps your picks where they are and adds meals, nearby stops and how to get between them.</span></div>" +
-    '</section><aside class="rail">' +
+    '</section><aside class="rail">' + suggestionsPanel(d, isPlaced) +
       planMap("Your days on the map", pts, paths, d.home, days.map((_, i) => '<span style="--c:' + lineVar(i) + '"><i></i>Day ' + (i + 1) + "</span>").join("") + '<span><i style="background:var(--muted)"></i>Not placed</span>') +
-      picksPanel(d, days, isPlaced) +
       '<section class="panel"><h3>How each day hangs together</h3><div class="day-sum">' + sums + "</div></section>" +
     "</aside></div></div>";
 }
@@ -3383,15 +3390,25 @@ function bindAnchors() {
   document.querySelectorAll("[data-unplace]").forEach(b => b.addEventListener("click", () => { delete DRAFT.place[b.dataset.unplace]; saveDraft(); render(); }));
   const sb = $("#suggestBtn");
   if (sb) sb.addEventListener("click", () => {
-    if (Object.keys(DRAFT.place).length && !confirm("Replace your current layout with a suggested one?")) return;
-    const r = suggestPlan(true); render();
+    const r = suggestPlan(false); render();
     toast(r.left ? "Placed " + r.placed + ". " + r.left + " didn't fit, so they'll be ideas when we fill in." : "Laid out " + r.placed + " picks, keeping each day in one area.");
   });
   const fb = $("#fillBtn"); if (fb) fb.addEventListener("click", fillTrip);
   const awc = $("#anchorWhyClose"); if (awc) awc.addEventListener("click", () => { store("mytin.anchorTipSeen", true); render(); });
   const awo = $("#anchorWhyOpen"); if (awo) awo.addEventListener("click", () => { store("mytin.anchorTipSeen", false); render(); });
   bindSlots();
-  document.querySelectorAll(".anc[data-drag], .tray-item[data-drag]").forEach(el => {
+  document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => { S.sugTab = b.dataset.tab; render(); }));
+  document.querySelectorAll("[data-sugcat]").forEach(b => b.addEventListener("click", () => { S.sugCat = b.dataset.sugcat; render(); }));
+  document.querySelectorAll("[data-add]").forEach(b => b.addEventListener("click", () => addSuggestion(b.dataset.add)));
+  const tp = $("#topPicks"); if (tp) tp.addEventListener("click", topPicks);
+  const more = $("#moreBtn"); if (more) more.addEventListener("click", () => loadCandidates(true));
+  const retry = $("#wishRetry"); if (retry) retry.addEventListener("click", () => loadCandidates(false));
+  const lf = $("#lookForm"); if (lf) lf.addEventListener("submit", e => { e.preventDefault(); lookupPlace($("#lookInput").value); });
+  document.querySelectorAll("[data-wq]").forEach(b => b.addEventListener("click", () => {
+    DRAFT.extra = Object.assign({}, DRAFT.extra, { [b.dataset.wq]: b.dataset.v }); saveDraft();
+    b.parentNode.querySelectorAll("button").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+  }));
+  document.querySelectorAll(".anc[data-drag], .tray-item[data-drag], .sug-row[data-drag]").forEach(el => {
     el.addEventListener("mouseenter", () => { if (!drag) showPickCard(el, candById(el.dataset.drag)); });
     el.addEventListener("mouseleave", hidePickCard);
     el.addEventListener("pointerdown", hidePickCard);
@@ -3455,8 +3472,9 @@ function dragEnd(cancel) {
   if (d.float) d.float.remove();
   if (!d.active) { if (!cancel) openPlace(d.id); return; }
   if (!cancel && d.target) {
-    if (d.target.tray) delete DRAFT.place[d.id];
+    if (d.target.tray) { delete DRAFT.place[d.id]; if (!DRAFT.wish.includes(d.id)) DRAFT.wish.push(d.id); }
     else {
+      if (!DRAFT.wish.includes(d.id)) DRAFT.wish.push(d.id);
       DRAFT.place[d.id] = { day: d.target.day, start: toHM(d.target.start) };
       if (d.target.iss.length) toast("Heads up: " + candById(d.id).name + ". " + d.target.iss[0] + ".");
     }
@@ -3480,6 +3498,7 @@ function openPlace(id) {
   $("#plDay").addEventListener("change", chk); $("#plTime").addEventListener("input", chk); chk();
   $("#placeForm").addEventListener("submit", e => {
     e.preventDefault(); const s = toMin($("#plTime").value); if (s == null) return;
+    if (!DRAFT.wish.includes(id)) DRAFT.wish.push(id);
     DRAFT.place[id] = { day: +$("#plDay").value, start: toHM(Math.round(s / SNAP) * SNAP) }; saveDraft(); closeDrawer(); render();
   });
   const un = $("#plUnplace"); if (un) un.addEventListener("click", () => { delete DRAFT.place[id]; saveDraft(); closeDrawer(); render(); });
