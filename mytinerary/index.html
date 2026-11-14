@@ -913,7 +913,7 @@ async function loadIdeas(more) {
 }
 function updateDiscLoad() {
   const box = $("#discNames"); if (!box || !S.discLoad) return;
-  box.innerHTML = S.discLoad.names.map(s => '<span class="chip">' + esc(s) + "</span>").join("");
+  appendChips(box, S.discLoad.names);
   $("#discBar").style.width = Math.min(95, 8 + S.discLoad.names.length / 6 * 85) + "%";
   if (S.discLoad.status) $("#discStatus").textContent = S.discLoad.status;
 }
@@ -2646,7 +2646,7 @@ async function loadCandidates(more) {
         if (!S.wishLoad) return;
         const names = []; const re = /"name"\s*:\s*"([^"]{2,80})"/g; let m;
         while ((m = re.exec(text))) names.push(m[1]);
-        S.wishLoad.names = names.filter(x => !d.prefs.stay || x !== d.prefs.stay); updateWishLoad();
+        S.wishLoad.names = d.prefs.stay ? names.slice(1) : names; updateWishLoad();
       }
     });
     const acts = raw && Array.isArray(raw.activities) ? raw.activities : null;
@@ -2894,9 +2894,12 @@ function renderWish() {
     '<div class="nextbar"><div class="wrap"><span><strong>' + k + " picked</strong>" + (k < n ? " · aim for at least " + n : " · nice") + "</span>" +
       (k ? '<a class="btn primary" href="#anchors">Plan my days →</a>' : '<button class="btn primary" disabled>Plan my days →</button>') + "</div></div>";
 }
+function appendChips(box, names) {
+  for (let i = box.children.length; i < names.length; i++) { const c = document.createElement("span"); c.className = "chip"; c.textContent = names[i]; box.appendChild(c); }
+}
 function updateWishLoad() {
   const box = $("#wishNames"); if (!box || !S.wishLoad) return;
-  box.innerHTML = S.wishLoad.names.map(s => '<span class="chip">' + esc(s) + "</span>").join("");
+  appendChips(box, S.wishLoad.names);
   $("#wishBar").style.width = Math.min(95, 6 + S.wishLoad.names.length / 19 * 90) + "%";
   if (S.wishLoad.status) { $("#wishStatus").textContent = S.wishLoad.status; const st = document.querySelectorAll(".wait-steps li"); if (st[1]) st[1].className = "done"; if (st[2]) st[2].className = "now"; }
   else if (S.wishLoad.names.length) { const st = document.querySelectorAll(".wait-steps li"); if (st[1]) st[1].innerHTML = '<span class="st"></span>Finding the best of ' + esc(DRAFT.prefs.dest) + " · " + S.wishLoad.names.length + " so far"; }
