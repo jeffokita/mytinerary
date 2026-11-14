@@ -248,7 +248,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   }
 
   // The emailed link: /auth/<token>
-  if (path.startsWith("/auth/") && m === "GET") {
+  if (path.startsWith("/auth/") && !path.startsWith("/auth/google/") && m === "GET") {
     const data = verify(decodeURIComponent(path.slice(6)));
     const [email, exp, nonce] = (data ?? "").split("|");
     if (!data || Number(exp) < Date.now() || usedLinks.has(nonce) || !allowed().includes(email)) {
