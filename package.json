@@ -1,0 +1,16 @@
+{
+  "name": "mytinerary",
+  "private": true,
+  "type": "module",
+  "description": "Hosted Mytinerary: the single-page trip planner plus a small server for Claude, Google Places and email sign-in.",
+  "engines": {
+    "node": ">=23.6"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server/main.ts",
+    "dev": "node --env-file-if-exists=.env --watch server/main.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0"
+  }
+}

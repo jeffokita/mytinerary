@@ -259,6 +259,16 @@ textarea.inp { min-height: 88px; resize: vertical; }
 .booked-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
 .booked-list li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
 .hidden { display: none !important; }
+.who { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+@media (max-width: 760px) { .who .em { display: none; } }
+.login { padding: 64px 0 100px; max-width: 680px; }
+.login .look { margin-top: 24px; max-width: 520px; }
+.login .lede { font-size: 18px; color: var(--muted); margin: 12px 0 0; }
+.tile.photo { color: #fff; background-size: cover; background-position: center; background-color: var(--c); }
+.tile.photo::after { display: none; }
+.tile.photo .tile-line i { background: rgba(0,0,0,.35); }
+.unverified { font-size: 12px; font-weight: 600; color: var(--warn); }
+.wbody .foot { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .demo-bar { background: var(--ink); color: var(--paper); font-size: 13px; }
 .demo-bar .wrap { padding-top: 7px; padding-bottom: 7px; }
 .demo-bar strong { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; background: var(--accent); color: #fff; padding: 2px 7px; border-radius: 999px; margin-right: 8px; }
@@ -399,6 +409,7 @@ textarea.inp { min-height: 88px; resize: vertical; }
     <a class="mark" href="#trip" id="homeLink"><span class="dot" aria-hidden="true"></span>mytinerary</a>
     <span class="tagline">Getting there shouldn't be half the journey</span>
     <span class="spacer"></span>
+    <span class="who hidden" id="who"></span>
     <a class="btn ghost" href="#profile" id="profileBtn">Travel profile</a>
     <div class="menu">
       <button class="btn ghost" id="tripsBtn" aria-haspopup="true" aria-expanded="false">My trips</button>
@@ -438,7 +449,116 @@ const mcpP = MOCK ? Promise.resolve(mockMcp()) : hasRuntime ? window.claude.use(
 let sampleFn = null, mcpApi = null;
 let sampleBlocked = false;
 let runtimeSettled = false;
-Promise.all([sampleP, mcpP]).then(([s, m]) => { sampleFn = s; mcpApi = m; runtimeSettled = true; render(); maybeAutoScan(); });
+// Hosted on our own server (Railway): Claude and Google Places go through /api, behind an emailed sign-in link.
+let HOSTED = false, ME = null, PLACES = false;
+const hostedP = !MOCK && !hasRuntime && /^https?:$/.test(location.protocol)
+  ? fetch("/api/me").then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null);
+Promise.all([sampleP, mcpP, hostedP]).then(([s, m, h]) => {
+  if (h && h.hosted) { HOSTED = true; ME = h.user; PLACES = !!(h.places && ME); if (ME && h.claude) s = hostedSample(); }
+  sampleFn = s; mcpApi = m; runtimeSettled = true; render(); maybeAutoScan();
+});
+// Same shape as the claude.ai sampling function: fn(prompt) -> {text}, fn.json(prompt, {onText, signal, modelTier}) -> parsed JSON.
+function hostedSample() {
+  async function text(prompt, opts) {
+    opts = opts || {};
+    let r;
+    try {
+      r = await fetch("/api/claude", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt, tier: opts.modelTier === "quick" ? "quick" : "default" }), signal: opts.signal });
+    } catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "network" }; }
+    if (r.status === 401) { ME = null; render(); throw { code: "signed_out" }; }
+    if (r.status === 429) throw { code: "rate_limited" };
+    if (!r.ok || !r.body) throw { code: "api_error" };
+    const reader = r.body.getReader(), dec = new TextDecoder();
+    let buf = "", out = "", stop = "";
+    for (;;) {
+      let chunk;
+      try { chunk = await reader.read(); } catch (e) { throw { code: e && e.name === "AbortError" ? "cancelled" : "network" }; }
+      if (chunk.done) break;
+      buf += dec.decode(chunk.value, { stream: true });
+      let i;
+      while ((i = buf.indexOf("\n")) >= 0) {
+        const ln = buf.slice(0, i); buf = buf.slice(i + 1);
+        if (!ln.trim()) continue;
+        const o = JSON.parse(ln);
+        if (o.t) { out += o.t; if (opts.onText) opts.onText({ text: out, delta: o.t }); }
+        else if (o.error) throw o.error;
+        else if (o.done) stop = o.stop;
+      }
+    }
+    if (stop === "refusal") throw { code: "refused" };
+    return { text: out, truncated: stop === "max_tokens" };
+  }
+  function parseJSON(s) {
+    try { return JSON.parse(s); } catch (e) { /* try the tolerant forms below */ }
+    const a = Math.min(...["{", "["].map(ch => { const k = s.indexOf(ch); return k < 0 ? Infinity : k; }));
+    const z = Math.max(s.lastIndexOf("}"), s.lastIndexOf("]"));
+    if (a < z) { try { return JSON.parse(s.slice(a, z + 1)); } catch (e) { /* fall through */ } }
+    throw { code: "invalid_json" };
+  }
+  const fn = (prompt, opts) => text(prompt, opts);
+  fn.json = async (prompt, opts) => parseJSON((await text(prompt, opts)).text);
+  return fn;
+}
+async function placesMatch(dest, items) {
+  if (!PLACES || !items.length) return null;
+  try {
+    const r = await fetch("/api/places/match", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ dest, items: items.map(i => ({ name: i.name, address: i.address || "", neighborhood: i.neighborhood || "", lat: hasLL(i) ? i.lat : null, lng: hasLL(i) ? i.lng : null })) }) });
+    return r.ok ? (await r.json()).results : null;
+  } catch (e) { return null; }
+}
+// Google's answer replaces Claude's guesses for location, hours and address.
+function applyPlace(o, g) {
+  if (!g) { o.verified = false; return o; }
+  Object.assign(o, { verified: true, placeId: g.id, address: g.address || o.address, lat: g.lat, lng: g.lng, rating: g.rating, ratingCount: g.ratingCount, photo: g.photo, mapsUrl: g.mapsUrl, gStatus: g.status });
+  if (g.hours) { o.hours = g.hours; o.hoursFrom = "google"; }
+  return o;
+}
+const closedOnGoogle = o => o.gStatus === "CLOSED_PERMANENTLY" || o.gStatus === "CLOSED_TEMPORARILY";
+async function enrichTrip(t) {
+  const known = {};
+  if (t.plan) t.plan.cands.forEach(c => { if (c.verified) known[c.name.toLowerCase()] = c; });
+  const todo = [];
+  t.days.forEach(d => d.items.forEach(it => {
+    if (["transit", "free", "lodging"].includes(it.kind)) return;
+    const k = known[it.name.toLowerCase()];
+    if (k) applyPlace(it, { id: k.placeId, address: k.address, lat: k.lat, lng: k.lng, rating: k.rating, ratingCount: k.ratingCount, photo: k.photo, mapsUrl: k.mapsUrl, status: k.gStatus, hours: k.hoursFrom === "google" ? k.hours : null });
+    else todo.push(it);
+  }));
+  if (t.homeBase && t.homeBase.name) todo.push(t.homeBase);
+  const res = await placesMatch(t.destination, todo);
+  if (res) todo.forEach((o, i) => applyPlace(o, res[i]));
+  saveTrip(t);
+  if (S.trip && S.trip.id === t.id && S.view === "trip") render();
+}
+function renderLogin() {
+  const expired = new URLSearchParams(location.search).get("signin") === "expired";
+  return '<div class="wrap login"><span class="eyebrow">Mytinerary · invite only</span><h1 class="pf-title">Plan trips around what you love.</h1>' +
+    '<p class="lede">Enter the email you were invited with and we\'ll send you a sign-in link.</p>' +
+    (expired ? '<p class="err">That sign-in link expired or was already used. Ask for a new one below.</p>' : "") +
+    '<form id="loginForm" class="look"><label for="loginEmail" class="hidden">Email</label><input id="loginEmail" type="email" autocomplete="email" required placeholder="you@example.com"><button class="btn primary" type="submit">Email me a link</button></form>' +
+    '<p class="note" id="loginNote" role="status"></p></div>';
+}
+function bindLogin() {
+  $("#loginForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const note = $("#loginNote"), email = $("#loginEmail").value.trim();
+    note.textContent = "Sending…";
+    try {
+      const r = await fetch("/api/login", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) });
+      const j = await r.json().catch(() => ({}));
+      note.textContent = r.ok ? "If " + email + " is on the invite list, a sign-in link is on its way. It works once, for 20 minutes. Check spam if you don't see it." : (j.error || "That didn't work. Try again.");
+    } catch (err) { note.textContent = "Couldn't reach the server. Check your connection and try again."; }
+  });
+}
+function updateWho() {
+  const w = $("#who");
+  w.classList.toggle("hidden", !(HOSTED && ME));
+  if (!(HOSTED && ME) || w.dataset.me === ME) return;
+  w.dataset.me = ME;
+  w.innerHTML = '<span class="em">' + esc(ME) + '</span><button class="lnk" type="button" id="logoutBtn">Sign out</button>';
+  $("#logoutBtn").addEventListener("click", () => fetch("/api/logout", { method: "POST" }).finally(() => location.replace("/")));
+}
 
 /* ---------- Helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -601,6 +721,8 @@ function render(fresh) {
   if (!fresh && $("#planForm")) readForm(); // keep unsent form edits across re-renders
   const app = $("#app");
   const bs = $(".board-scroll"), bsl = bs ? bs.scrollLeft : 0;
+  updateWho();
+  if (HOSTED && !ME) { app.innerHTML = renderLogin(); bindLogin(); return; }
   if (S.view === "plan") app.innerHTML = renderPlan();
   else if (S.view === "wish") app.innerHTML = renderWish();
   else if (S.view === "anchors") app.innerHTML = renderAnchors();
@@ -669,7 +791,7 @@ function renderTrip() {
         renderBookings(t) +
         renderBudget(t) +
         (t.watchouts.length ? '<section class="panel"><h3>Heads up</h3><ul class="watch">' + t.watchouts.map(w => "<li>" + esc(w) + "</li>").join("") + "</ul></section>" : "") +
-        '<p class="note">Places come from Claude\'s knowledge and can be out of date. Check hours and book through the venue before you go.</p>' +
+        '<p class="note">' + (PLACES ? "Places are checked against Google Maps, but hours change. Confirm and book through the venue before you go." : "Places come from Claude\'s knowledge and can be out of date. Check hours and book through the venue before you go.") + "</p>" +
       "</aside>" +
     "</div></div>";
 }
@@ -710,11 +832,15 @@ function renderTimeline(d, di) {
     if (!minor) {
       const foot = [];
       if (it.anchor) foot.push('<span class="pill pick">Your pick</span>');
+      if (typeof it.rating === "number") foot.push('<span class="pill">★ ' + it.rating.toFixed(1) + "</span>");
+      if (it.gStatus === "CLOSED_PERMANENTLY" || it.gStatus === "CLOSED_TEMPORARILY") foot.push('<span class="pill now">Google lists it as closed</span>');
+      else if (it.hours && it.time) { const w = openCheck({ hours: it.hours, minutes: Math.max(15, (toMin(it.end) ?? toMin(it.time) + 60) - toMin(it.time)) }, d.date, toMin(it.time)); if (w) foot.push('<span class="pill daybefore">⚠ ' + esc(w) + "</span>"); }
+      if (it.verified === false) foot.push('<span class="pill daybefore">Not found on Google Maps</span>');
       if (it.cost) foot.push('<span class="pill">' + esc(it.costTier || "") + (it.costTier ? " · " : "") + "~" + money(it.cost) + "/person</span>");
       if (it.booked) foot.push('<span class="pill booked">Booked</span>');
       else if (BOOK[it.booking]) foot.push('<span class="pill ' + it.booking + '">' + BOOK[it.booking] + "</span>");
       const q = encodeURIComponent((it.address || it.name + " " + (it.neighborhood || "") + " " + (S.trip.destination || "")).trim());
-      foot.push('<a class="lnk" href="https://www.google.com/maps/search/?api=1&query=' + q + '" target="_blank" rel="noopener">Map</a>');
+      foot.push('<a class="lnk" href="' + (it.mapsUrl ? esc(it.mapsUrl) : "https://www.google.com/maps/search/?api=1&query=" + q) + '" target="_blank" rel="noopener">Map</a>');
       foot.push('<a class="lnk" href="' + gcalLink(it, d) + '" target="_blank" rel="noopener">Add to calendar</a>');
       foot.push('<button class="lnk" data-swap="' + ii + '">Swap</button>');
       body += '<div class="foot">' + foot.join("") + "</div>";
@@ -1098,6 +1224,7 @@ async function generate(p) {
     }));
     S.trip = trip; S.day = 0; S.gen = null;
     saveTrip(trip); store("mytin.lastOpened", trip.id);
+    if (PLACES) enrichTrip(trip);
     if (p.anchors && DRAFT) { DRAFT.tripId = trip.id; saveDraft(); }
     if (FORM.booked) { FORM.booked = null; store("mytin.form", FORM); } // the next new trip starts clean
     if (hasProfile()) applyProfileToForm(); // ...from the profile, not this trip's tweaks
@@ -1374,6 +1501,7 @@ function foundList(trips) {
   ).join("") + "</div>";
 }
 function renderImport(where) {
+  if (HOSTED) return ""; // Gmail and Calendar come through claude.ai connectors, which the hosted app doesn't have
   const sc = S.scan;
   const visible = sc.trips.filter(tr => !hasSavedFor(tr));
   if (where === "trip") {
@@ -1665,7 +1793,14 @@ async function loadCandidates(more) {
     if (!acts || !acts.length) throw { code: "invalid_json" };
     if (DRAFT !== d) return; // a different trip was started meanwhile
     const have = new Set(d.cands.map(c => c.name.toLowerCase()));
-    acts.map(c => normCand(c)).filter(c => c.name && !have.has(c.name.toLowerCase())).forEach(c => d.cands.push(c));
+    let fresh = acts.map(c => normCand(c)).filter(c => c.name && !have.has(c.name.toLowerCase()));
+    if (PLACES) {
+      S.wishLoad.status = "Checking each place on Google Maps…"; updateWishLoad();
+      const res = await placesMatch(d.prefs.dest, fresh);
+      if (res) { fresh.forEach((c, i) => applyPlace(c, res[i])); fresh = fresh.filter(c => !closedOnGoogle(c)); }
+      if (DRAFT !== d) return;
+    }
+    fresh.forEach(c => d.cands.push(c));
     const hb = raw.homeBase;
     if (hb && Number.isFinite(Number(hb.lat)) && Number(hb.lat) !== 0) d.home = { name: String(hb.name || d.prefs.stay), lat: Number(hb.lat), lng: Number(hb.lng) };
     saveDraft();
@@ -1689,6 +1824,7 @@ async function lookupPlace(q) {
     if (!r || !r.found || !r.activity || !r.activity.name) S.wishLook = { busy: false, err: "Couldn't find \"" + q + "\" in " + DRAFT.prefs.dest + ". Try the full name." };
     else {
       const c = normCand(r.activity, true);
+      if (PLACES) { const res = await placesMatch(DRAFT.prefs.dest, [c]); if (res) applyPlace(c, res[0]); }
       DRAFT.cands.unshift(c); DRAFT.wish.push(c.id); saveDraft();
       S.wishLook = { busy: false, err: "" }; S.wishCat = "All";
       toast("Added " + c.name + " to your wish list.");
@@ -1785,7 +1921,8 @@ function planMap(label, points, paths, home, legend) {
 }
 
 function tileHTML(c) {
-  return '<div class="tile" aria-hidden="true"><span class="tile-cat">' + esc(c.category) + '</span><span class="tile-name">' + esc(c.name) + '</span><span class="tile-line"><i></i><i></i><i></i></span><span class="tile-hood">' + esc(c.neighborhood || " ") + "</span></div>";
+  const photo = c.photo && PLACES ? ' style="background-image:linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.72)), url(&quot;/api/places/photo?name=' + encodeURIComponent(c.photo) + '&amp;w=640&quot;)"' : "";
+  return '<div class="tile' + (photo ? " photo" : "") + '" aria-hidden="true"' + photo + '><span class="tile-cat">' + esc(c.category) + '</span><span class="tile-name">' + esc(c.name) + '</span><span class="tile-line"><i></i><i></i><i></i></span><span class="tile-hood">' + esc(c.neighborhood || " ") + "</span></div>";
 }
 function wishCard(c) {
   const on = DRAFT.wish.includes(c.id), hs = hoursSummary(c);
@@ -1793,8 +1930,10 @@ function wishCard(c) {
     '<div class="wbody"><h2 class="hidden">' + esc(c.name) + "</h2>" +
       (c.fitWhy ? '<span class="fitwhy">' + esc(c.fitWhy) + "</span>" : c.mine ? '<span class="fitwhy">Your idea</span>' : "") +
       (c.why ? '<p class="why">' + esc(c.why) + "</p>" : "") +
-      '<div class="wmeta">' + (hs ? "<span>" + esc(hs) + "</span>" : "") + "<span>~" + durText(c.minutes) + " · " + (c.cost ? "~" + money(c.cost) + "/person" : "Free") + (c.booking === "now" ? " · Book ahead" : "") + "</span></div>" +
-      '<div class="foot"><button class="btn small' + (on ? " primary" : "") + '" data-wish="' + c.id + '" aria-pressed="' + on + '">' + (on ? "✓ On your list" : "+ Add to wish list") + "</button></div>" +
+      (c.verified === false && PLACES ? '<span class="unverified">Not found on Google Maps. Double-check it exists.</span>' : "") +
+      '<div class="wmeta">' + (typeof c.rating === "number" ? "<span>★ " + c.rating.toFixed(1) + (c.ratingCount ? " · " + c.ratingCount.toLocaleString() + " Google reviews" : "") + "</span>" : "") +
+        (hs ? "<span>" + esc(hs) + (PLACES && c.hoursFrom !== "google" ? " (estimated)" : "") + "</span>" : "") + "<span>~" + durText(c.minutes) + " · " + (c.cost ? "~" + money(c.cost) + "/person" : "Free") + (c.booking === "now" ? " · Book ahead" : "") + "</span></div>" +
+      '<div class="foot"><button class="btn small' + (on ? " primary" : "") + '" data-wish="' + c.id + '" aria-pressed="' + on + '">' + (on ? "✓ On your list" : "+ Add to wish list") + "</button>" + (c.mapsUrl ? '<a class="lnk" href="' + esc(c.mapsUrl) + '" target="_blank" rel="noopener">Google Maps</a>' : "") + "</div>" +
     "</div></article>";
 }
 function renderWish() {
@@ -1804,7 +1943,7 @@ function renderWish() {
   const list = d.cands.filter(c => S.wishCat === "All" || c.category === S.wishCat);
   let main;
   if (L && L.busy && !L.more) {
-    main = '<div class="wish-load"><div class="gen-line"><i id="wishBar" style="width:6%"></i></div><div class="gen-stops" id="wishNames"></div><p class="gen-status">Finding the best things to do in ' + esc(p.dest) + " for you…</p></div>";
+    main = '<div class="wish-load"><div class="gen-line"><i id="wishBar" style="width:6%"></i></div><div class="gen-stops" id="wishNames"></div><p class="gen-status" id="wishStatus">Finding the best things to do in ' + esc(p.dest) + " for you…</p></div>";
   } else if (!d.cands.length) {
     main = '<p class="err">' + esc((L && L.err) || "No ideas yet.") + '</p><button class="btn" id="wishRetry">Try again</button>';
   } else {
@@ -1829,6 +1968,7 @@ function updateWishLoad() {
   const box = $("#wishNames"); if (!box || !S.wishLoad) return;
   box.innerHTML = S.wishLoad.names.map(s => '<span class="chip">' + esc(s) + "</span>").join("");
   $("#wishBar").style.width = Math.min(95, 6 + S.wishLoad.names.length / 19 * 90) + "%";
+  if (S.wishLoad.status) $("#wishStatus").textContent = S.wishLoad.status;
 }
 function bindWish() {
   document.querySelectorAll("[data-wish]").forEach(b => b.addEventListener("click", () => {
