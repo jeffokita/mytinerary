@@ -339,7 +339,7 @@ textarea.inp { min-height: 88px; resize: vertical; }
 .day-body { position: relative; background-image: repeating-linear-gradient(to bottom, var(--rule) 0, var(--rule) 1px, transparent 1px, transparent var(--pxh)); }
 .offhours { position: absolute; left: 0; right: 0; background: var(--paper); opacity: .7; }
 .blocked { position: absolute; left: 0; right: 0; background: repeating-linear-gradient(135deg, var(--paper) 0 6px, var(--card) 6px 12px); display: flex; align-items: flex-end; font-family: var(--mono); font-size: 10px; color: var(--muted); padding: 4px 6px; line-height: 1.3; }
-.blocked.top { align-items: flex-start; }
+.blocked.btop { align-items: flex-start; }
 .anc { position: absolute; left: 5px; right: 5px; background: var(--card); border: 1px solid var(--c); border-left: 5px solid var(--c); border-radius: 8px; padding: 4px 20px 4px 8px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden; display: grid; align-content: start; gap: 1px; box-shadow: 0 1px 3px rgba(0,0,0,.08); z-index: 2; }
 .anc b { font-size: 13px; line-height: 1.2; font-weight: 600; }
 .anc .t { font-family: var(--mono); font-size: 10px; color: var(--muted); }
@@ -502,6 +502,10 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .sug-row.lifted { opacity: .35; }
 .pick-item.sug-item:not(.added) { border-left-color: transparent; }
 #topPicks { justify-self: start; }
+
+/* Anchor board: commute estimates */
+.commute { position: absolute; left: 50%; transform: translate(-50%, -50%); z-index: 3; font-family: var(--mono); font-size: 10px; background: var(--card); border: 1px solid var(--rule); border-radius: 999px; padding: 1px 7px; white-space: nowrap; pointer-events: auto; color: var(--muted); }
+.commute.tight { border-color: var(--warn); color: var(--warn); font-weight: 600; }
 
 /* Anchor board: pick reminders */
 .pick-card { position: fixed; z-index: 72; width: 280px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,.18); pointer-events: none; }
@@ -2393,8 +2397,8 @@ async function reworkDay() {
 /* ---------- Start from Gmail & Google Calendar ---------- */
 // Calendar's "from Gmail" events carry flights and stays with exact times and addresses, so they lead.
 // Gmail search is a backup for lodging that never reached the calendar.
-const GMAIL_Q = 'newer_than:9m (category:reservations OR subject:("your trip" OR "your stay" OR "flight is booked" OR "reservation confirmed" OR "booking confirmation" OR itinerary OR "your reservation")) -category:promotions -category:social';
-const TRAVEL_RE = /flight|trip|travel|vacation|holiday|hotel|stay at|airbnb|vrbo|check[- ]?in|reservation|train|ferry|cruise|out of office|ooo|pto|✈/i;
+const GMAIL_Q = 'newer_than:9m (category:reservations OR subject:("your trip" OR "your stay" OR "flight is booked" OR "reservation confirmed" OR "booking confirmation" OR itinerary OR "your reservation" OR "car rental" OR "rental car" OR "rental reservation" OR "car reservation" OR "pick-up" OR pickup) OR from:(hertz OR avis OR enterprise OR nationalcar OR budget OR sixt OR alamo OR turo OR thrifty OR dollar)) -category:promotions -category:social';
+const TRAVEL_RE = /flight|trip|travel|vacation|holiday|hotel|stay at|airbnb|vrbo|check[- ]?in|reservation|train|ferry|cruise|rental|car pick|hertz|avis|enterprise|national car|sixt|alamo|turo|out of office|ooo|pto|✈/i;
 function localISO(d) { return isoDate(d) + "T" + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0") + ":00"; }
 function decodeEntities(s) { const t = document.createElement("textarea"); t.innerHTML = String(s || ""); return t.value; }
 function asObj(payload) { if (typeof payload === "string") { try { return JSON.parse(payload); } catch (e) { return {}; } } return payload || {}; }
@@ -2440,7 +2444,7 @@ function scanPrompt(events, threads) {
     (events.length ? events.map(e => JSON.stringify(e)).join("\n") : "(none)") + "\n\n" +
     "EMAILS (recent travel-looking emails; ignore marketing, payments, newsletters and anything that isn't a booking)\n" +
     (threads.length ? threads.map(t => "[" + t.id + "] " + t.date + " · " + t.from + " · " + t.subject + " — " + t.snippet).join("\n") : "(none)") + "\n\n" +
-    "Group related bookings into trips: an outbound flight, a stay and a return flight usually form one trip; layover cities are not destinations. " +
+    "Group related bookings into trips: an outbound flight, a stay, a rental car and a return flight usually form one trip; layover cities are not destinations. A rental car is type \"car\" with start = pickup date and time (local). " +
     "Infer the traveler's home city from where round trips start and end, and skip anything happening in the home city. A stay with no flights (a road trip) is still a trip.\n" +
     "startDate is the arrival date at the destination; endDate is the departure date. arriveTime and leaveTime are LOCAL times at the destination (convert using the offsets), or \"\" if unknown.\n" +
     "Do not include confirmation codes, prices or passenger details.\n" +
@@ -2808,7 +2812,7 @@ function issuesAt(c, di, start, buf) {
   if (!c.reserved && w.blockAfter != null && end > w.blockAfter) out.push("Runs into your trip home");
   const clash = Object.keys(DRAFT.place).find(id => {
     const o = DRAFT.place[id], oc2 = candById(id);
-    if (id === c.id || !oc2 || o.day !== di) return false;
+    if (id === c.id || !oc2 || o.day !== di || (c.reserved && oc2.reserved)) return false; // two real bookings: that's just the plan
     const os = toMin(o.start), oe = os + oc2.minutes;
     return start < oe + (buf || 0) && os < end + (buf || 0);
   });
@@ -3026,7 +3030,13 @@ function addPlaceholder(name, minutes, category, fill) {
 // Routines (nap, bedtime) as blocked time on the board, shifted for the time zone: home time for two days, halfway on day 3, local after.
 // Reservations from Gmail & Calendar go on the board at their booked times. They can be moved, with a warning.
 function placeBookings() {
-  const d = DRAFT; if (!d || d.bookingsPlaced) return;
+  const d = DRAFT; if (!d) return;
+  const sig = JSON.stringify(((d.prefs.booked && d.prefs.booked.items) || []).map(b => [b.type, b.title, b.start, b.end]));
+  if (d.bookingsPlaced === 2 && d.bookingsSig === sig) return;
+  if (d.bookingsPlaced) { // bookings changed (e.g. a rental car found on a later scan), or placed by the first version: redo just the reservation cards
+    const old = new Set(d.cands.filter(c => c.reserved).map(c => c.id));
+    d.cands = d.cands.filter(c => !old.has(c.id)); d.wish = d.wish.filter(id => !old.has(id)); old.forEach(id => delete d.place[id]);
+  }
   const items = ((d.prefs.booked && d.prefs.booked.items) || []).slice().sort((a, b) => (a.type === "lodging") - (b.type === "lodging")), days = draftDays();
   const arrivals = {}; // day -> when they're actually in town (flight or train end), so check-in lands after it
   items.forEach(b => {
@@ -3035,17 +3045,22 @@ function placeBookings() {
     const di = days.indexOf(m[1]); if (di < 0) return;
     let start = toMin(m[2]); const endM = /(\d{4}-\d{2}-\d{2})[ T](\d{1,2}:\d{2})/.exec(String(b.end || ""));
     const type = String(b.type || "other").toLowerCase();
+    if (start === 0 && (!endM || endM[1] !== m[1] || toMin(endM[2]) === 0)) return; // all-day or multi-day event: not a time block
     let minutes = endM && endM[1] === m[1] ? toMin(endM[2]) - start : { flight: 45, car: 30, train: 45, lodging: 30, restaurant: 90, event: 120 }[type] || 60;
+    let label = String(b.title || type);
+    // Arriving: what matters on the calendar is when you land, not when you left home.
+    if ((type === "flight" || type === "train") && di === 0 && endM && endM[1] === m[1]) { start = toMin(endM[2]); minutes = 20; label = "Land: " + label + " · " + fmtShort(start); }
+    else if ((type === "flight" || type === "train") && di === days.length - 1) { minutes = 45; label = "Depart: " + label + " · " + fmtShort(start); }
     minutes = Math.max(15, Math.min(minutes, 240));
     if (type === "flight" || type === "train") arrivals[di] = Math.max(arrivals[di] || 0, start + minutes);
     let suffix = "";
     if (type === "lodging" && arrivals[di] && arrivals[di] + 45 > start) { suffix = " (check-in from " + fmtShort(start) + ")"; start = Math.ceil((arrivals[di] + 45) / 15) * 15; }
-    const name = type === "lodging" ? "Check in: " + String(b.title || "").replace(/^stay at\s+/i, "") + suffix : String(b.title || type);
+    const name = type === "lodging" ? "Check in: " + String(b.title || "").replace(/^stay at\s+/i, "") + suffix : type === "car" ? "Pick up rental car: " + label.replace(/^(pick ?up|rental)\s*:?\s*/i, "") : label;
     const c = { id: uid(), name, category: type === "restaurant" ? "Food & drink" : "Experiences", minutes, placeholder: true, fill: false, fixed: true,
       reserved: { day: di, start: toHM(start) }, neighborhood: b.place || "", address: b.address || "", why: "Your reservation, from your calendar and email.", hours: null, lat: null, lng: null, bestTime: "any", cost: 0, booking: "none" };
     d.cands.push(c); d.wish.push(c.id); d.place[c.id] = { day: di, start: toHM(start) };
   });
-  d.bookingsPlaced = true; saveDraft();
+  d.bookingsPlaced = 2; d.bookingsSig = sig; saveDraft();
 }
 function placeRoutines() {
   const d = DRAFT; if (!d || d.routinesPlaced || !(PROFILE.routines || []).length) return;
@@ -3420,6 +3435,29 @@ function anchorExplainer() {
     '<button class="btn small" type="button" id="anchorWhyClose">Got it</button></div>' +
     '<div class="aw-pics"><figure>' + zig + "<figcaption>Without anchors: zigzagging across town</figcaption></figure><figure>" + hub + "<figcaption>With an anchor: the day stays close by</figcaption></figure></div></section>";
 }
+// Travel between consecutive stops: a straight-line estimate (walk if close; otherwise by car or transit), flagged when it won't fit the gap.
+function commuteMode() {
+  const g = (DRAFT && DRAFT.extra && DRAFT.extra.getaround) || "";
+  return /transit/i.test(g) ? "transit" : /walk/i.test(g) ? "rideshare" : "drive";
+}
+function commuteEstimate(a, b) {
+  const dist = km(a, b) * 1.3; // roads aren't straight lines
+  if (dist < 1.2) return { mode: "walk", icon: "🚶", min: Math.max(3, Math.round(dist * 12)) };
+  const mode = commuteMode(), speed = mode === "transit" ? 18 : 32, extra = mode === "transit" ? 10 : mode === "drive" ? 8 : 5;
+  return { mode, icon: mode === "transit" ? "🚇" : "🚗", min: Math.round(dist / speed * 60 + extra) };
+}
+function commuteLabels(ids, gs) {
+  const items = ids.map(id => ({ c: candById(id), s: toMin(DRAFT.place[id].start) })).filter(x => x.c && hasLL(x.c)).sort((a, b) => a.s - b.s);
+  let out = "";
+  for (let i = 1; i < items.length; i++) {
+    const a = items[i - 1], b = items[i], aEnd = a.s + a.c.minutes, gap = b.s - aEnd, est = commuteEstimate(a.c, b.c);
+    if (gap < -5) continue; // overlapping picks already get a warning
+    const tight = gap < est.min;
+    out += '<div class="commute' + (tight ? " tight" : "") + '" style="top:' + px(Math.max(aEnd, b.s - Math.max(est.min, 20)) - gs) + 'px" title="About ' + est.min + " min by " + est.mode + " from " + esc(a.c.name) + " to " + esc(b.c.name) + (tight ? ". That's more than the " + Math.max(0, gap) + " min between them." : "") + '">' +
+      est.icon + " " + est.min + " min" + (tight ? " · tight" : "") + "</div>";
+  }
+  return out;
+}
 function ancCard(c, di, gs, ln) {
   const pl = DRAFT.place[c.id], s = toMin(pl.start), iss = issuesAt(c, di, s);
   const h = Math.max(c.minutes / 60 * PXH, 34);
@@ -3459,11 +3497,11 @@ function renderAnchors() {
     const w = dayWindow(di, n);
     const box = (a, b, cls, txt) => { const t = Math.max(a, gs), u = Math.min(b, ge); return u > t ? '<div class="' + cls + '" style="top:' + px(t - gs) + "px;height:" + px(u - t) + 'px">' + (txt ? "<span>" + esc(txt) + "</span>" : "") + "</div>" : ""; };
     let inner = box(gs, ds, "offhours") + box(de, ge, "offhours");
-    if (w.blockBefore != null) inner += box(gs, w.blockBefore, "blocked" + (w.arrivalEvening ? " top" : ""), w.arrivalEvening ? "Landing ~" + fmtTime(p.arrive) + ". This evening is for checking in and dinner." : "Landing ~" + fmtTime(p.arrive));
-    if (w.blockAfter != null) inner += box(w.blockAfter, ge, "blocked top", "Head out for your " + fmtTime(p.leave) + " departure");
+    if (w.blockBefore != null) inner += box(gs, w.blockBefore, "blocked" + (w.arrivalEvening ? " btop" : ""), w.arrivalEvening ? "Landing ~" + fmtTime(p.arrive) + ". This evening is for checking in and dinner." : "Landing ~" + fmtTime(p.arrive));
+    if (w.blockAfter != null) inner += box(w.blockAfter, ge, "blocked btop", "Head out for your " + fmtTime(p.leave) + " departure");
 
     const mine = placedIds.filter(id => d.place[id].day === di), ln = lanes(mine);
-    inner += mine.map(id => ancCard(candById(id), di, gs, ln[id])).join("");
+    inner += mine.map(id => ancCard(candById(id), di, gs, ln[id])).join("") + commuteLabels(mine, gs);
     return '<div class="day-col" style="--c:' + lineVar(di) + '"><div class="day-h"><span class="bullet">' + (di + 1) + "</span><span><b>Day " + (di + 1) + "</b><small>" + esc(fmtDay(date)) + "</small>" + (d.weather && d.weather.days[date] ? wxChip(d.weather.days[date], { compact: true }) : "") + "</span></div>" +
       '<div class="day-body" data-day="' + di + '" style="height:' + H + "px;--pxh:" + PXH + 'px">' + inner + '<div class="drop-ghost hidden"></div></div></div>';
   }).join("");
