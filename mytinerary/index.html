@@ -364,6 +364,122 @@ textarea.inp { min-height: 88px; resize: vertical; }
 .place-form { display: grid; gap: 12px; }
 .pill.pick { border-color: var(--c); color: var(--c); font-weight: 600; }
 
+/* Text boxes: a calm dark focus ring instead of the red outline (red reads as an error) */
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: none; }
+.inp:focus, .look input:focus, .rework input:focus, .chat-input textarea:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 12%, transparent); }
+
+/* Landing (signed out) */
+body.signed-out #profileBtn, body.signed-out .menu, body.signed-out #planBtn { display: none; }
+.beta-note { background: var(--tint); border-bottom: 1px solid var(--rule); font-size: 14px; }
+.beta-note .wrap { display: flex; gap: 12px; align-items: baseline; padding-top: 10px; padding-bottom: 10px; flex-wrap: wrap; }
+.beta-note strong { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; background: var(--accent); color: #fff; padding: 3px 9px; border-radius: 999px; white-space: nowrap; font-weight: 600; }
+.hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 56px; align-items: center; padding-top: 56px; padding-bottom: 44px; }
+@media (max-width: 900px) { .hero { grid-template-columns: 1fr; padding-top: 32px; gap: 32px; } }
+.hero .pf-title { font-size: clamp(40px, 6vw, 76px); }
+.hero .lede { font-size: 19px; color: var(--muted); margin: 14px 0 0; max-width: 52ch; }
+.hero .look { margin: 26px 0 8px; max-width: 580px; }
+.hero .look input { padding: 11px 16px; font-size: 16px; }
+.art-card { background: var(--card); border: 1px solid var(--rule); border-radius: 18px; padding: 22px 22px 6px; box-shadow: 0 18px 40px rgba(0,0,0,.08); display: grid; gap: 6px; transform: rotate(1deg); --c: var(--l1); }
+.art-title { font-family: var(--display); font-weight: 600; font-size: 24px; line-height: 1.15; }
+.art-day { list-style: none; margin: 14px 0 0; padding: 0; display: grid; }
+.art-day li { display: grid; grid-template-columns: 74px 30px 1fr; position: relative; padding-bottom: 20px; }
+.art-day li::before { content: ""; position: absolute; left: 84px; top: 14px; bottom: -6px; width: 6px; background: var(--l1); }
+.art-day li:last-child::before { display: none; }
+.art-t { font-family: var(--mono); font-size: 12px; padding-top: 3px; }
+.art-dot { width: 22px; height: 22px; border-radius: 50%; border: 5px solid var(--l1); background: var(--card); position: relative; z-index: 1; margin-left: 2px; }
+.art-day b { display: block; font-family: var(--display); font-weight: 600; font-size: 18px; line-height: 1.2; }
+.art-day small { display: block; color: var(--muted); font-size: 13px; }
+.art-day .pill { margin-top: 6px; display: inline-block; }
+.props { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; padding-bottom: 80px; }
+.prop { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 18px; display: grid; gap: 8px; align-content: start; }
+.prop h2 { font-family: var(--display); font-weight: 600; font-size: 21px; line-height: 1.15; }
+.prop p { margin: 0; font-size: 15px; color: var(--muted); }
+
+/* Home / pick a starting point */
+.start { padding: 32px 0 80px; }
+.start .lede { font-size: 17px; color: var(--muted); margin: 10px 0 24px; }
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.choice { background: var(--card); border: 1px solid var(--rule); border-top: 6px solid var(--c); border-radius: 18px; padding: 22px; display: grid; gap: 12px; align-content: start; }
+.choice h2 { font-family: var(--display); font-weight: 700; font-size: 28px; line-height: 1.1; }
+.choice p { margin: 0; color: var(--muted); font-size: 16px; max-width: 46ch; }
+.choice-line { display: flex; justify-content: space-between; align-items: center; height: 14px; position: relative; max-width: 150px; }
+.choice-line::before { content: ""; position: absolute; left: 0; right: 0; top: 5px; height: 4px; background: var(--c); border-radius: 2px; }
+.choice-line i { width: 14px; height: 14px; border-radius: 50%; border: 4px solid var(--c); background: var(--card); position: relative; }
+.your-trips { margin-top: 40px; }
+.sec-h { font-family: var(--display); font-weight: 600; font-size: 24px; margin-bottom: 12px; }
+.trip-card { text-align: left; cursor: pointer; font: inherit; color: inherit; }
+.trip-card:hover { border-color: var(--ink); }
+
+/* Inspiration */
+.disc-filters { display: flex; gap: 18px 28px; flex-wrap: wrap; align-items: flex-end; margin: 22px 0 22px; }
+.disc-filters .filters { margin-bottom: 0; }
+.ideas { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.idea { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; }
+.idea .tile { min-height: 200px; }
+.idea .tile-name { font-size: 30px; }
+.sample summary { cursor: pointer; font-weight: 600; font-size: 14px; }
+.sample ol { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+.sample li { display: grid; grid-template-columns: 70px 1fr; gap: 8px; }
+.sample li b { font-family: var(--mono); font-size: 11px; font-weight: 400; color: var(--muted); padding-top: 3px; }
+
+/* Travel card */
+.prof-side { display: grid; gap: 18px; position: sticky; top: 76px; align-content: start; }
+@media (max-width: 900px) { .prof-side { position: static; } }
+.prof-side .prof-panel { position: static; }
+.prof-card { width: 100%; height: auto; display: block; border-radius: 12px; aspect-ratio: 1080 / 1350; background: #111722; }
+
+/* Plan form extras */
+.diet-lvl { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: 14px; }
+.diet-lvl > span { min-width: 110px; font-weight: 600; }
+.seg.small span { padding: 5px 11px; font-size: 13px; }
+
+/* Wish list: waiting screen */
+.wait { display: grid; gap: 24px; }
+.wait-head { background: var(--card); border: 1px solid var(--rule); border-radius: 16px; padding: 18px; }
+.wait-steps { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; font-size: 15px; }
+.wait-steps li { display: flex; gap: 10px; align-items: center; color: var(--muted); }
+.wait-steps .st { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--rule); flex: none; }
+.wait-steps li.done { color: var(--ink); }
+.wait-steps li.done .st { background: var(--good); border-color: var(--good); }
+.wait-steps li.now { color: var(--ink); font-weight: 600; }
+.wait-steps li.now .st { border-color: var(--accent); border-top-color: transparent; animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.wait .gen-line { margin: 0 0 12px; }
+.wait-qs { display: grid; gap: 14px; }
+.wait-q .filters { margin: 0; }
+.skel > div, .skel-rows > div { border-radius: 16px; background: linear-gradient(90deg, var(--card) 0%, var(--paper) 50%, var(--card) 100%); background-size: 200% 100%; border: 1px solid var(--rule); animation: shimmer 1.4s ease infinite; }
+.skel > div { height: 300px; }
+.skel-rows { display: grid; gap: 12px; margin-top: 10px; }
+.skel-rows > div { height: 86px; }
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .wait-steps li.now .st, .skel > div, .skel-rows > div { animation: none; } }
+.pill.only { justify-self: start; border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+/* Anchor board: placeholders and routines */
+.ph-row { display: grid; gap: 6px; }
+.ph-add { cursor: pointer; background: var(--card); font-family: var(--body); font-size: 13px; }
+.ph-add:hover { border-color: var(--ink); }
+.ph-custom { display: inline-flex; gap: 4px; }
+.ph-custom input { border: 1px solid var(--rule); border-radius: 999px; padding: 3px 10px; font-size: 13px; background: var(--card); width: 150px; }
+.anc.ph, .tray-item.ph { border-style: dashed; background: var(--paper); }
+.blocked.routine { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--l4) 10%, var(--card)) 0 6px, var(--card) 6px 12px); color: var(--l4); z-index: 1; }
+
+/* Itinerary */
+.who-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.who-bar .filters { margin: 0; }
+.pill.who { border-color: var(--l4); color: var(--l4); }
+.day-pending { padding: 10px 0 30px; }
+.share-cta { justify-content: space-between; background: var(--card); border-style: solid; }
+.share-cta .look { flex: 1 1 320px; max-width: 460px; }
+
+/* Real map */
+.gmap-slot { border-radius: 10px; overflow: hidden; background: var(--paper); }
+.gmap { width: 100%; aspect-ratio: 600 / 460; }
+.gpin { min-width: 24px; height: 24px; padding: 0 6px; border-radius: 999px; background: var(--card); border: 3px solid var(--c); display: grid; place-items: center; font: 600 12px var(--mono); color: var(--ink); box-shadow: 0 1px 4px rgba(0,0,0,.3); transition: transform .12s; }
+.gpin.on { background: var(--c); color: var(--on-c); }
+.gpin.home { background: var(--ink); color: var(--paper); border-color: var(--ink); border-radius: 6px; font-size: 14px; }
+.gpin.hl { transform: scale(1.35); }
+
 /* Travel profile chat */
 .prof { padding: 32px 0 80px; }
 .prof h1 { font-family: var(--display); font-weight: 700; font-size: clamp(36px, 6vw, 72px); line-height: 1; letter-spacing: -0.02em; }
@@ -450,13 +566,20 @@ let sampleFn = null, mcpApi = null;
 let sampleBlocked = false;
 let runtimeSettled = false;
 // Hosted on our own server (Railway): Claude and Google Places go through /api, behind an emailed sign-in link.
-let HOSTED = false, ME = null, PLACES = false;
+let HOSTED = false, ME = null, PLACES = false, GOOGLE_OAUTH = false, GOOGLE_CONNECTED = false;
 const hostedP = !MOCK && !hasRuntime && /^https?:$/.test(location.protocol)
   ? fetch("/api/me").then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null);
 Promise.all([sampleP, mcpP, hostedP]).then(([s, m, h]) => {
-  if (h && h.hosted) { HOSTED = true; ME = h.user; PLACES = !!(h.places && ME); if (ME && h.claude) s = hostedSample(); }
-  sampleFn = s; mcpApi = m; runtimeSettled = true; render(); maybeAutoScan();
-  if (HOSTED && ME) pullSync();
+  if (h && h.hosted) {
+    HOSTED = true; ME = h.user; PLACES = !!(h.places && ME); GOOGLE_OAUTH = !!(h.googleOAuth && ME); GOOGLE_CONNECTED = !!h.googleConnected;
+    GMAPS_KEY = h.mapsKey || ""; GMAP_ID = h.mapId || "DEMO_MAP_ID";
+    if (ME && h.claude) s = hostedSample();
+    m = ME && GOOGLE_CONNECTED ? hostedMcp() : null;
+  }
+  sampleFn = s; mcpApi = m; runtimeSettled = true;
+  if (SHARE_TOKEN && HOSTED) { loadShared(); return; }
+  route(); maybeAutoScan();
+  if (HOSTED && ME) { pullSync(); handleGoogleReturn(); }
 });
 // Same shape as the claude.ai sampling function: fn(prompt) -> {text}, fn.json(prompt, {onText, signal, modelTier}) -> parsed JSON.
 function hostedSample() {
@@ -513,7 +636,31 @@ function applyPlace(o, g) {
   if (!g) { o.verified = false; return o; }
   Object.assign(o, { verified: true, placeId: g.id, address: g.address || o.address, lat: g.lat, lng: g.lng, rating: g.rating, ratingCount: g.ratingCount, photo: g.photo, mapsUrl: g.mapsUrl, gStatus: g.status });
   if (g.hours) { o.hours = g.hours; o.hoursFrom = "google"; }
+  // Restaurants: Google's price range (or price level) replaces Claude's guess at what a meal costs.
+  const meal = o.kind === "meal" || o.category === "Food & drink" || MEALS.includes(String(o.category || "").toLowerCase());
+  const lv = { PRICE_LEVEL_INEXPENSIVE: [15, "$"], PRICE_LEVEL_MODERATE: [30, "$$"], PRICE_LEVEL_EXPENSIVE: [60, "$$$"], PRICE_LEVEL_VERY_EXPENSIVE: [110, "$$$$"] }[g.priceLevel];
+  if (lv) o.costTier = lv[1];
+  if (meal && g.priceRange && g.priceRange.lo) {
+    o.priceRange = g.priceRange; o.cost = Math.round((g.priceRange.lo + (g.priceRange.hi || g.priceRange.lo)) / 2); o.priceFrom = "google";
+  } else if (meal && lv) { o.cost = /coffee|breakfast/i.test(o.category || "") ? Math.round(lv[0] * 0.6) : lv[0]; o.priceFrom = "google"; }
   return o;
+}
+// Google lists some of Claude's picks as closed: swap each for a real, open place of the same kind in the same slot.
+async function replaceClosed(t) {
+  const bad = [];
+  t.days.forEach((d, di) => d.items.forEach((it, ii) => { if (closedOnGoogle(it)) bad.push({ di, ii, it }); }));
+  if (!bad.length || !sampleFn) return 0;
+  const prompt = "You fix a Mytinerary itinerary. Google Maps lists these places as closed, so replace each one with a real, currently open place of the same kind, near the stops before and after it, in the same time slot.\n\nTRIP\n" + tripContext(t) + "\n\n" +
+    bad.map((b, k) => k + ". Day " + (b.di + 1) + " (" + t.days[b.di].date + ") " + b.it.time + "-" + (b.it.end || "") + " " + (b.it.category || b.it.kind) + ": " + b.it.name + "\nThat day's plan:\n" + dayList(t.days[b.di])).join("\n\n") +
+    "\n\nReply with ONLY a JSON array with one replacement per numbered item, in order, each shaped like:\n" + ITEM_SHAPE;
+  const arr = await sampleFn.json(prompt, { modelTier: "default", cache: false }).catch(() => null);
+  if (!Array.isArray(arr)) return 0;
+  const reps = bad.map((b, k) => arr[k] && arr[k].name ? Object.assign(normItem(arr[k]), { time: b.it.time, end: b.it.end, transitFromPrev: b.it.transitFromPrev, anchor: b.it.anchor, who: b.it.who }) : null);
+  const live = reps.filter(Boolean), res = await placesMatch(t.destination, live);
+  if (res) live.forEach((r, i) => applyPlace(r, res[i]));
+  let n = 0;
+  reps.forEach((r, i) => { if (r && !closedOnGoogle(r)) { t.days[bad[i].di].items[bad[i].ii] = r; n++; } });
+  return n;
 }
 const closedOnGoogle = o => o.gStatus === "CLOSED_PERMANENTLY" || o.gStatus === "CLOSED_TEMPORARILY";
 async function enrichTrip(t) {
@@ -529,16 +676,35 @@ async function enrichTrip(t) {
   if (t.homeBase && t.homeBase.name) todo.push(t.homeBase);
   const res = await placesMatch(t.destination, todo);
   if (res) todo.forEach((o, i) => applyPlace(o, res[i]));
+  const fixed = await replaceClosed(t);
+  if (fixed) toast("Swapped out " + fixed + (fixed === 1 ? " place" : " places") + " Google lists as closed.");
   saveTrip(t);
   if (S.trip && S.trip.id === t.id && S.view === "trip") render();
 }
 function renderLogin() {
   const expired = new URLSearchParams(location.search).get("signin") === "expired";
-  return '<div class="wrap login"><span class="eyebrow">Mytinerary · invite only</span><h1 class="pf-title">Plan trips around what you love.</h1>' +
-    '<p class="lede">Enter the email you were invited with and we\'ll send you a sign-in link.</p>' +
-    (expired ? '<p class="err">That sign-in link expired or was already used. Ask for a new one below.</p>' : "") +
-    '<form id="loginForm" class="look"><label for="loginEmail" class="hidden">Email</label><input id="loginEmail" type="email" autocomplete="email" required placeholder="you@example.com"><button class="btn primary" type="submit">Email me a link</button></form>' +
-    '<p class="note" id="loginNote" role="status"></p></div>';
+  const stops = [["9:30 AM", "Klyde Warren Park", "Coffee and a walk", ""], ["11:00 AM", "Dallas Museum of Art", "Free, and closed Mondays", "Your pick"], ["1:00 PM", "Pecan Lodge", "Brisket worth the line", ""], ["7:30 PM", "Lucia", "The table to book first", "Your pick"]];
+  const props = [
+    ["A profile that gets you", "A three-minute chat captures your pace, budget and what you love. Every suggestion starts there, not with the average tourist."],
+    ["Anchor your days", "Pick one or two must-dos per day and drag them onto your schedule. Opening hours show as you go, so nothing lands when it's closed."],
+    ["The rest, filled in", "Meals and nearby stops get planned around your anchors and grouped by neighborhood, so you're not crossing town twice."],
+    ["Checked against the real world", "Places are verified on Google Maps with current hours, ratings and photos. Already booked? Pull your flights and hotel from Gmail."]
+  ];
+  return '<div class="landing">' +
+    '<div class="beta-note"><div class="wrap"><strong>Invite-only beta</strong><span>Mytinerary is brand new and changes often. Things may move, break or disappear while we learn what works, and your feedback shapes what comes next.</span></div></div>' +
+    '<section class="wrap hero"><div class="hero-copy"><span class="eyebrow">Trip planning, built around you</span>' +
+      '<h1 class="pf-title">Plan trips around what you love.</h1>' +
+      "<p class=\"lede\">Tell Mytinerary how you travel once. It finds what's worth doing, helps you anchor each day, and fills in the rest, checked against real opening hours.</p>" +
+      (expired ? '<p class="err">That sign-in link expired or was already used. Ask for a new one below.</p>' : "") +
+      '<form id="loginForm" class="look"><label for="loginEmail" class="hidden">Email</label><input id="loginEmail" type="email" autocomplete="email" required placeholder="The email you were invited with"><button class="btn primary" type="submit">Email me a sign-in link</button></form>' +
+      '<p class="note" id="loginNote" role="status"></p>' +
+      "<p class=\"note\">Don't have an invite? Ask the person who shared this link.</p>" +
+    "</div>" +
+    '<div class="hero-art" aria-hidden="true"><div class="art-card"><span class="eyebrow">Day 2 · Saturday</span><span class="art-title">Brisket, art and a long dinner in Dallas</span>' +
+      '<ol class="art-day">' + stops.map(([t, n, w, pick]) => "<li><span class=\"art-t\">" + t + "</span><span class=\"art-dot\"></span><span><b>" + n + "</b><small>" + w + "</small>" + (pick ? '<span class="pill pick">' + pick + "</span>" : "") + "</span></li>").join("") + "</ol></div></div>" +
+    "</section>" +
+    '<section class="wrap props">' + props.map(([h, p], i) => '<div class="prop" style="--c:' + lineVar(i) + '"><span class="bullet">' + (i + 1) + "</span><h2>" + h + "</h2><p>" + p + "</p></div>").join("") + "</section>" +
+    "</div>";
 }
 function bindLogin() {
   $("#loginForm").addEventListener("submit", async e => {
@@ -553,6 +719,7 @@ function bindLogin() {
   });
 }
 function updateWho() {
+  document.body.classList.toggle("signed-out", HOSTED && !ME);
   const w = $("#who");
   w.classList.toggle("hidden", !(HOSTED && ME));
   if (!(HOSTED && ME) || w.dataset.me === ME) return;
@@ -614,12 +781,337 @@ async function pullSync() {
     const list = savedTrips();
     const last = list.find(t => t.id === store("mytin.lastOpened")) || (S.trip && !S.trip.example ? list.find(t => t.id === S.trip.id) : list[0]);
     if (last) S.trip = normalize(last);
-    else if (S.trip && !S.trip.example) S.trip = normalize(JSON.parse(JSON.stringify(EXAMPLE))); // that trip was removed on another device
-    if (!["wish", "anchors"].includes(S.view) || DRAFT) render(); else location.hash = "plan";
+    else if (S.trip && !S.trip.example) S.trip = HOSTED ? null : normalize(JSON.parse(JSON.stringify(EXAMPLE))); // that trip was removed on another device
+    if (["start", "trip", "profile"].includes(S.view)) route(); else if (!["wish", "anchors"].includes(S.view) || DRAFT) render(); else location.hash = "plan";
   }
   syncReady = true;
   pushSync(); // anything only this browser has, e.g. trips made before sync existed
 }
+
+/* ---------- Home, onboarding and inspiration (hosted app) ---------- */
+// Signed-in people start with their travel profile, then choose: plan a trip they already have, or get ideas.
+// The claude.ai artifact and the public demo keep opening on the sample trip.
+function homeView() {
+  if (!HOSTED) return "trip";
+  if (S.trip && !S.trip.example) return "trip";
+  if (!CHAT.done && !CHAT.skipped && !savedTrips().length) return "profile";
+  return "start";
+}
+const onboarding = () => HOSTED && !savedTrips().length && !CHAT.done && !CHAT.skipped;
+
+function renderStart() {
+  const trips = savedTrips(), first = !trips.length, persona = PROFILE.persona && PROFILE.persona.title;
+  return '<div class="wrap start">' +
+    '<span class="eyebrow">' + (first ? "Step 2 of 2 · Pick a starting point" : "Welcome back") + "</span>" +
+    '<h1 class="pf-title">' + (first ? "Where do you want to start?" : "Where to next?") + "</h1>" +
+    (hasProfile()
+      ? '<p class="lede">Planning as <strong>' + esc(persona || "you") + '</strong>. <a href="#profile">See your travel card</a></p>'
+      : '<p class="lede"><a href="#profile">Tell us how you travel</a> and every suggestion will fit you better.</p>') +
+    draftBanner() +
+    '<div class="choices">' +
+      '<section class="choice" style="--c:var(--l2)"><span class="choice-line" aria-hidden="true"><i></i><i></i><i></i></span><h2>I have a trip coming up</h2>' +
+        "<p>Already know where and when? Bring in your flights and hotel, pick what you want to do, and we'll build the days around them.</p>" +
+        '<div class="row2">' + (GOOGLE_OAUTH ? '<button class="btn primary" type="button" data-find-trip>Find it in Gmail &amp; Calendar</button>' : "") +
+        '<a class="btn' + (GOOGLE_OAUTH ? "" : " primary") + '" href="#plan">Enter trip details</a></div></section>' +
+      '<section class="choice" style="--c:var(--l1)"><span class="choice-line" aria-hidden="true"><i></i><i></i><i></i></span><h2>Inspire me</h2>' +
+        "<p>Not sure where to go? Get trip ideas picked for how you travel, each with a sample day so you can picture it.</p>" +
+        '<div class="row2"><a class="btn primary" href="#discover">Show me trip ideas</a></div></section>' +
+    "</div>" +
+    (trips.length ? '<section class="your-trips"><h2 class="sec-h">Your trips</h2><div class="found-list">' + trips.map(t =>
+      '<button class="found trip-card" type="button" data-open-trip="' + esc(t.id) + '"><span class="eyebrow">' + esc(fmtRange(t.startDate, t.endDate)) + " · " + (t.status === "confirmed" ? "✓ Confirmed" : "Draft") + '</span><span class="fd">' + esc(t.destination) + "</span>" +
+      (t.summary ? '<span class="small muted">' + esc(t.summary) + "</span>" : "") + "</button>").join("") + "</div></section>" : "") +
+    "</div>";
+}
+
+// Inspiration: Claude suggests trips from the profile; Google supplies a photo of each place.
+const DISC_LEN = ["Long weekend", "About a week", "Two weeks or more"];
+const DISC_REACH = ["Close to home", "Anywhere in the country", "Anywhere in the world"];
+function profileSummary(p) {
+  const L = [];
+  if (p.homeCity) L.push("Home: " + p.homeCity);
+  if (p.travelsWith) L.push("Usually travels with: " + p.travelsWith);
+  if (p.pace) L.push("Pace: " + p.pace);
+  if (p.budget) L.push("Budget: " + p.budget + " (about $" + (BUDGET_TARGET[p.budget] || 300) + " per person per day)");
+  const ints = INTERESTS.filter(([k]) => p.interests[k]).map(([k, l]) => l + " " + p.interests[k] + "/5");
+  if (ints.length) L.push("Interests (1-5): " + ints.join(", "));
+  if (p.loves.length) L.push("Seeks out: " + p.loves.join("; "));
+  if (p.avoids.length) L.push("Avoid: " + p.avoids.join("; "));
+  if (p.diet.length) L.push("Diet: " + p.diet.join(", "));
+  if (p.needs) L.push("Planning needs: " + p.needs);
+  if (p.beenTo.length) L.push("Already been to: " + p.beenTo.join(", "));
+  if (p.dreamTrips.length) L.push("On their list: " + p.dreamTrips.join(", "));
+  if (p.notes) L.push("Other: " + p.notes);
+  return L.length ? L.join("\n") : "(No profile yet. Suggest a varied, broadly appealing mix.)";
+}
+function discPrompt(exclude) {
+  const d = S.disc;
+  return "You are the trip inspiration editor for Mytinerary. Suggest 6 trips this traveler would genuinely love, so they get excited to plan one.\n\n" +
+    "TRAVELER\n" + profileSummary(PROFILE) + "\n\n" +
+    "WHAT THEY'RE LOOKING FOR\n- Trip length: " + d.len + "\n- How far: " + d.reach + (PROFILE.homeCity ? " (from " + PROFILE.homeCity + ")" : "") +
+    "\n- Today is " + isoDate(new Date()) + ". Favor places that are good to visit in the next few months.\n\n" +
+    "RULES\n" +
+    "- Build each trip around what they rate 4-5 and what they seek out. Never center a trip on something they rate 1-2 or avoid.\n" +
+    "- Vary the six: different kinds of places (big city, small town, nature, coast), not six versions of the same trip.\n" +
+    "- Skip places they've already been unless a return trip clearly fits.\n" +
+    "- sampleDay: four real, specific stops that show what a great day there feels like for THEM.\n" +
+    (exclude.length ? "- Already suggested, don't repeat: " + exclude.join("; ") + "\n" : "") +
+    "\nReply with ONLY one JSON object, no prose:\n" +
+    '{"ideas":[{"destination":"City, State or Country","title":"3-6 word trip name","pitch":"one vivid sentence","why":"one sentence tying it to their tastes","tags":["2-4 short tags"],"days":"e.g. 3-4 days","bestMonths":"e.g. Mar–May","getThere":"e.g. 2h flight from Los Angeles","dailyCost":0,"sampleDay":[{"time":"HH:MM","name":"real place","what":"a few words"}]}]}';
+}
+async function loadIdeas(more) {
+  if (S.discLoad && S.discLoad.busy) return;
+  if (!sampleFn) { S.discLoad = { busy: false, names: [], err: noClaudeCopy("Trip ideas") }; render(); return; }
+  S.discLoad = { busy: true, more: !!more, names: [], err: "" }; render();
+  try {
+    const raw = await sampleFn.json(discPrompt(more ? S.disc.ideas.map(i => i.destination) : []), {
+      modelTier: "default", cache: false,
+      onText: ({ text }) => {
+        if (!S.discLoad) return;
+        const names = []; const re = /"destination"\s*:\s*"([^"]{2,80})"/g; let m;
+        while ((m = re.exec(text))) names.push(m[1]);
+        S.discLoad.names = names; updateDiscLoad();
+      }
+    });
+    const ideas = (raw && Array.isArray(raw.ideas) ? raw.ideas : []).filter(i => i && i.destination).map(i => ({
+      id: uid(), destination: String(i.destination), title: String(i.title || ""), pitch: String(i.pitch || ""), why: String(i.why || ""),
+      tags: Array.isArray(i.tags) ? i.tags.slice(0, 4).map(String) : [], days: String(i.days || ""), bestMonths: String(i.bestMonths || ""),
+      getThere: String(i.getThere || ""), dailyCost: Number(i.dailyCost) || 0,
+      sampleDay: Array.isArray(i.sampleDay) ? i.sampleDay.filter(s => s && s.name).slice(0, 5).map(s => ({ time: String(s.time || ""), name: String(s.name), what: String(s.what || "") })) : []
+    }));
+    if (!ideas.length) throw { code: "invalid_json" };
+    if (PLACES) { S.discLoad.status = "Finding photos…"; updateDiscLoad(); const res = await placesMatch("", ideas.map(i => ({ name: i.destination }))); if (res) ideas.forEach((i, k) => { if (res[k] && res[k].photo) i.photo = res[k].photo; }); }
+    S.disc.ideas = more ? S.disc.ideas.concat(ideas) : ideas;
+    store("mytin.ideas", S.disc);
+    S.discLoad = null;
+  } catch (e) {
+    if (e && e.code === "not_granted") sampleBlocked = true;
+    S.discLoad = { busy: false, names: [], err: genErrorCopy(e).replace("building the trip", "finding trip ideas") };
+  }
+  if (S.view === "discover") render();
+}
+function updateDiscLoad() {
+  const box = $("#discNames"); if (!box || !S.discLoad) return;
+  box.innerHTML = S.discLoad.names.map(s => '<span class="chip">' + esc(s) + "</span>").join("");
+  $("#discBar").style.width = Math.min(95, 8 + S.discLoad.names.length / 6 * 85) + "%";
+  if (S.discLoad.status) $("#discStatus").textContent = S.discLoad.status;
+}
+function ideaCard(i, k) {
+  const photo = i.photo && PLACES ? ' style="background-image:linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.72)), url(&quot;/api/places/photo?name=' + encodeURIComponent(i.photo) + '&amp;w=800&quot;)"' : "";
+  const meta = [i.days, i.bestMonths ? "Best " + i.bestMonths : "", i.dailyCost ? "~" + money(i.dailyCost) + "/person/day" : ""].filter(Boolean).join(" · ");
+  return '<article class="idea" style="--c:' + lineVar(k) + '">' +
+    '<div class="tile' + (photo ? " photo" : "") + '" aria-hidden="true"' + photo + '><span class="tile-cat">' + esc(i.title) + '</span><span class="tile-name">' + esc(i.destination) + '</span><span class="tile-line"><i></i><i></i><i></i></span><span class="tile-hood">' + esc(i.getThere || " ") + "</span></div>" +
+    '<div class="wbody"><h2 class="hidden">' + esc(i.destination) + "</h2>" +
+      (i.why ? '<span class="fitwhy">' + esc(i.why) + "</span>" : "") +
+      (i.pitch ? '<p class="why">' + esc(i.pitch) + "</p>" : "") +
+      (i.tags.length ? '<div class="pf-chips">' + i.tags.map(t => '<span class="pill">' + esc(t) + "</span>").join("") + "</div>" : "") +
+      (meta ? '<div class="wmeta"><span>' + esc(meta) + "</span></div>" : "") +
+      (i.sampleDay.length ? '<details class="sample"><summary>A day there</summary><ol>' + i.sampleDay.map(s => "<li><b>" + esc(fmtTime(s.time) || s.time) + "</b><span><strong>" + esc(s.name) + "</strong>" + (s.what ? " · " + esc(s.what) : "") + "</span></li>").join("") + "</ol></details>" : "") +
+      '<div class="foot"><button class="btn small primary" type="button" data-plan-idea="' + esc(i.id) + '">Plan this trip</button></div>' +
+    "</div></article>";
+}
+function renderDiscover() {
+  const d = S.disc, L = S.discLoad;
+  const seg = (key, opts) => '<div class="filters" role="group">' + opts.map(o => '<button type="button" data-disc="' + key + '" data-v="' + esc(o) + '" aria-pressed="' + (d[key] === o) + '">' + esc(o) + "</button>").join("") + "</div>";
+  let main;
+  if (L && L.busy && !L.more) main = '<div class="wish-load"><div class="gen-line"><i id="discBar" style="width:8%"></i></div><div class="gen-stops" id="discNames"></div><p class="gen-status" id="discStatus">Picking trips for how you travel…</p></div>';
+  else if (!d.ideas.length) main = L && L.err ? '<p class="err">' + esc(L.err) + '</p><button class="btn" type="button" id="discGo">Try again</button>' : "";
+  else main = '<div class="wish-grid ideas">' + d.ideas.map(ideaCard).join("") + "</div>" +
+    '<div class="wish-more"><button class="btn" type="button" id="discMore"' + (L && L.busy ? " disabled" : "") + ">" + (L && L.busy ? "Finding more…" : "Show me more ideas") + "</button></div>" +
+    (L && L.err ? '<p class="err">' + esc(L.err) + "</p>" : "");
+  return '<div class="wrap planflow"><span class="eyebrow">Inspiration</span><h1 class="pf-title">Where should you go next?</h1>' +
+    '<p class="lede">Trip ideas picked for how you travel' + (hasProfile() ? "" : '. <a href="#profile">Do your travel profile</a> first for better picks') + ". Find one you love and we'll plan it with you.</p>" +
+    '<div class="disc-filters"><div><div class="qlabel">How long</div>' + seg("len", DISC_LEN) + '</div><div><div class="qlabel">How far</div>' + seg("reach", DISC_REACH) + "</div>" +
+      '<button class="btn primary" type="button" id="discGo"' + (L && L.busy ? " disabled" : "") + ">" + (d.ideas.length ? "Get new ideas" : "Show me ideas") + "</button></div>" +
+    main + "</div>";
+}
+function bindDiscover() {
+  document.querySelectorAll("[data-disc]").forEach(b => b.addEventListener("click", () => { S.disc[b.dataset.disc] = b.dataset.v; store("mytin.ideas", S.disc); render(); }));
+  const go = $("#discGo"); if (go) go.addEventListener("click", () => loadIdeas(false));
+  const more = $("#discMore"); if (more) more.addEventListener("click", () => loadIdeas(true));
+  document.querySelectorAll("[data-plan-idea]").forEach(b => b.addEventListener("click", () => {
+    const i = S.disc.ideas.find(x => x.id === b.dataset.planIdea); if (!i) return;
+    FORM = Object.assign({}, FORM, { dest: i.destination, booked: null, stay: "", mustdo: i.sampleDay.length ? "From the trip idea \"" + i.title + "\": " + i.sampleDay.map(s => s.name).join(", ") : FORM.mustdo });
+    store("mytin.form", FORM);
+    location.hash = "plan";
+    toast("Pick your dates and we'll find the best things to do in " + i.destination + ".");
+  }));
+  if (!S.disc.ideas.length && !S.discLoad && sampleFn) loadIdeas(false);
+}
+
+/* ---------- Shareable travel card ---------- */
+// Drawn on a canvas (1080×1350, the portrait size most apps like) so it can be downloaded or shared as an image.
+function cardPanelHTML() {
+  if (!hasProfile()) return "";
+  return '<h3>Your travel card <small>share it anywhere</small></h3>' +
+    '<canvas id="profCard" class="prof-card" role="img" aria-label="' + esc("Travel card: " + ((PROFILE.persona && PROFILE.persona.title) || "my travel profile")) + '"></canvas>' +
+    '<div class="pf-actions"><button class="btn small primary" type="button" id="cardShare">Share</button><button class="btn small" type="button" id="cardDownload">Download image</button></div>';
+}
+function wrapText(x, text, maxW) {
+  const words = String(text).split(/\s+/), lines = []; let line = "";
+  words.forEach(w => { const t = line ? line + " " + w : w; if (x.measureText(t).width > maxW && line) { lines.push(line); line = w; } else line = t; });
+  if (line) lines.push(line);
+  return lines;
+}
+async function drawProfileCard(cv) {
+  const p = PROFILE, W = 1080, H = 1350, M = 90;
+  await Promise.all(["700 92px Fraunces", "600 40px Fraunces", "500 34px Inter", "600 32px Inter", "400 24px 'JetBrains Mono'"].map(f => document.fonts.load(f).catch(() => null)));
+  cv.width = W; cv.height = H;
+  const x = cv.getContext("2d");
+  const C = { bg: "#111722", ink: "#F2F3EE", muted: "#9AA3AF", faint: "#273141", lines: ["#FF6A4D", "#2FB5B5", "#E3A843", "#8C7FF0", "#5CC283", "#E874A8"] };
+  x.fillStyle = C.bg; x.fillRect(0, 0, W, H);
+  // Background: faint transit lines sweeping off the top-right corner.
+  x.lineWidth = 14; x.lineCap = "round";
+  C.lines.slice(0, 4).forEach((c, i) => { x.strokeStyle = c; x.globalAlpha = 0.16; x.beginPath(); x.moveTo(W - 330 + i * 40, -20); x.lineTo(W - 330 + i * 40, 150 + i * 30); x.quadraticCurveTo(W - 330 + i * 40, 230 + i * 30, W - 250 + i * 40, 230 + i * 30); x.lineTo(W + 20, 230 + i * 30); x.stroke(); });
+  x.globalAlpha = 1;
+  // Header.
+  x.lineWidth = 8; x.strokeStyle = C.lines[0]; x.beginPath(); x.arc(M + 12, 104, 13, 0, 7); x.stroke();
+  x.fillStyle = C.ink; x.font = "600 40px Fraunces"; x.textBaseline = "alphabetic"; x.fillText("mytinerary", M + 40, 117);
+  x.font = "400 24px 'JetBrains Mono'"; x.fillStyle = C.muted; x.fillText("MY TRAVEL PROFILE", M, 196);
+  // Persona and tagline.
+  let y = 296;
+  x.fillStyle = C.ink; x.font = "700 86px Fraunces";
+  wrapText(x, (p.persona && p.persona.title) || "My travel style", W - 2 * M).slice(0, 3).forEach(l => { x.fillText(l, M, y); y += 92; });
+  if (p.persona && p.persona.tagline) {
+    x.font = "500 34px Inter"; x.fillStyle = C.muted; y += 6;
+    wrapText(x, p.persona.tagline, W - 2 * M).slice(0, 2).forEach(l => { x.fillText(l, M, y); y += 46; });
+  }
+  // Interests as transit lines: each one a line with five stations, lit up to the rating.
+  const ints = INTERESTS.filter(([k]) => p.interests[k]);
+  if (ints.length) {
+    y += 44; x.font = "400 24px 'JetBrains Mono'"; x.fillStyle = C.muted; x.fillText("WHAT I'M INTO", M, y); y += 54;
+    const x0 = 400, x1 = W - M - 14, step = (x1 - x0) / 4;
+    const short = { food: "Food", culture: "Culture", outdoors: "Outdoors", nightlife: "Nights out", shopping: "Shopping" };
+    ints.forEach(([k, label], i) => {
+      const c = C.lines[i % C.lines.length], n = p.interests[k];
+      x.font = "600 32px Inter"; x.fillStyle = C.ink; x.fillText(short[k] || label, M, y + 11);
+      x.lineWidth = 8; x.strokeStyle = C.faint; x.beginPath(); x.moveTo(x0, y); x.lineTo(x1, y); x.stroke();
+      x.strokeStyle = c; x.beginPath(); x.moveTo(x0, y); x.lineTo(x0 + step * (n - 1), y); x.stroke();
+      for (let s = 0; s < 5; s++) { x.beginPath(); x.arc(x0 + step * s, y, 14, 0, 7); x.fillStyle = s < n ? c : C.bg; x.fill(); x.lineWidth = 5; x.strokeStyle = s < n ? c : C.faint; x.stroke(); }
+      y += 60;
+    });
+  }
+  // Quick facts as pills.
+  const facts = [p.pace && p.pace + " pace", p.budget, p.homeCity && "From " + p.homeCity, p.travelsWith && "With " + p.travelsWith, p.dayStart && (toMin(p.dayStart) < 480 ? "Early riser" : toMin(p.dayStart) >= 600 ? "Slow mornings" : "")].filter(Boolean);
+  if (facts.length) {
+    y += 10; x.font = "400 25px 'JetBrains Mono'"; x.fillStyle = C.ink;
+    let line = ""; facts.forEach(f => { const t = line ? line + "  ·  " + f : f; if (x.measureText(t).width <= W - 2 * M) line = t; });
+    x.fillText(line, M, y); y += 10;
+  }
+  // What they seek out, as stops down one line, as far as space allows.
+  const loves = p.loves.slice(0, 4), room = Math.floor((H - 150 - (y + 90)) / 50) + 1;
+  if (loves.length && room > 0) {
+    y += 64; x.font = "400 24px 'JetBrains Mono'"; x.fillStyle = C.muted; x.fillText("ALWAYS LOOKING FOR", M, y); y += 46;
+    const shown = loves.slice(0, room), top = y - 10;
+    x.strokeStyle = C.lines[0]; x.lineWidth = 8; x.beginPath(); x.moveTo(M + 14, top); x.lineTo(M + 14, top + (shown.length - 1) * 50); x.stroke();
+    shown.forEach((l, i) => { const cy = top + i * 50; x.beginPath(); x.arc(M + 14, cy, 12, 0, 7); x.fillStyle = C.bg; x.fill(); x.lineWidth = 6; x.strokeStyle = C.lines[0]; x.stroke(); x.font = "500 32px Inter"; x.fillStyle = C.ink; x.fillText(wrapText(x, l, W - 2 * M - 60)[0], M + 50, cy + 11); });
+  }
+  // Footer.
+  x.fillStyle = C.faint; x.fillRect(M, H - 112, W - 2 * M, 2);
+  x.font = "500 28px Inter"; x.fillStyle = C.muted; x.fillText("Find your travel style at", M, H - 58);
+  const lead = x.measureText("Find your travel style at ").width;
+  x.font = "600 28px Inter"; x.fillStyle = C.ink; x.fillText(location.host || "mytinerary", M + lead, H - 58);
+}
+function bindCard() {
+  const cv = $("#profCard"); if (!cv) return;
+  drawProfileCard(cv);
+  const blob = () => new Promise(r => cv.toBlob(r, "image/png"));
+  const download = b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "my-travel-profile.png"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); };
+  $("#cardDownload").addEventListener("click", async () => download(await blob()));
+  $("#cardShare").addEventListener("click", async () => {
+    const b = await blob(), file = new File([b], "my-travel-profile.png", { type: "image/png" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: "My travel profile", text: ((PROFILE.persona && PROFILE.persona.title) || "My travel style") + ", via Mytinerary" }); } catch (e) { /* closed the share sheet */ }
+    } else { download(b); toast("Saved the image. Post it anywhere."); }
+  });
+}
+
+/* ---------- Gmail & Calendar for the hosted app ---------- */
+// Same interface as the claude.ai connectors (callTool), backed by the server's Google connection.
+function hostedMcp() {
+  const call = async path => {
+    const r = await fetch(path);
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (j.code === "not_connected" || j.code === "needs_reauth") { GOOGLE_CONNECTED = false; mcpApi = null; }
+      throw { code: j.code || "server_unavailable", retryable: r.status >= 500 };
+    }
+    return { payload: j };
+  };
+  return {
+    callTool(server, tool, args) {
+      if (tool === "list_events") return call("/api/google/events?" + new URLSearchParams({ timeMin: new Date(args.startTime).toISOString(), timeMax: new Date(args.endTime).toISOString() }));
+      if (tool === "search_threads") return call("/api/google/threads?" + new URLSearchParams({ q: args.query, max: String(args.pageSize || 30) }));
+      if (tool === "get_thread") return call("/api/google/thread?" + new URLSearchParams({ id: args.threadId }));
+      return Promise.reject({ code: "not_in_manifest" });
+    }
+  };
+}
+function findTrip() {
+  if (HOSTED && !mcpApi) { location.href = "/auth/google/start"; return; }
+  if (location.hash !== "#plan") location.hash = "plan";
+  scanTrips(false);
+}
+// Back from Google's consent screen: /?google=connected#plan
+function handleGoogleReturn() {
+  const g = new URLSearchParams(location.search).get("google");
+  if (!g || !HOSTED || !ME) return;
+  history.replaceState(null, "", location.pathname + location.hash);
+  if (g === "connected" && mcpApi) { toast("Connected. Looking for your upcoming trips…"); scanTrips(false); }
+  else if (g === "partial") toast("Google didn't share both Gmail and Calendar. Connect again and tick both boxes.");
+  else if (g === "denied") toast("Google wasn't connected.");
+  else toast("Connecting Google didn't work. Try again.");
+}
+
+/* ---------- Real Google Map (hosted, when the server has a browser key) ---------- */
+let GMAPS_KEY = "", GMAP_ID = "DEMO_MAP_ID", gmapsP = null, gm = null, PENDING_MAP = null;
+function loadGmaps() {
+  if (!GMAPS_KEY) return Promise.reject(new Error("no key"));
+  if (!gmapsP) gmapsP = new Promise((res, rej) => {
+    window.__gmReady = () => res(window.google.maps);
+    const sc = document.createElement("script");
+    sc.src = "https://maps.googleapis.com/maps/api/js?key=" + encodeURIComponent(GMAPS_KEY) + "&v=weekly&libraries=marker&loading=async&callback=__gmReady";
+    sc.async = true; sc.onerror = () => { gmapsP = null; rej(new Error("maps failed")); };
+    document.head.appendChild(sc);
+  });
+  return gmapsP;
+}
+const cssColor = c => { const m = /var\((--[\w-]+)\)/.exec(c || ""); return m ? getComputedStyle(document.documentElement).getPropertyValue(m[1]).trim() : c; };
+function mapSlotHTML(label, legend, data) {
+  PENDING_MAP = data;
+  return '<section class="panel map"><h3>' + label + '</h3><div class="gmap-slot" id="mapSlot"></div>' + (legend ? '<div class="map-legend">' + legend + "</div>" : "") + "</section>";
+}
+// One map for the whole visit: it moves into whichever screen needs it, and only its pins and lines change.
+async function mountMap(slot, data) {
+  let maps; try { maps = await loadGmaps(); } catch (e) { slot.innerHTML = '<p class="note">The map couldn\'t load.</p>'; return; }
+  if (!slot.isConnected) return;
+  const { AdvancedMarkerElement } = await maps.importLibrary("marker");
+  if (!gm) {
+    const el = document.createElement("div"); el.className = "gmap";
+    gm = { el, map: new maps.Map(el, { mapId: GMAP_ID, disableDefaultUI: true, zoomControl: true, gestureHandling: "cooperative", clickableIcons: false }), overlays: [], pins: {} };
+  }
+  slot.appendChild(gm.el);
+  gm.overlays.forEach(o => { if (o.setMap) o.setMap(null); else o.map = null; });
+  gm.overlays = []; gm.pins = {};
+  const bounds = new maps.LatLngBounds();
+  (data.paths || []).forEach(pa => {
+    const path = pa.pts.filter(hasLL).map(p => ({ lat: p.lat, lng: p.lng }));
+    if (path.length > 1) gm.overlays.push(new maps.Polyline({ map: gm.map, path, strokeColor: cssColor(pa.color), strokeWeight: 4, strokeOpacity: 0.85 }));
+  });
+  const all = (data.points || []).filter(hasLL).concat(hasLL(data.home) ? [Object.assign({}, data.home, { home: true, title: data.home.name })] : []);
+  all.forEach(pt => {
+    const el = document.createElement("div");
+    el.className = "gpin" + (pt.home ? " home" : "") + (pt.filled ? " on" : "");
+    el.style.setProperty("--c", pt.color || "var(--ink)");
+    el.textContent = pt.home ? "⌂" : pt.label || "";
+    const mk = new AdvancedMarkerElement({ map: gm.map, position: { lat: pt.lat, lng: pt.lng }, content: el, title: pt.title || "", gmpClickable: !!pt.id });
+    if (pt.id && data.onPick) mk.addEventListener("gmp-click", () => data.onPick(pt.id));
+    if (pt.id) gm.pins[pt.id] = el;
+    gm.overlays.push(mk); bounds.extend({ lat: pt.lat, lng: pt.lng });
+  });
+  if (all.length > 1) gm.map.fitBounds(bounds, 40);
+  else if (all.length === 1) { gm.map.setCenter({ lat: all[0].lat, lng: all[0].lng }); gm.map.setZoom(14); }
+}
+function highlightPin(id) { if (gm) Object.keys(gm.pins).forEach(k => gm.pins[k].classList.toggle("hl", k === id)); }
 
 /* ---------- Helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -731,10 +1223,13 @@ const S = {
   trip: null,
   day: 0,
   hl: null,
+  who: "all", shared: null, readOnly: false,
   gen: null,
   formError: "",
   scan: { state: "idle", step: "", trips: [], notes: [], err: "", picking: null, homeCity: "" }
 };
+S.disc = Object.assign({ ideas: [], len: DISC_LEN[0], reach: DISC_REACH[1] }, store("mytin.ideas") || {});
+S.discLoad = null;
 function savedTrips() { return store("mytin.trips") || []; }
 function saveTrip(t) {
   if (!t || t.example) return;
@@ -776,7 +1271,7 @@ function normItem(it) {
 /* ---------- Routing ---------- */
 function route() {
   const h = location.hash.replace("#", "");
-  S.view = h === "plan" ? "plan" : h === "profile" ? "profile" : (h === "wish" || h === "anchors") ? (DRAFT ? h : "plan") : (S.gen ? "gen" : "trip");
+  S.view = ["plan", "profile", "start", "discover"].includes(h) ? h : (h === "wish" || h === "anchors") ? (DRAFT ? h : "plan") : S.gen ? "gen" : homeView();
   if (S.view === "anchors" && !DRAFT.suggested && !Object.keys(DRAFT.place).length && DRAFT.wish.length) { suggestPlan(false); DRAFT.suggested = true; saveDraft(); }
   render();
   window.scrollTo(0, 0);
@@ -789,18 +1284,23 @@ function render(fresh) {
   const app = $("#app");
   const bs = $(".board-scroll"), bsl = bs ? bs.scrollLeft : 0;
   updateWho();
-  if (HOSTED && !ME) { app.innerHTML = renderLogin(); bindLogin(); return; }
+  if (HOSTED && !ME && !S.shared) { app.innerHTML = renderLogin(); bindLogin(); return; }
   if (S.view === "plan") app.innerHTML = renderPlan();
   else if (S.view === "wish") app.innerHTML = renderWish();
   else if (S.view === "anchors") app.innerHTML = renderAnchors();
   else if (S.view === "gen" && S.gen) app.innerHTML = renderGen();
   else if (S.view === "profile") app.innerHTML = renderProfile();
+  else if (S.view === "start") app.innerHTML = renderStart();
+  else if (S.view === "discover") app.innerHTML = renderDiscover();
   else app.innerHTML = renderTrip();
   if (S.view === "plan") bindPlan();
   if (S.view === "profile") bindProfile();
   if (S.view === "wish") bindWish();
+  if (S.view === "discover") bindDiscover();
   if (S.view === "anchors") bindAnchors();
   if ($(".board-scroll")) $(".board-scroll").scrollLeft = bsl;
+  if (PENDING_MAP && $("#mapSlot")) mountMap($("#mapSlot"), PENDING_MAP);
+  PENDING_MAP = null;
   if (S.view === "trip") bindTrip();
   renderTripsMenu();
 }
@@ -813,13 +1313,19 @@ function renderTrip() {
   const c = lineVar(S.day);
   const nights = Math.max(0, t.days.length - 1);
   const banner = t.example
-    ? '<div class="banner"><strong>Example trip.</strong> This is the 2020 San Francisco test itinerary from your template, rebuilt in the new format. <a class="btn small primary" href="#plan">Plan your own</a>' + (S.scan.trips.length ? "" : '<a class="btn small" href="#plan">Already booked? Start from Gmail &amp; Calendar</a>') + "</div>"
+    ? '<div class="banner"><strong>Example trip.</strong> This is the 2020 San Francisco test itinerary from your template, rebuilt in the new format. <a class="btn small primary" href="#plan">Plan your own</a>' + (S.scan.trips.length ? "" : '<button class="btn small" type="button" data-find-trip>Already booked? Start from Gmail &amp; Calendar</button>') + "</div>"
     : "";
   const tabs = t.days.map((dd, i) =>
     '<button class="line-tab" role="tab" data-day="' + i + '" aria-selected="' + (i === S.day) + '" style="--c:' + lineVar(i) + '">' +
-    '<span class="bullet">' + (i + 1) + '</span><span class="d">' + esc(fmtDay(dd.date)) + '</span><span class="t">' + esc(dd.title || "Day " + (i + 1)) + "</span></button>").join("");
+    '<span class="bullet">' + (i + 1) + '</span><span class="d">' + esc(fmtDay(dd.date)) + (dd.pending ? " · planning…" : dd.failed ? " · needs a retry" : "") + '</span><span class="t">' + esc(dd.title || "Day " + (i + 1)) + "</span></button>").join("");
 
-  return '<div class="wrap">' + banner + renderImport("trip") +
+  const names = travelerNames(t.prefs);
+  if (S.who !== "all" && !names.includes(S.who)) S.who = "all";
+  const shareBanner = S.shared ? '<div class="banner share-cta"><span><strong>' + esc(S.shared.owner || "A friend") + " shared this trip with you.</strong> Mytinerary plans trips around what you love: real places, checked hours, and days that make sense on a map.</span>" +
+    (ME ? '<button class="btn small primary" type="button" id="copyShared">Save a copy to my trips</button>'
+      : '<form class="look" id="inviteForm"><label for="inviteEmail" class="hidden">Your email</label><input id="inviteEmail" type="email" required placeholder="Your email"><button class="btn small primary" type="submit">Request an invite</button></form><span class="note" id="inviteNote"></span>') + "</div>" : "";
+  const editedNote = t.status === "confirmed" && !S.readOnly ? '<p class="note">Confirmed ' + esc(fmtDay(String(t.confirmedAt || "").slice(0, 10))) + ". You can keep editing; changes save automatically" + (t.editedAfterConfirm ? ", and you've made some since confirming." : ".") + "</p>" : "";
+  return '<div class="wrap">' + shareBanner + banner + (S.readOnly ? "" : renderImport("trip")) +
     '<section class="trip-head">' +
       '<span class="eyebrow">' + esc(fmtRange(t.startDate, t.endDate)) + " · " + t.days.length + (t.days.length === 1 ? " day" : " days") + (nights ? " · " + nights + (nights === 1 ? " night" : " nights") : "") + "</span>" +
       '<h1 class="dest">' + esc(t.destination) + "</h1>" +
@@ -832,10 +1338,14 @@ function renderTrip() {
         (t.occasion && t.occasion !== "Just because" ? '<span class="chip">' + esc(t.occasion) + "</span>" : "") +
       "</div>" +
       '<div class="head-actions">' +
+        (!S.readOnly && !t.example ? (t.status === "confirmed"
+          ? '<span class="pill booked">✓ Confirmed</span>' + (t.editedAfterConfirm ? '<button class="btn small primary" id="confirmTrip">Confirm changes</button>' : "")
+          : '<button class="btn small primary" id="confirmTrip">Confirm itinerary</button>') : "") +
+        (!S.readOnly && HOSTED && ME && !t.example ? '<button class="btn small" id="shareTrip">Share</button>' : "") +
         '<button class="btn small" id="copyText">Copy for the group chat</button>' +
-        (t.plan ? '<a class="btn small" href="#anchors" id="editPlan">Rearrange anchor days</a>' : "") +
-        (t.example ? "" : '<button class="btn small" id="delTrip">Remove from my trips</button>') +
-      "</div>" +
+        (t.plan && !S.readOnly ? '<a class="btn small" href="#anchors" id="editPlan">Rearrange anchor days</a>' : "") +
+        (t.example || S.readOnly ? "" : '<button class="btn small" id="delTrip">Remove from my trips</button>') +
+      "</div>" + editedNote +
     "</section>" +
     '<nav class="lines" role="tablist" aria-label="Days">' + tabs + "</nav>" +
     '<div class="grid">' +
@@ -846,11 +1356,15 @@ function renderTrip() {
           '<p class="pitch">' + esc(d.pitch) + "</p>" +
           '<div class="day-tools">' +
             routeLink(d) +
-            '<form class="rework" id="reworkForm"><label for="reworkInput" class="hidden">Change this day</label><input id="reworkInput" placeholder="Not feeling it? e.g. rainy day, more indoors, sleep in" autocomplete="off"><button class="btn small" type="submit" id="reworkBtn">Rework day</button></form>' +
+            (S.readOnly || d.pending ? "" : '<form class="rework" id="reworkForm"><label for="reworkInput" class="hidden">Change this day</label><input id="reworkInput" placeholder="Not feeling it? e.g. rainy day, more indoors, sleep in" autocomplete="off"><button class="btn small" type="submit" id="reworkBtn">Rework day</button></form>' +
+              '<form class="rework" id="quickAdd"><label for="quickInput" class="hidden">Add to this day</label><input id="quickInput" placeholder="Add something, e.g. 8:30pm start bedtime routine" autocomplete="off"><button class="btn small" type="submit">Add</button></form>') +
           "</div>" +
+          (names.length > 1 ? '<div class="who-bar"><span class="pf-k">Showing</span><div class="filters" role="group">' + ["all"].concat(names).map(n => '<button type="button" data-who="' + esc(n) + '" aria-pressed="' + (S.who === n) + '">' + (n === "all" ? "Everyone" : esc(n)) + "</button>").join("") + "</div></div>" : "") +
           '<span class="note" id="reworkNote"></span>' +
         "</div>" +
-        renderTimeline(d, S.day) +
+        (d.pending ? '<div class="day-pending" role="status"><p class="gen-status">Planning day ' + (S.day + 1) + " around your picks…</p>" + '<div class="skel-rows"><div></div><div></div><div></div><div></div></div></div>'
+          : d.failed ? '<div class="day-pending"><p class="err">This day didn\'t come back.</p><button class="btn" type="button" data-retry-day="' + S.day + '">Try again</button></div>'
+          : renderTimeline(d, S.day)) +
       "</section>" +
       '<aside class="rail">' +
         renderMap(t) +
@@ -883,6 +1397,7 @@ function renderTimeline(d, di) {
   const nums = stopNumbers(d);
   let html = '<div class="timeline" style="--c:' + c + '">';
   d.items.forEach((it, ii) => {
+    if (S.who !== "all" && it.who && it.who.length && !it.who.includes(S.who)) return; // someone else's part of the day
     const tr = it.transitFromPrev;
     if (tr && ii > 0) {
       html += '<div class="leg"><span></span><span class="rail-col"></span><span class="txt">' + esc(MODE[tr.mode] || tr.mode || "Travel") + " · " + Math.round(Number(tr.minutes)) + " min</span></div>";
@@ -896,20 +1411,23 @@ function renderTimeline(d, di) {
     if (it.why) body += '<span class="why">' + esc(it.why) + "</span>";
     if (it.tip) body += '<span class="tip"><b>Pro tip</b>' + esc(it.tip) + "</span>";
     if (minor && it.booked) body += '<div class="foot"><span class="pill booked">Booked</span></div>';
+    if (it.kind === "free" && !S.readOnly) body += '<div class="foot">' + (it.who && it.who.length ? '<span class="pill who">' + esc(it.who.join(" & ")) + "</span>" : "") + '<button class="lnk" data-remove="' + ii + '">Remove</button></div>';
     if (!minor) {
       const foot = [];
       if (it.anchor) foot.push('<span class="pill pick">Your pick</span>');
+      if (it.who && it.who.length) foot.push('<span class="pill who">' + esc(it.who.join(" & ")) + "</span>");
       if (typeof it.rating === "number") foot.push('<span class="pill">★ ' + it.rating.toFixed(1) + "</span>");
       if (it.gStatus === "CLOSED_PERMANENTLY" || it.gStatus === "CLOSED_TEMPORARILY") foot.push('<span class="pill now">Google lists it as closed</span>');
       else if (it.hours && it.time) { const w = openCheck({ hours: it.hours, minutes: Math.max(15, (toMin(it.end) ?? toMin(it.time) + 60) - toMin(it.time)) }, d.date, toMin(it.time)); if (w) foot.push('<span class="pill daybefore">⚠ ' + esc(w) + "</span>"); }
       if (it.verified === false) foot.push('<span class="pill daybefore">Not found on Google Maps</span>');
-      if (it.cost) foot.push('<span class="pill">' + esc(it.costTier || "") + (it.costTier ? " · " : "") + "~" + money(it.cost) + "/person</span>");
+      if (it.priceRange && it.priceRange.lo) foot.push('<span class="pill" title="From Google Maps">' + esc(it.costTier || "") + (it.costTier ? " · " : "") + money(it.priceRange.lo) + (it.priceRange.hi ? "–" + money(it.priceRange.hi) : "+") + "/person</span>");
+      else if (it.cost) foot.push('<span class="pill"' + (it.priceFrom === "google" ? ' title="Estimated from Google\'s price level"' : "") + ">" + esc(it.costTier || "") + (it.costTier ? " · " : "") + "~" + money(it.cost) + "/person</span>");
       if (it.booked) foot.push('<span class="pill booked">Booked</span>');
       else if (BOOK[it.booking]) foot.push('<span class="pill ' + it.booking + '">' + BOOK[it.booking] + "</span>");
       const q = encodeURIComponent((it.address || it.name + " " + (it.neighborhood || "") + " " + (S.trip.destination || "")).trim());
       foot.push('<a class="lnk" href="' + (it.mapsUrl ? esc(it.mapsUrl) : "https://www.google.com/maps/search/?api=1&query=" + q) + '" target="_blank" rel="noopener">Map</a>');
       foot.push('<a class="lnk" href="' + gcalLink(it, d) + '" target="_blank" rel="noopener">Add to calendar</a>');
-      foot.push('<button class="lnk" data-swap="' + ii + '">Swap</button>');
+      if (!S.readOnly) { foot.push('<button class="lnk" data-swap="' + ii + '">Change</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
       body += '<div class="foot">' + foot.join("") + "</div>";
     }
     html += '<div class="stop" data-id="' + it.id + '">' +
@@ -946,6 +1464,16 @@ function projection(pts, W, H, P) {
 
 /* Map: no basemap tiles are allowed in the page, so stops are projected onto a plain grid, like a transit diagram. */
 function renderMap(t) {
+  if (GMAPS_KEY) {
+    const d = t.days[S.day], nums = stopNumbers(d), col = lineVar(S.day);
+    const ps = d.items.filter(it => plotted(it) && it.kind !== "lodging" && !(S.who !== "all" && it.who && it.who.length && !it.who.includes(S.who)));
+    const hb = t.homeBase;
+    return mapSlotHTML("Day " + (S.day + 1) + " map <small>numbers match the stops</small>",
+      '<span style="--c:' + col + '"><i></i>Day ' + (S.day + 1) + '</span><span><i style="background:var(--ink);width:10px;height:10px"></i>' + esc(hb.name || "Home base") + "</span>",
+      { points: ps.map(it => ({ id: it.id, lat: it.lat, lng: it.lng, label: String(nums[it.id] || ""), color: col, filled: true, title: it.name })), paths: [{ color: col, pts: ps }],
+        home: hasLL(hb) ? { lat: hb.lat, lng: hb.lng, name: hb.name } : null,
+        onPick: id => { const el = document.querySelector('.stop[data-id="' + id + '"]'); if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.querySelector(".card").classList.add("hl"); } highlightPin(id); } });
+  }
   const pts = [];
   const hb = t.homeBase;
   if (Number.isFinite(hb.lat) && Number.isFinite(hb.lng)) pts.push({ lat: hb.lat, lng: hb.lng });
@@ -1058,6 +1586,30 @@ function renderBudget(t) {
 }
 
 function bindTrip() {
+  document.querySelectorAll("[data-retry-day]").forEach(b => b.addEventListener("click", () => retryDay(+b.dataset.retryDay)));
+  document.querySelectorAll("[data-who]").forEach(b => b.addEventListener("click", () => { S.who = b.dataset.who; render(); }));
+  document.querySelectorAll("[data-remove]").forEach(b => b.addEventListener("click", () => {
+    const t = S.trip, d = t.days[S.day], it = d.items[+b.dataset.remove];
+    if (!it || !confirm("Remove " + it.name + " from day " + (S.day + 1) + "?")) return;
+    d.items.splice(+b.dataset.remove, 1); markEdited(t); saveTrip(t); render(); toast("Removed " + it.name + ".");
+  }));
+  const qa = $("#quickAdd"); if (qa) qa.addEventListener("submit", e => { e.preventDefault(); const v = $("#quickInput").value.trim(); if (v && quickAdd(v)) $("#quickInput").value = ""; });
+  const cf = $("#confirmTrip"); if (cf) cf.addEventListener("click", () => {
+    const t = S.trip; t.status = "confirmed"; t.confirmedAt = new Date().toISOString(); t.editedAfterConfirm = false; saveTrip(t); render();
+    toast("Itinerary confirmed. Find it any time under My trips, and keep editing whenever you like.");
+  });
+  const st = $("#shareTrip"); if (st) st.addEventListener("click", shareTrip);
+  const cs = $("#copyShared"); if (cs) cs.addEventListener("click", () => {
+    const copy = JSON.parse(JSON.stringify(S.trip)); copy.id = uid(); copy.plan = null; copy.status = "draft"; copy.created = new Date().toISOString();
+    saveTrip(copy); store("mytin.lastOpened", copy.id);
+    S.shared = null; S.readOnly = false; S.trip = normalize(copy); history.replaceState(null, "", "/#trip"); route(); toast("Saved a copy to your trips. It's yours to change.");
+  });
+  const inv = $("#inviteForm"); if (inv) inv.addEventListener("submit", async e => {
+    e.preventDefault();
+    const email = $("#inviteEmail").value.trim(), note = $("#inviteNote");
+    const r = await fetch("/api/invite-request", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, via: "a trip shared by " + ((S.shared && S.shared.owner) || "a friend") }) }).catch(() => null);
+    note.textContent = r && r.ok ? "Thanks! We'll email you when you're in." : "That didn't go through. Try again.";
+  });
   const ep = $("#editPlan");
   if (ep) ep.addEventListener("click", () => { DRAFT = JSON.parse(JSON.stringify(S.trip.plan)); DRAFT.tripId = S.trip.id; DRAFT.suggested = true; saveDraft(); });
   document.querySelectorAll(".line-tab").forEach(b => b.addEventListener("click", () => { S.day = +b.dataset.day; S.hl = null; render(); }));
@@ -1074,7 +1626,7 @@ function bindTrip() {
     const dot = document.querySelector('.stop-c[data-id="' + id + '"] circle');
     if (dot) dot.setAttribute("r", "14");
   };
-  document.querySelectorAll(".stop").forEach(s => s.addEventListener("mouseenter", () => hl(s.dataset.id)));
+  document.querySelectorAll(".stop").forEach(s => s.addEventListener("mouseenter", () => { hl(s.dataset.id); highlightPin(s.dataset.id); }));
   document.querySelectorAll(".stop-c").forEach(g => g.addEventListener("click", () => {
     hl(g.dataset.id);
     const el = document.querySelector('.stop[data-id="' + g.dataset.id + '"]');
@@ -1087,8 +1639,9 @@ function bindTrip() {
   const del = $("#delTrip");
   if (del) del.addEventListener("click", () => {
     store("mytin.trips", savedTrips().filter(x => x.id !== S.trip.id));
-    S.trip = normalize(JSON.parse(JSON.stringify(EXAMPLE))); S.day = 0;
-    toast("Removed from My trips"); render();
+    S.day = 0; toast("Removed from My trips");
+    if (HOSTED) { S.trip = null; location.hash = "start"; return; }
+    S.trip = normalize(JSON.parse(JSON.stringify(EXAMPLE))); render();
   });
 }
 
@@ -1115,11 +1668,10 @@ function defaultForm() {
   while (d.getDay() !== 5) d.setDate(d.getDate() + 1);
   const e = new Date(d); e.setDate(d.getDate() + 3);
   return {
-    dest: "San Francisco", from: "Los Angeles", start: isoDate(d), end: isoDate(e), tripType: "Couple", travelers: 2, occasion: "Just because",
+    dest: "", from: "", start: isoDate(d), end: isoDate(e), tripType: "Couple", travelers: 2, occasion: "Just because", occasionOther: "", who: "", plans: "", dietLevel: {},
     arrive: "11:00", leave: "16:00", dayStart: "09:00", dayEnd: "22:00", pace: "Moderate", budget: "Mid-range", lodging: "Hotel",
     culture: 3, outdoors: 4, shopping: 1, food: 5, nightlife: 3,
-    mustdo: "Two splurge dinners (Lazy Bear or Liholiho?), a Marin hike, Swan Oyster Depot, a taqueria in the Mission",
-    diet: [], notes: "We've been to SF a few times, so lighter on the touristy stuff.", stay: "", booked: null
+    mustdo: "", diet: [], notes: "", stay: "", booked: null
   };
 }
 let FORM = store("mytin.form") || defaultForm();
@@ -1148,7 +1700,9 @@ function renderPlan() {
       '<label class="f" for="travelers">Travelers<input class="inp" type="number" min="1" max="20" id="travelers" name="travelers" value="' + esc(FORM.travelers) + '"></label></div>' +
       '<div class="row"><label class="f" for="arrive">Arriving around <span class="h">Leave blank if unsure</span><input class="inp" type="time" id="arrive" name="arrive" value="' + esc(FORM.arrive) + '"></label>' +
       '<label class="f" for="leave">Leaving around<input class="inp" type="time" id="leave" name="leave" value="' + esc(FORM.leave) + '"></label>' +
-      '<label class="f" for="occasion">Occasion<select class="inp" id="occasion" name="occasion">' + ["Just because", "Birthday", "Anniversary", "Honeymoon", "Bachelor or bachelorette", "Work plus play", "Reunion", "Family visit"].map(o => "<option" + (FORM.occasion === o ? " selected" : "") + ">" + o + "</option>").join("") + "</select></label></div>" +
+      '<label class="f" for="occasion">Occasion<select class="inp" id="occasion" name="occasion">' + OCCASIONS.map(o => "<option" + (FORM.occasion === o ? " selected" : "") + ">" + o + "</option>").join("") + "</select></label></div>" +
+      (OCC_DETAIL[FORM.occasion] ? '<label class="f" for="occasionOther">' + OCC_DETAIL[FORM.occasion][0] + '<input class="inp" id="occasionOther" name="occasionOther" value="' + esc(FORM.occasionOther || "") + '" placeholder="' + OCC_DETAIL[FORM.occasion][1] + '"></label>' : "") +
+      '<label class="f" for="who">Who\'s going? <span class="h">Optional. Names help when people split up for part of a day.</span><input class="inp" id="who" name="who" value="' + esc(FORM.who || "") + '" placeholder="e.g. Jeff, Arden, Jamie, Kelly"></label>' +
       '<div><div class="qlabel">Type of trip</div>' + segs("tripType", ["Solo", "Couple", "Family", "Friends", "Work"]) + "</div>" +
     "</fieldset>" +
     "<fieldset><legend>2 · Your days</legend>" +
@@ -1163,9 +1717,12 @@ function renderPlan() {
       sl("food", "Food") + sl("culture", "Culture &amp; history") + sl("outdoors", "Outdoors &amp; adventure") + sl("nightlife", "Drinks &amp; nightlife") + sl("shopping", "Shopping") +
     "</div></fieldset>" +
     "<fieldset><legend>4 · Must-dos and needs</legend>" +
-      '<label class="f" for="mustdo">Any must-dos? <span class="h">Places you already have in mind, or things you want us to find</span><textarea class="inp" id="mustdo" name="mustdo">' + esc(FORM.mustdo) + "</textarea></label>" +
-      '<div><div class="qlabel">Dietary needs</div><div class="seg">' + diets.map(o => '<label><input type="checkbox" name="diet" id="diet-' + o.replace(/\W/g, "") + '" value="' + o + '"' + (FORM.diet.includes(o) ? " checked" : "") + "><span>" + o + "</span></label>").join("") + "</div></div>" +
-      '<label class="f" for="notes">Anything else we should know?<textarea class="inp" id="notes" name="notes" placeholder="Mobility, kids\' ages, places you\'ve already been, a hotel you already booked">' + esc(FORM.notes) + "</textarea></label>" +
+      '<label class="f" for="plans">Anything already planned? <span class="h">Reservations, events, or times when part of the group is busy. We\'ll build around them.</span><textarea class="inp" id="plans" name="plans" placeholder="e.g. Wedding Saturday 4–11pm · Dinner at Lucia Friday 7:30pm · Jamie and Kelly at a game Sunday afternoon">' + esc(FORM.plans || "") + "</textarea></label>" +
+      '<label class="f" for="mustdo">Any must-dos? <span class="h">Places you already have in mind, or things you want us to find</span><textarea class="inp" id="mustdo" name="mustdo" placeholder="e.g. great barbecue, a rooftop bar, a morning run route, the art museum">' + esc(FORM.mustdo) + "</textarea></label>" +
+      '<div><div class="qlabel">Dietary needs</div><div class="seg">' + ["No restrictions"].concat(diets).map(o => '<label><input type="checkbox" name="diet" id="diet-' + o.replace(/\W/g, "") + '" value="' + o + '"' + (FORM.diet.includes(o) ? " checked" : "") + "><span>" + o + "</span></label>").join("") + "</div>" +
+        FORM.diet.filter(d => d !== "No restrictions").map(d => '<div class="diet-lvl"><span>' + esc(d) + '</span><div class="seg small" role="radiogroup" aria-label="How strict is ' + esc(d) + '?">' +
+          [["preference", "Preference"], ["restriction", "Restriction"], ["allergy", "Severe allergy"]].map(([v, l]) => '<label><input type="radio" name="lvl-' + d.replace(/\W/g, "") + '" value="' + v + '"' + (((FORM.dietLevel || {})[d] || "restriction") === v ? " checked" : "") + "><span>" + l + "</span></label>").join("") + "</div></div>").join("") + "</div>" +
+      '<label class="f" for="notes">Anything else we should know?<textarea class="inp" id="notes" name="notes" placeholder="Mobility, kids\' ages, nap times, places you\'ve already been">' + esc(FORM.notes) + "</textarea></label>" +
     "</fieldset>" +
     '<div class="form-actions"><button class="btn primary" type="submit" id="genBtn">Next: pick things to do</button><button class="btn" type="button" id="quickBtn">Just build the whole trip</button><a class="btn ghost" href="#trip">Cancel</a>' +
       '<span class="note" id="genNote">' + (sampleFn ? "Uses your Claude account. Takes about a minute." : sampleBlocked ? "Claude access was declined for this page." : "Open this page on claude.ai to generate trips with Claude.") + "</span></div>" +
@@ -1181,16 +1738,24 @@ function readForm() {
     occasion: g("occasion"), arrive: g("arrive"), leave: g("leave"), tripType: r("tripType"), dayStart: g("dayStart"), dayEnd: g("dayEnd"),
     pace: r("pace"), budget: r("budget"), lodging: r("lodging"),
     food: +g("food"), culture: +g("culture"), outdoors: +g("outdoors"), nightlife: +g("nightlife"), shopping: +g("shopping"),
-    mustdo: g("mustdo"), notes: g("notes"), stay: g("stay"),
+    mustdo: g("mustdo"), notes: g("notes"), stay: g("stay"), occasionOther: g("occasionOther"), who: g("who"), plans: g("plans"),
     diet: Array.from(f.querySelectorAll('input[name="diet"]:checked')).map(x => x.value),
+    dietLevel: Object.fromEntries(Array.from(f.querySelectorAll('input[name="diet"]:checked')).map(x => [x.value, r("lvl-" + x.value.replace(/\W/g, "")) || ((FORM.dietLevel || {})[x.value]) || "restriction"])),
     booked: FORM.booked || null
   };
+  FORM.travelers = Math.max(FORM.travelers, travelerNames(FORM).length); // four names means at least four travelers
   store("mytin.form", FORM);
   return FORM;
 }
 function bindPlan() {
   const f = $("#planForm");
   f.querySelectorAll('input[type="range"]').forEach(r => r.addEventListener("input", () => { $("#out-" + r.name).textContent = r.value; }));
+  $("#occasion").addEventListener("change", () => render());
+  f.querySelectorAll('input[name="diet"]').forEach(cb => cb.addEventListener("change", () => {
+    // "No restrictions" and specific restrictions are mutually exclusive.
+    if (cb.checked) f.querySelectorAll('input[name="diet"]').forEach(o => { if (o !== cb && (cb.value === "No restrictions" || o.value === "No restrictions")) o.checked = false; });
+    render();
+  }));
   const go = quick => {
     const p = readForm();
     const a = parseDate(p.start), b = parseDate(p.end);
@@ -1201,6 +1766,7 @@ function bindPlan() {
     else if ((b - a) / 864e5 > 6) S.formError = "This prototype plans up to 7 days at a time. Shorten the dates or plan each leg separately.";
     else if (!sampleFn) S.formError = sampleBlocked ? "Claude access was declined for this page, so it can't build trips. Reload to be asked again." : "Building trips needs Claude, which is only available when this page is open on claude.ai.";
     if (S.formError) { render(); return; }
+    if (HOSTED && p.occasion === "Other" && p.occasionOther) fetch("/api/answers", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ field: "occasion", value: p.occasionOther }) }).catch(() => {});
     if (quick) generate(p); else startWish(p);
   };
   f.addEventListener("submit", e => { e.preventDefault(); go(false); });
@@ -1208,14 +1774,36 @@ function bindPlan() {
 }
 
 /* ---------- Generation ---------- */
-const ITEM_SHAPE = '{"time":"HH:MM","end":"HH:MM","kind":"meal|activity|free|transit|lodging","category":"Breakfast|Lunch|Dinner|Drinks|Coffee|Tour|Museum|Outdoors|Shopping|Market|Show|Free time|Arrive|Depart|Check in|Check out","name":"Real place name","neighborhood":"...","address":"street address, city","lat":0.0,"lng":0.0,"why":"one sentence selling why this fits THEM","tip":"insider pro tip, specific and a little playful, or empty","cost":0,"costTier":"$|$$|$$$|$$$$","booking":"now|daybefore|walkin|none","booked":false,"anchor":false,"transitFromPrev":{"mode":"walk|transit|rideshare|drive|ferry|train","minutes":0}}';
+const ITEM_SHAPE = '{"time":"HH:MM","end":"HH:MM","kind":"meal|activity|free|transit|lodging","category":"Breakfast|Lunch|Dinner|Drinks|Coffee|Tour|Museum|Outdoors|Shopping|Market|Show|Free time|Arrive|Depart|Check in|Check out","name":"Real place name","neighborhood":"...","address":"street address, city","lat":0.0,"lng":0.0,"why":"one sentence selling why this fits THEM","tip":"insider pro tip, specific and a little playful, or empty","cost":0,"costTier":"$|$$|$$$|$$$$","booking":"now|daybefore|walkin|none","booked":false,"anchor":false,"who":[],"transitFromPrev":{"mode":"walk|transit|rideshare|drive|ferry|train","minutes":0}}';
 
+const OCCASIONS = ["Just because", "Birthday", "Anniversary", "Honeymoon", "Bachelor or bachelorette", "Work plus play", "Reunion", "Family visit", "Race", "Other"];
+const OCC_DETAIL = { Race: ["Which race, and when does it start?", "e.g. Dallas Marathon, Sunday 7am start"], Other: ["What's the occasion?", "e.g. college visit, a concert, a family wedding"] };
+function dietText(p) {
+  const diet = p.diet || [], lv = p.dietLevel || {};
+  if (diet.includes("No restrictions")) return "Dietary needs: none";
+  if (!diet.length) return "";
+  return "Dietary needs: " + diet.map(d => d + (lv[d] === "allergy" ? " (SEVERE ALLERGY: never pick places where it's central to the menu, and flag it in the tip)" : lv[d] === "preference" ? " (preference, not strict)" : " (strict restriction)")).join(", ");
+}
+const travelerNames = p => String((p && p.who) || "").split(/,|\band\b|&/).map(x => x.trim()).filter(Boolean);
+// Rules every itinerary prompt shares: races, routines and time zones, split groups, closed places, honest prices.
+function extraRules(p) {
+  const r = [];
+  if (p.occasion === "Race") r.push("- The trip is built around a race" + (p.occasionOther ? " (" + p.occasionOther + ")" : "") + ". The day before stays light on walking, includes packet pickup if there is one, an early carb-forward dinner and an early night. Race morning: an early, simple breakfast and getting to the start. After: a recovery meal and an easy afternoon.");
+  const rt = (PROFILE.routines || []).filter(x => x.what);
+  if (rt.length) r.push("- DAILY ROUTINES, on home time (" + (p.from || PROFILE.homeCity || "home") + "): " + rt.map(x => x.what + (x.when ? " " + x.when : "") + (x.who ? " (" + x.who + ")" : "")).join("; ") +
+    ". Put each one into every day as its own block (kind \"free\", category \"Routine\", a clear name like \"Nap time\" or \"Bedtime routine\", who set if it's one person) and plan around it: be back at the home base for naps and wrap up the evening in time for bedtime. If the destination is in a different time zone, keep routines on home time for the first two days (a 7pm Pacific bedtime is 9pm Central), shift them halfway on day 3, and use local time from day 4 on.");
+  const names = travelerNames(p);
+  if (names.length > 1) r.push("- Travelers: " + names.join(", ") + ". If some of them have separate plans (see ALREADY PLANNED and notes), split the group for that part of the day by giving those items a \"who\" list of names. Items with an empty who are for everyone. Overlapping items are fine only when their who lists don't overlap.");
+  r.push("- Never suggest a place that has closed, permanently or temporarily.");
+  r.push("- cost = realistic US dollars per person including tax and tip. For meals, what a typical order there costs (coffee $6, casual lunch $18, nice dinner $70+).");
+  return r.join("\n");
+}
 function prefsText(p) {
   return [
     "Destination: " + p.dest,
     p.from ? "Traveling from: " + p.from : "",
     "Dates: " + p.start + " to " + p.end + " (" + (Math.round((parseDate(p.end) - parseDate(p.start)) / 864e5) + 1) + " days)",
-    "Travelers: " + p.travelers + " · Trip type: " + (p.tripType || "unspecified") + " · Occasion: " + (p.occasion || "none"),
+    "Travelers: " + p.travelers + (p.who ? " (" + p.who + ")" : "") + " · Trip type: " + (p.tripType || "unspecified") + " · Occasion: " + (p.occasion || "none") + (p.occasionOther ? " (" + p.occasionOther + ")" : ""),
     p.arrive ? "Arriving around " + p.arrive + " on day 1" : "Arrival time unknown; start day 1 around midday",
     p.leave ? "Leaving around " + p.leave + " on the last day" : "Departure time unknown; end the last day mid-afternoon",
     "Daily hours: start " + (p.dayStart || "09:00") + ", end " + (p.dayEnd || "22:00"),
@@ -1224,14 +1812,17 @@ function prefsText(p) {
     "Lodging preference: " + (p.lodging || "No preference"),
     "Interest levels 1-5: Food " + p.food + ", Culture/history " + p.culture + ", Outdoors/adventure " + p.outdoors + ", Drinks/nightlife " + p.nightlife + ", Shopping " + p.shopping,
     p.mustdo ? "Must-dos: " + p.mustdo : "",
-    p.diet.length ? "Dietary needs: " + p.diet.join(", ") : "",
+    dietText(p),
+    p.plans ? "ALREADY PLANNED (fixed: put each in the itinerary at its time and build around it): " + p.plans : "",
     p.notes ? "Other notes: " + p.notes : "",
     profileText(PROFILE),
     p.stay ? "Already staying at: " + p.stay + " (use it as homeBase with \"booked\": true)" : "",
     p.anchors && p.anchors.length
       ? "ANCHORS the traveler placed (fixed: keep each on exactly this date and time, with the same name, and set \"anchor\": true on it). Build each day around its anchors: pick meals and extra stops close to them so the day doesn't zigzag across the city, and choose sensible transit between them.\n" +
-        p.anchors.map(a => "- " + a.date + " " + a.start + "-" + a.end + " " + a.name + (a.neighborhood ? " (" + a.neighborhood + ")" : "")).join("\n")
+        p.anchors.map(a => "- " + a.date + " " + a.start + "-" + a.end + " " + a.name + (a.neighborhood ? " (" + a.neighborhood + ")" : "") +
+          (a.fill ? " [PLACEHOLDER: replace with a specific real place near that day's other stops; keep the time; anchor true]" : a.fixed ? " [FIXED BLOCK: keep exactly as given, kind \"free\"]" : "")).join("\n")
       : "",
+    extraText(p.extra),
     p.spare && p.spare.length ? "Also on their wish list but not scheduled (add one only where it fits naturally near that day's anchors): " + p.spare.join("; ") : "",
     p.booked && p.booked.items && p.booked.items.length
       ? "ALREADY BOOKED (fixed; build around these):\n" + p.booked.items.map(b => "- " + b.type + ": " + b.title + (b.start ? " | " + b.start : "") + (b.end ? " to " + b.end : "") + (b.place ? " | " + b.place : "") + (b.address ? " | " + b.address : "")).join("\n")
@@ -1239,72 +1830,108 @@ function prefsText(p) {
   ].filter(Boolean).join("\n");
 }
 
-function genPrompt(p) {
-  return "You are the trip designer for Mytinerary, a service that turns a traveler's preferences into a finished, day-by-day itinerary so they skip the 25-100 hours of research. " +
-    "Write like a well-traveled friend who lives there: specific, confident, no filler.\n\n" +
+
+// Building the itinerary in parallel: a quick "frame" call picks the home base and day themes, then every day
+// is planned at the same time. Days appear as they finish, so the first one shows up in well under a minute.
+function tripDates(p) {
+  const out = [], a = parseDate(p.start), b = parseDate(p.end);
+  for (const d = new Date(a); d <= b && out.length < 7; d.setDate(d.getDate() + 1)) out.push(isoDate(d));
+  return out;
+}
+function framePrompt(p) {
+  const dates = tripDates(p);
+  return "You are the trip designer for Mytinerary. This is the first step of building a trip: choose the home base and write the trip's frame. The days themselves are planned separately.\n\n" +
     "TRAVELER PREFERENCES\n" + prefsText(p) + "\n\n" +
     "RULES\n" +
-    "- Use real, well-established places likely to still be open. Prefer local favorites over tourist traps unless the traveler asked for classics. Mix a few recognizable picks with a few surprises.\n" +
-    "- Choose ONE home base first, placed so most stops are a short walk or ride away, then cluster each day geographically to minimize travel. Give accurate latitude/longitude for every place.\n" +
-    "- Meals are fixed points in time; activities flex between them. Include breakfast/coffee, lunch, dinner each full day, drinks if nightlife >= 3. Respect daily start/end hours and dietary needs.\n" +
-    "- Include free-time blocks (kind \"free\") so the day can breathe. Day 1 starts with an Arrive item (kind \"transit\", no lat/lng) and Check in (kind \"lodging\" with the home base coords). The last day ends with Check out (kind \"lodging\") and Depart (kind \"transit\", no lat/lng).\n" +
-    "- Every item after the first has transitFromPrev with a realistic mode and minutes. Order items by time; no overlaps.\n" +
-    "- cost = estimated US dollars per person for that item (0 if free). booking: \"now\" for things that sell out (popular dinners, timed tours), \"daybefore\" for places that take reservations but rarely fill, \"walkin\" for no reservations, \"none\" for free time/transit/lodging steps.\n" +
-    "- Day titles are 3-6 words. Each day's pitch is a 1-2 sentence elevator pitch of what that day is about.\n" +
-    "- homeBase.routine: 3 go-to spots near the home base (Coffee, a late bite or fallback dinner, and one practical stop such as a market or pharmacy).\n" +
-    "- watchouts: 2-4 timely, specific heads-ups (sell-outs, closures by weekday, weather, local events or crowds on these dates).\n" +
-    "- If ALREADY BOOKED items are listed, they are fixed. Use the booked lodging as homeBase (same name and address, accurate lat/lng, estimated nightly price, \"booked\": true, empty alternatives). Day 1 Arrive and last-day Depart items name the actual flight or train and station at the booked local times. Put booked restaurants or events at their booked times. Set \"booked\": true on every item that matches an existing booking.\n\n" +
-    "Reply with ONLY one JSON object, no prose, in this shape:\n" +
-    '{"title":"short trip name","destination":"' + p.dest.replace(/"/g, "") + '","summary":"one-sentence thesis of the trip","homeBase":{"name":"","type":"Hotel|Boutique hotel|Vacation rental","neighborhood":"","address":"","lat":0.0,"lng":0.0,"nightly":0,"booked":false,"why":"one sentence","alternatives":[{"name":"","nightly":0,"why":""}],"routine":[{"role":"Coffee","name":"","note":""}]},"days":[{"date":"YYYY-MM-DD","title":"","pitch":"","items":[' + ITEM_SHAPE + "]}],\"watchouts\":[\"\"]}\n" +
-    "Provide exactly one day object per date from " + p.start + " to " + p.end + ", with 2 homeBase.alternatives.";
+    "- Choose ONE home base placed so most of the anchors and must-dos are a short walk or ride away. Accurate latitude/longitude.\n" +
+    "- If lodging is ALREADY BOOKED or \"Already staying at\" is given, use it as homeBase (same name and address, accurate lat/lng, estimated nightly price, \"booked\": true, empty alternatives).\n" +
+    "- homeBase.routine: 3 go-to spots near the home base (coffee, a late bite or fallback dinner, and one practical stop such as a market or pharmacy).\n" +
+    "- watchouts: 2-4 timely, specific heads-ups (sell-outs, closures by weekday, weather, local events on these dates).\n" +
+    "- dayThemes: one 3-6 word working title per day (" + dates.length + " days, " + p.start + " to " + p.end + "), so the days feel distinct and each stays in one part of town.\n\n" +
+    'Reply with ONLY one JSON object, no prose: {"title":"short trip name","destination":"' + p.dest.replace(/"/g, "") + '","summary":"one-sentence thesis of the trip","homeBase":{"name":"","type":"Hotel|Boutique hotel|Vacation rental","neighborhood":"","address":"","lat":0.0,"lng":0.0,"nightly":0,"booked":false,"why":"one sentence","alternatives":[{"name":"","nightly":0,"why":""}],"routine":[{"role":"Coffee","name":"","note":""}]},"watchouts":[""],"dayThemes":[""]}';
 }
-
+function dayPrompt(t, di) {
+  const p = t.prefs, dates = t.days.map(d => d.date), date = dates[di], n = dates.length, hb = t.homeBase;
+  const others = (p.anchors || []).filter(a => a.date !== date && !a.fill && !a.fixed).map(a => a.name);
+  return "You are the trip designer for Mytinerary, planning one day of a trip. Write like a well-traveled friend who lives there: specific, confident, no filler.\n\n" +
+    "TRAVELER PREFERENCES\n" + prefsText(p) + "\n\n" +
+    "THE TRIP SO FAR\n- " + (t.title || p.dest) + ": " + (t.summary || "") +
+    "\n- Home base: " + hb.name + (hb.neighborhood ? " (" + hb.neighborhood + ")" : "") + (Number.isFinite(hb.lat) ? " at " + hb.lat + "," + hb.lng : "") +
+    "\n- Day themes: " + t.days.map((d, i) => "Day " + (i + 1) + " " + d.title).join("; ") + "\n\n" +
+    "PLAN DAY " + (di + 1) + " OF " + n + ": " + date + " (" + fmtDay(date) + "), working title \"" + t.days[di].title + "\"\n" +
+    (di === 0 ? "- Arrival day: start with an Arrive item (kind \"transit\", no lat/lng) and Check in (kind \"lodging\" with the home base coords).\n" : "") +
+    (di === n - 1 ? "- Departure day: end with Check out (kind \"lodging\") and Depart (kind \"transit\", no lat/lng).\n" : "") +
+    "- Include this day's ANCHORS, placeholders and fixed blocks from the list above at their exact times.\n" +
+    (others.length ? "- Other days already use these places, so don't repeat them: " + others.join("; ") + "\n" : "") +
+    "\nRULES\n" +
+    "- Real, well-established places with accurate lat/lng. Prefer local favorites over tourist traps unless they asked for classics.\n" +
+    "- Keep the day in one part of town, close to its anchors, so it doesn't zigzag.\n" +
+    "- Meals are fixed points; activities flex between them. Breakfast or coffee, lunch and dinner on full days; drinks if nightlife >= 3. Respect daily hours and dietary needs.\n" +
+    "- Include a free-time block so the day can breathe. Every item after the first has transitFromPrev with a realistic mode and minutes. Order by time.\n" +
+    "- booking: \"now\" for things that sell out, \"daybefore\" for reservations that rarely fill, \"walkin\", or \"none\".\n" +
+    extraRules(p) + "\n\n" +
+    'Reply with ONLY one JSON object: {"date":"' + date + '","title":"3-6 words","pitch":"1-2 sentences","items":[' + ITEM_SHAPE + "]}";
+}
+async function planDay(t, di, signal) {
+  const nd = await sampleFn.json(dayPrompt(t, di), { signal, modelTier: "default", cache: false });
+  if (!nd || !Array.isArray(nd.items) || !nd.items.length) throw { code: "invalid_json" };
+  nd.items.forEach(normItem);
+  nd.items.sort((a, b) => (toMin(a.time) ?? 0) - (toMin(b.time) ?? 0));
+  t.days[di] = { date: t.days[di].date, title: nd.title || t.days[di].title, pitch: nd.pitch || "", items: nd.items };
+}
+async function retryDay(di) {
+  const t = S.trip; if (!t || !sampleFn) return;
+  t.days[di] = Object.assign(t.days[di], { pending: true, failed: false }); render();
+  try { await planDay(t, di); } catch (e) { t.days[di].pending = false; t.days[di].failed = true; }
+  saveTrip(t); render();
+  if (PLACES && !t.days[di].failed) enrichTrip(t);
+}
 let genCtl = null;
 async function generate(p) {
   genCtl = new AbortController();
-  S.gen = { dest: p.dest, pct: 4, stops: [], status: "Asking Claude. You may see a prompt to allow it." };
+  const signal = genCtl.signal;
+  S.gen = { dest: p.dest, pct: 10, stops: [], status: "Choosing your home base and the shape of each day…" };
   location.hash = "trip";
   S.view = "gen"; render();
-  const days = Math.round((parseDate(p.end) - parseDate(p.start)) / 864e5) + 1;
-  const expected = days * 8;
+  const tick = setInterval(() => { if (S.gen) { S.gen.pct = Math.min(90, S.gen.pct + 4); updateGen(); } }, 1500);
+  let trip;
   try {
-    const raw = await sampleFn.json(genPrompt(p), {
-      signal: genCtl.signal,
-      modelTier: "default",
-      onText: ({ text }) => {
-        const names = [];
-        const re = /"name"\s*:\s*"([^"]{2,80})"/g; let m;
-        while ((m = re.exec(text))) names.push(m[1]);
-        const dayCount = (text.match(/"pitch"\s*:/g) || []).length;
-        S.gen.stops = names.slice(1);
-        S.gen.pct = Math.min(96, 8 + names.length / (expected + 4) * 88);
-        S.gen.status = dayCount ? "Drawing day " + Math.min(dayCount, days) + " of " + days : "Choosing a home base";
-        updateGen();
-      }
-    });
-    if (!raw || !Array.isArray(raw.days) || !raw.days.length) throw { code: "invalid_json", message: "No days came back" };
-    const trip = normalize(Object.assign(raw, {
+    const frame = await sampleFn.json(framePrompt(p), { signal, modelTier: "quick", cache: false });
+    if (!frame || !frame.homeBase || !frame.homeBase.name) throw { code: "invalid_json" };
+    const dates = tripDates(p);
+    trip = normalize(Object.assign(frame, {
       id: p.tripId || uid(), startDate: p.start, endDate: p.end, travelers: p.travelers, tripType: p.tripType, pace: p.pace, budget: p.budget, occasion: p.occasion,
-      destination: raw.destination || p.dest, prefs: p, created: new Date().toISOString(),
+      destination: frame.destination || p.dest, prefs: p, created: new Date().toISOString(), status: "draft",
       plan: p.anchors && DRAFT ? JSON.parse(JSON.stringify(DRAFT)) : null,
-      scanKey: p.booked && p.booked.startDate ? p.booked.destination + "|" + p.booked.startDate : null
+      scanKey: p.booked && p.booked.startDate ? p.booked.destination + "|" + p.booked.startDate : null,
+      days: dates.map((d, i) => ({ date: d, title: (frame.dayThemes || [])[i] || "Day " + (i + 1), pitch: "", items: [], pending: true }))
     }));
-    S.trip = trip; S.day = 0; S.gen = null;
-    saveTrip(trip); store("mytin.lastOpened", trip.id);
-    if (PLACES) enrichTrip(trip);
-    if (p.anchors && DRAFT) { DRAFT.tripId = trip.id; saveDraft(); }
-    if (FORM.booked) { FORM.booked = null; store("mytin.form", FORM); } // the next new trip starts clean
-    if (hasProfile()) applyProfileToForm(); // ...from the profile, not this trip's tweaks
-    S.view = "trip"; render(); window.scrollTo(0, 0);
-    toast("Your trip is ready and saved to My trips.");
   } catch (e) {
-    S.gen = null;
+    clearInterval(tick); S.gen = null;
     if (e && e.code === "not_granted") sampleBlocked = true;
     S.formError = e && e.code === "cancelled" ? "" : genErrorCopy(e);
     location.hash = p.anchors ? "anchors" : "plan";
     if (p.anchors && S.formError) { toast(S.formError); S.formError = ""; }
     if (S.view === "plan") render();
+    return;
   }
+  clearInterval(tick);
+  S.trip = trip; S.day = 0; S.gen = null;
+  saveTrip(trip); store("mytin.lastOpened", trip.id);
+  if (p.anchors && DRAFT) { DRAFT.tripId = trip.id; saveDraft(); }
+  if (FORM.booked) { FORM.booked = null; store("mytin.form", FORM); } // the next new trip starts clean
+  if (hasProfile()) applyProfileToForm(); // ...from the profile, not this trip's tweaks
+  S.view = "trip"; render(); window.scrollTo(0, 0);
+  toast("Home base chosen. Planning all " + trip.days.length + " days now…");
+  await Promise.all(trip.days.map(async (_, i) => {
+    try { await planDay(trip, i, signal); }
+    catch (e) { trip.days[i].pending = false; trip.days[i].failed = !(e && e.code === "cancelled"); }
+    saveTrip(trip);
+    if (S.trip === trip && S.view === "trip") render();
+  }));
+  const failed = trip.days.filter(d => d.failed).length;
+  toast(failed ? failed + (failed === 1 ? " day" : " days") + " didn't come back. Tap Try again on " + (failed === 1 ? "it" : "them") + "." : "Your trip is ready and saved to My trips.");
+  if (PLACES) enrichTrip(trip);
 }
 function genErrorCopy(e) {
   const c = e && e.code;
@@ -1331,6 +1958,62 @@ function updateGen() {
 }
 document.addEventListener("click", e => { if (e.target && e.target.id === "genStop" && genCtl) genCtl.abort(); });
 
+// Edits after confirming are flagged so the trip can be re-confirmed.
+function markEdited(t) { if (t.status === "confirmed") t.editedAfterConfirm = true; }
+// "8:30pm start bedtime routine" -> { time: "20:30", name: "Start bedtime routine" }
+function parseQuick(text) {
+  const m = /(?:^|\s)(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.|a|p)?(?=\s|$)/i.exec(text);
+  if (!m) return null;
+  let h = +m[1]; const min = +(m[2] || 0), ap = (m[3] || "").toLowerCase();
+  if (h > 23 || min > 59) return null;
+  if (ap.startsWith("p") && h < 12) h += 12;
+  if (ap.startsWith("a") && h === 12) h = 0;
+  if (!ap && h >= 1 && h <= 6) h += 12; // "8:30 bedtime" is morning, "5 dinner" is evening
+  const name = (text.slice(0, m.index) + " " + text.slice(m.index + m[0].length)).replace(/\s+/g, " ").trim().replace(/^(at|to|-)\s+/i, "");
+  return { time: toHM(h * 60 + min), name: name ? name[0].toUpperCase() + name.slice(1) : "Plan" };
+}
+function quickAdd(text) {
+  const q = parseQuick(text);
+  if (!q) { toast("Add a time, like \"8:30pm start bedtime routine\"."); return false; }
+  const t = S.trip, d = t.days[S.day];
+  d.items.push(normItem({ time: q.time, end: toHM(toMin(q.time) + 30), kind: "free", category: "Your plan", name: q.name, who: S.who !== "all" ? [S.who] : [] }));
+  d.items.sort((a, b) => (toMin(a.time) ?? 0) - (toMin(b.time) ?? 0));
+  markEdited(t); saveTrip(t); render();
+  toast("Added " + q.name + " at " + fmtTime(q.time) + ".");
+  return true;
+}
+async function shareTrip() {
+  const t = S.trip;
+  openDrawer("Share this itinerary", t.destination, "Anyone with the link can view it. They can't change it.");
+  const name = store("mytin.myname") || "";
+  $("#drawerBody").innerHTML = '<form id="shareForm" class="place-form"><label class="f" for="shareName">Your name, shown on the shared page<input class="inp" id="shareName" value="' + esc(name) + '" placeholder="e.g. Jeff" required></label><button class="btn primary" type="submit">Create link</button></form><div id="shareOut"></div>';
+  $("#shareForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const nm = $("#shareName").value.trim(); store("mytin.myname", nm);
+    $("#shareOut").innerHTML = '<p class="gen-status">Creating link…</p>';
+    try {
+      clearTimeout(syncTimer); await pushSync(); // the shared page reads the trip from your account
+      const r = await fetch("/api/share", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ tripId: t.id, name: nm }) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error);
+      $("#shareOut").innerHTML = '<label class="f" for="shareUrl">Your link<input class="inp" id="shareUrl" readonly value="' + esc(j.url) + '"></label><div class="row2"><button class="btn primary" type="button" id="shareCopy">Copy link</button>' +
+        (navigator.share ? '<button class="btn" type="button" id="shareNative">Share…</button>' : "") + '</div><p class="note">People without Mytinerary see the trip and can ask for an invite. Your later edits show up on the link too.</p>';
+      $("#shareCopy").addEventListener("click", () => navigator.clipboard.writeText(j.url).then(() => toast("Link copied."), () => $("#shareUrl").select()));
+      const ns = $("#shareNative"); if (ns) ns.addEventListener("click", () => navigator.share({ title: t.title || t.destination, text: nm + "'s trip to " + t.destination + " on Mytinerary", url: j.url }).catch(() => {}));
+    } catch (err) { $("#shareOut").innerHTML = '<p class="err">Couldn\'t create a link. Try again.</p>'; }
+  });
+}
+// Someone opened /t/<token>: show that trip read-only, with a way in for people who aren't using Mytinerary yet.
+const SHARE_TOKEN = (/^\/t\/([\w-]{8,40})$/.exec(location.pathname) || [])[1] || null;
+async function loadShared() {
+  if (!SHARE_TOKEN) return;
+  try {
+    const r = await fetch("/api/shared/" + SHARE_TOKEN); const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    S.shared = { owner: j.owner }; S.readOnly = true; S.trip = normalize(j.trip); S.day = 0; S.view = "trip";
+  } catch (e) { S.shared = null; S.readOnly = false; toast("That shared trip isn't available anymore."); history.replaceState(null, "", "/"); }
+  render();
+}
+
 /* ---------- Swap a stop ---------- */
 let swapCtl = null;
 function tripContext(t) {
@@ -1352,30 +2035,41 @@ $("#drawerClose").addEventListener("click", closeDrawer);
 $("#drawerBg").addEventListener("click", closeDrawer);
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(); });
 
-async function openSwap(di, ii) {
+// Changing a stop starts with why, so the alternatives actually fix the problem.
+function openSwap(di, ii) {
   const t = S.trip, d = t.days[di], it = d.items[ii];
-  openDrawer("Swap a stop · Day " + (di + 1), it.name, (it.category || "") + " · " + fmtTime(it.time) + (it.end ? " to " + fmtTime(it.end) : ""));
+  openDrawer("Change a stop · Day " + (di + 1), it.name, (it.category || "") + " · " + fmtTime(it.time) + (it.end ? " to " + fmtTime(it.end) : ""));
   const body = $("#drawerBody");
-  if (!sampleFn) {
-    body.innerHTML = '<p class="small">Swapping needs Claude, which is available when this page is open on claude.ai.</p>';
-    return;
-  }
-  body.innerHTML = '<p class="gen-status">Finding three alternatives that fit this slot…</p>';
+  if (!sampleFn) { body.innerHTML = '<p class="small">Changing stops needs Claude, which is available when this page is open on claude.ai.</p>'; return; }
+  const reasons = isMeal(it) ? ["Something cheaper", "Grab and go", "Closer by", "Kid-friendly", "Better reviewed", "A different cuisine"] : ["Something cheaper", "Closer by", "Indoors", "Kid-friendly", "Shorter", "Something different"];
+  body.innerHTML = '<p class="small" style="margin:0">What would make this better?</p><div class="pf-chips">' + reasons.map(r => '<button type="button" class="pill ph-add" data-reason="' + esc(r) + '">' + esc(r) + "</button>").join("") + "</div>" +
+    '<form id="swapForm" class="place-form"><label class="f" for="swapWhy">Or tell us in your own words<input class="inp" id="swapWhy" placeholder="e.g. somewhere we can grab and go before the game"></label><div class="row2"><button class="btn primary" type="submit">Find options</button><button class="lnk" type="button" id="swapAny">Just show me options</button></div></form>';
+  body.querySelectorAll("[data-reason]").forEach(b => b.addEventListener("click", () => swapOptions(di, ii, b.dataset.reason)));
+  $("#swapForm").addEventListener("submit", e => { e.preventDefault(); swapOptions(di, ii, $("#swapWhy").value.trim()); });
+  $("#swapAny").addEventListener("click", () => swapOptions(di, ii, ""));
+}
+async function swapOptions(di, ii, why) {
+  const t = S.trip, d = t.days[di], it = d.items[ii], body = $("#drawerBody");
+  body.innerHTML = '<p class="gen-status">Finding three options' + (why ? " (" + esc(why.toLowerCase()) + ")" : "") + " that fit this slot…</p>";
   swapCtl = new AbortController();
   const prompt = "You help Mytinerary travelers swap one stop in their itinerary.\n\nTRIP\n" + tripContext(t) +
     "\n\nDAY " + (di + 1) + " (" + d.date + ") CURRENT PLAN\n" + dayList(d) +
+    (why ? "\n\nWHY THEY WANT TO CHANGE IT: " + why + ". Every option must clearly fix this." : "") +
     "\n\nReplace item " + ii + " (" + it.name + "). Suggest 3 different real, well-established alternatives of the same kind (" + (it.category || it.kind) + ") that fit the same time slot, stay close to the previous and next stops, match the traveler's budget and interests, and are not already in the plan. Vary them: one safe pick, one local favorite, one wildcard.\n" +
     "Reply with ONLY a JSON array of 3 objects, each shaped like:\n" + ITEM_SHAPE + "\nKeep time=\"" + it.time + "\" and end=\"" + (it.end || "") + "\". transitFromPrev is from the previous stop in the list.";
   try {
     const arr = await sampleFn.json(prompt, { signal: swapCtl.signal, modelTier: "default", cache: false });
     const alts = (Array.isArray(arr) ? arr : []).slice(0, 3).map(normItem);
+    alts.forEach(a => { a.who = it.who || []; a.anchor = false; });
+    if (PLACES) { const res = await placesMatch(t.destination, alts); if (res) alts.forEach((a, k) => applyPlace(a, res[k])); }
+    const open = alts.filter(a => !closedOnGoogle(a)); if (open.length) alts.splice(0, alts.length, ...open);
     if (!alts.length) throw { code: "invalid_json" };
     body.innerHTML = alts.map((a, k) => '<button class="alt" data-k="' + k + '"><span class="cat">' + esc(a.category || "") + (a.neighborhood ? " · " + esc(a.neighborhood) : "") + '</span><span class="name" style="font-family:var(--display);font-weight:600;font-size:18px">' + esc(a.name) + '</span><span class="small">' + esc(a.why || "") + '</span><span class="foot">' + (a.cost ? '<span class="pill">' + esc(a.costTier || "") + " ~" + money(a.cost) + "</span> " : "") + (BOOK[a.booking] ? '<span class="pill ' + a.booking + '">' + BOOK[a.booking] + "</span>" : "") + "</span></button>").join("") +
       '<p class="note">Pick one to replace ' + esc(it.name) + ".</p>";
     body.querySelectorAll(".alt").forEach(b => b.addEventListener("click", () => {
       const a = alts[+b.dataset.k];
       if (ii === 0) a.transitFromPrev = null;
-      d.items[ii] = a; saveTrip(t); closeDrawer(); render();
+      d.items[ii] = a; markEdited(t); saveTrip(t); closeDrawer(); render();
       toast("Swapped in " + a.name);
     }));
   } catch (e) {
@@ -1403,7 +2097,7 @@ async function reworkDay() {
     const nd = await sampleFn.json(prompt, { modelTier: "default", cache: false });
     if (!nd || !Array.isArray(nd.items) || !nd.items.length) throw { code: "invalid_json" };
     nd.items.forEach(normItem); nd.date = d.date;
-    t.days[di] = nd; saveTrip(t); render();
+    t.days[di] = nd; markEdited(t); saveTrip(t); render();
     toast("Day " + (di + 1) + " reworked");
   } catch (e) {
     if (e && e.code === "not_granted") sampleBlocked = true;
@@ -1442,6 +2136,8 @@ function compactThreads(payload) {
 }
 function connectorNote(server, e) {
   const c = e && e.code;
+  if (HOSTED && (c === "not_connected" || c === "needs_reauth")) return "Google needs to be connected again. Click Connect Gmail & Calendar.";
+  if (HOSTED && c === "not_in_manifest") return "Google didn't share " + server + ". Disconnect, connect again and tick both boxes.";
   if (c === "server_not_connected" || c === "server_not_found") return server + " isn't connected. Add it in claude.ai Settings → Connectors, then try again.";
   if (c === "needs_reauth") return server + " needs to be reconnected in claude.ai Settings → Connectors.";
   if (c === "not_in_manifest" || c === "approval_required") return "You didn't allow " + server + " for this page. Try again and choose Allow to include it.";
@@ -1511,6 +2207,7 @@ async function scanTrips(auto) {
   render();
 }
 function maybeAutoScan() {
+  if (HOSTED) return; // each scan costs a Claude call; on the hosted app it only runs when asked
   if (autoTried || !mcpApi || !sampleFn || !store("mytin.autoscan")) return;
   autoTried = true;
   scanTrips(true);
@@ -1568,7 +2265,7 @@ function foundList(trips) {
   ).join("") + "</div>";
 }
 function renderImport(where) {
-  if (HOSTED) return ""; // Gmail and Calendar come through claude.ai connectors, which the hosted app doesn't have
+  if (HOSTED && !GOOGLE_OAUTH) return ""; // the server isn't set up for Google sign-in
   const sc = S.scan;
   const visible = sc.trips.filter(tr => !hasSavedFor(tr));
   if (where === "trip") {
@@ -1577,19 +2274,28 @@ function renderImport(where) {
   }
   const avail = mcpApi && sampleFn;
   let inner = '<span class="eyebrow">Already booked?</span><h2>Start from your flights and hotel</h2>' +
-    '<p class="small muted" style="margin:0;max-width:64ch">Mytinerary looks through your Google Calendar and Gmail for flights, stays and reservations, groups them into trips, and fills in this form for you. It reads them through your own claude.ai connectors and keeps the results in this browser.</p>';
+    '<p class="small muted" style="margin:0;max-width:64ch">Mytinerary looks through your Google Calendar and Gmail for flights, stays and reservations, groups them into trips, and fills in this form for you. ' +
+    (HOSTED ? "Access is read-only: it never sends, changes or deletes anything, and you can disconnect any time." : "It reads them through your own claude.ai connectors and keeps the results in this browser.") + "</p>";
   if (sc.state === "running") inner += '<p class="gen-status" role="status">' + esc(sc.step) + "</p>";
+  else if (HOSTED && !mcpApi) inner += '<div class="row2"><a class="btn primary" href="/auth/google/start">Connect Gmail &amp; Calendar</a><span class="note">Google will ask you to allow read-only access.</span></div>';
   else inner += '<div class="row2"><button class="btn primary" type="button" data-scan' + (avail ? "" : " disabled") + ">" + (sc.state === "done" ? "Check again" : "Find my trips in Gmail &amp; Calendar") + "</button>" +
-    (avail ? "" : '<span class="note">' + (runtimeSettled ? "Open this page on claude.ai with the Gmail and Google Calendar connectors added to use this." : "Connecting…") + "</span>") + "</div>";
+    (avail ? "" : '<span class="note">' + (runtimeSettled ? "Open this page on claude.ai with the Gmail and Google Calendar connectors added to use this." : "Connecting…") + "</span>") +
+    (HOSTED ? '<button class="lnk" type="button" data-google-off>Disconnect Google</button>' : "") + "</div>";
   if (sc.notes.length) inner += '<ul class="scan-notes">' + sc.notes.map(n => "<li>" + esc(n) + "</li>").join("") + "</ul>";
   if (sc.state === "done") inner += visible.length ? foundList(visible) : '<p class="small" style="margin:0">' + (sc.trips.length ? "Every upcoming trip we found already has an itinerary in My trips." : "No upcoming trips found in the next 12 months. Fill in the form below instead.") + "</p>";
   if (sc.state === "error") inner += '<p class="err" style="margin:0">' + esc(sc.err) + "</p>";
   return '<section class="import" id="importPanel">' + inner + "</section>";
 }
 document.addEventListener("click", e => {
-  const t = e.target.closest && e.target.closest("[data-scan],[data-start-trip],[data-clear-booked],[data-autoscan-off]");
+  const t = e.target.closest && e.target.closest("[data-scan],[data-start-trip],[data-clear-booked],[data-autoscan-off],[data-draft-reset],[data-find-trip],[data-open-trip],[data-google-off]");
   if (!t) return;
   if (t.hasAttribute("data-scan")) scanTrips(false);
+  else if (t.hasAttribute("data-find-trip")) findTrip();
+  else if (t.hasAttribute("data-open-trip")) { S.trip = normalize(savedTrips().find(x => x.id === t.dataset.openTrip)); S.day = 0; store("mytin.lastOpened", S.trip.id); location.hash = "trip"; if (S.view === "trip") route(); }
+  else if (t.hasAttribute("data-google-off")) {
+    if (!confirm("Disconnect Gmail and Calendar? Mytinerary will stop reading them until you connect again.")) return;
+    fetch("/api/google/disconnect", { method: "POST" }).finally(() => { mcpApi = null; GOOGLE_CONNECTED = false; S.scan = Object.assign(S.scan, { trips: [], state: "idle", notes: [] }); render(); toast("Google disconnected."); });
+  }
   else if (t.hasAttribute("data-start-trip")) startFromTrip(t.getAttribute("data-start-trip"));
   else if (t.hasAttribute("data-draft-reset")) { if (confirm("Throw away your wish list and placed picks for " + DRAFT.prefs.dest + "?")) { DRAFT = null; saveDraft(); render(); } }
   else if (t.hasAttribute("data-clear-booked")) { readForm(); FORM.booked = null; store("mytin.form", FORM); render(true); }
@@ -1618,12 +2324,11 @@ function mockProfileTurn(prompt) {
   const steps = [
     ["LA with your partner, got it. On a trip, do you like an easy pace or a packed day, and are you up early or out late?", { homeCity: "Los Angeles", travelsWith: "Partner" }],
     ["Slow mornings, late nights. Noted. Roughly what do you like to spend per person per day, and what's worth a splurge?", { pace: "Moderate", dayStart: "09:30", dayEnd: "23:00" }],
-    ["Save on the room, splurge on dinner. Smart. Do you prefer hotels, small boutique places, or a rental with a kitchen?", { budget: "Mid-range", loves: ["One big tasting-menu dinner per trip"] }],
-    ["Boutique it is. How much does food drive a trip for you, and any dietary needs I should know about?", { lodging: "Boutique hotel" }],
+    ["Save on the room, splurge on dinner. Smart. How much does food drive a trip for you, and any dietary needs I should know about?", { budget: "Mid-range", loves: ["One big tasting-menu dinner per trip"], persona: { title: "The Late-Night Food Hunter", tagline: "You plan the day around dinner and never rush breakfast." } }],
     ["A real food-trip person. How do you feel about museums and history, hiking, bars, and shopping?", { interests: { food: 5 }, diet: ["No shellfish"], loves: ["One big tasting-menu dinner per trip", "Taquerias and street food"] }],
-    ["Good mix. Anything you always skip or can't stand on a trip?", { interests: { food: 5, culture: 3, outdoors: 4, nightlife: 3, shopping: 1 }, loves: ["One big tasting-menu dinner per trip", "Taquerias and street food", "A morning hike"] }],
-    ["No tourist-trap lines, noted. Last one: where have you been lately, and what's next on your list?", { avoids: ["Long lines", "Tourist-trap restaurants"] }],
-    ["That's everything I need. Your profile is saved, and you can come back any time to add more.", { beenTo: ["San Francisco", "Mexico City"], dreamTrips: ["Tokyo", "Lisbon"] }, true]
+    ["Good mix. Anything you always skip or can't stand on a trip?", { interests: { food: 5, culture: 3, outdoors: 4, nightlife: 3, shopping: 1 }, loves: ["One big tasting-menu dinner per trip", "Taquerias and street food", "A morning hike"], persona: { title: "The Trail-to-Table Explorer", tagline: "You earn dinner with a morning hike, then make it the best meal in town." } }],
+    ["No tourist-trap lines, noted. Last one: anything that affects how you plan, like mobility, kids or motion sickness?", { avoids: ["Long lines", "Tourist-trap restaurants"] }],
+    ["That's everything I need. Your profile is saved, and you can come back any time to add more.", {}, true]
   ];
   const cur = JSON.parse((/THE PROFILE SO FAR\n(.*)\n/.exec(prompt) || [])[1] || "{}");
   const s = turns <= steps.length ? steps[turns - 1] : ["Happy to add that. Anything else you'd like me to remember?", {}];
@@ -1658,10 +2363,18 @@ function mockSample() {
     let out;
     if (prompt.startsWith("You find upcoming trips")) out = { homeCity: "Los Angeles", trips: [{ destination: "Mexico City, Mexico", startDate: "2027-01-14", endDate: "2027-01-18", arriveTime: "15:05", leaveTime: "17:30", summary: "Long weekend in CDMX", bookings: [{ type: "flight", title: "AM 647 Los Angeles → Mexico City", start: "2027-01-14 15:05" }, { type: "flight", title: "AM 646 Mexico City → Los Angeles", start: "2027-01-18 17:30" }], lodgingThreadIds: ["t-mock-1"] }] };
     else if (prompt.startsWith("You extract lodging")) out = { found: true, name: "Casa Mock", address: "Colima 123, Roma Norte, Mexico City", checkIn: "2027-01-14", checkOut: "2027-01-18", checkInTime: "15:00" };
-    else if (prompt.startsWith("You are the trip designer")) {
+    else if (prompt.startsWith("You are the trip designer for Mytinerary, planning one day")) {
+      const n = +((/PLAN DAY (\d+) OF/.exec(prompt) || [])[1] || 1) - 1, ex = JSON.parse(JSON.stringify(EXAMPLE.days[n % EXAMPLE.days.length]));
+      await delay(400 + n * 500); ex.date = (/"date":"([\d-]+)"/.exec(prompt) || [])[1] || ex.date; out = ex;
+    } else if (prompt.startsWith("You are the trip designer")) {
       out = JSON.parse(JSON.stringify(EXAMPLE)); delete out.example; out.id = undefined; out.destination = (/"destination":"([^"]*)"/.exec(prompt) || [])[1] || "San Francisco";
-      out.homeBase.booked = true; out.days[0].items[0].booked = true;
-    } else if (prompt.startsWith("You are the travel-profile interviewer")) out = mockProfileTurn(prompt);
+      out.homeBase.booked = true; out.dayThemes = EXAMPLE.days.map(d => d.title); delete out.days;
+    } else if (prompt.startsWith("You fix a Mytinerary itinerary")) out = []; else if (prompt.startsWith("You are the travel-profile interviewer")) out = mockProfileTurn(prompt);
+    else if (prompt.startsWith("You are the trip inspiration editor")) out = { ideas: [
+      { destination: "Oaxaca, Mexico", title: "Mole, Mezcal and Markets", pitch: "Seven moles, smoky mezcal and a market on every corner.", why: "A food-first trip with a morning hike to Hierve el Agua.", tags: ["food", "markets", "hiking"], days: "4-5 days", bestMonths: "Oct–Apr", getThere: "4h flight from Los Angeles", dailyCost: 180, sampleDay: [{ time: "08:00", name: "Mercado 20 de Noviembre", what: "Breakfast tlayudas" }, { time: "11:00", name: "Templo de Santo Domingo", what: "Church and garden" }, { time: "14:00", name: "In Situ Mezcalería", what: "Tasting flight" }, { time: "20:00", name: "Criollo", what: "Tasting menu" }] },
+      { destination: "Asheville, North Carolina", title: "Blue Ridge Eats and Trails", pitch: "Mountain hikes by day, biscuits and craft beer by night.", why: "Hiking plus a serious food scene, without crowds.", tags: ["outdoors", "food"], days: "3-4 days", bestMonths: "Apr–Jun, Sep–Oct", getThere: "5h flight from Los Angeles", dailyCost: 260, sampleDay: [{ time: "08:30", name: "Biscuit Head", what: "Breakfast" }, { time: "10:00", name: "Craggy Gardens Trail", what: "Ridge hike" }, { time: "15:00", name: "River Arts District", what: "Studios" }, { time: "19:30", name: "Cúrate", what: "Spanish tapas" }] },
+      { destination: "Lisbon, Portugal", title: "Hills, Tiles and Late Dinners", pitch: "Custard tarts, sunset viewpoints and dinners that start at nine.", why: "Made for slow mornings and long nights.", tags: ["food", "city"], days: "About a week", bestMonths: "Apr–Jun", getThere: "11h flight from Los Angeles", dailyCost: 220, sampleDay: [{ time: "10:00", name: "Manteigaria", what: "Pastéis de nata" }, { time: "11:30", name: "Alfama", what: "Wander" }, { time: "15:00", name: "MAAT", what: "Museum on the river" }, { time: "21:00", name: "Taberna da Rua das Flores", what: "Dinner" }] }
+    ] };
     else if (prompt.startsWith("You are the local expert")) out = { homeBase: prompt.includes('"homeBase":{') ? { name: "Hotel Zephyr", lat: 37.8087, lng: -122.4152 } : null, activities: mockActivities(prompt.includes("ALREADY LISTED")) };
     else if (prompt.startsWith("You look up one place")) {
       const q = (/wants to add: (.*)\n/.exec(prompt) || [])[1] || "Somewhere";
@@ -1684,7 +2397,7 @@ const WD_ORDER = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const WD_NAME = { sun: "Sundays", mon: "Mondays", tue: "Tuesdays", wed: "Wednesdays", thu: "Thursdays", fri: "Fridays", sat: "Saturdays" };
 const PXH = 46, SNAP = 15; // board: pixels per hour, minutes per drag step
 const ANCHORS_PER_DAY = { Relaxed: 2, Moderate: 3, "Jam-packed": 4 };
-const ACT_SHAPE = '{"name":"","category":"","neighborhood":"","address":"","lat":0.0,"lng":0.0,"why":"one vivid sentence","fitWhy":"","fit":0,"minutes":90,"bestTime":"morning|afternoon|evening|any","hours":{"mon":"","tue":"","wed":"","thu":"","fri":"","sat":"","sun":""},"cost":0,"costTier":"$|$$|$$$|$$$$","booking":"now|daybefore|walkin|none"}';
+const ACT_SHAPE = '{"name":"","category":"","kind":"one short tag, e.g. garden, market, bbq, museum, hike, shopping","unique":false,"neighborhood":"","address":"","lat":0.0,"lng":0.0,"why":"one vivid sentence","fitWhy":"","fit":0,"minutes":90,"bestTime":"morning|afternoon|evening|any","hours":{"mon":"","tue":"","wed":"","thu":"","fri":"","sat":"","sun":""},"cost":0,"costTier":"$|$$|$$$|$$$$","booking":"now|daybefore|walkin|none"}';
 let DRAFT = store("mytin.draft");
 S.wishLoad = null; S.wishCat = "All"; S.wishLook = { busy: false, err: "" };
 
@@ -1782,6 +2495,7 @@ function issuesAt(c, di, start, buf) {
     return start < oe + (buf || 0) && os < end + (buf || 0);
   });
   if (clash) out.push("Overlaps " + candById(clash).name);
+  if (!c.fixed) { const rb = routineBlocks(di).find(r => start < r.b && r.a < end); if (rb) out.push("During " + rb.label.split(" ·")[0].toLowerCase()); }
   return out;
 }
 
@@ -1795,7 +2509,8 @@ function normCand(c, mine) {
     bestTime: ["morning", "afternoon", "evening", "any"].includes(c.bestTime) ? c.bestTime : "any",
     hours: c.hours && typeof c.hours === "object" ? c.hours : null,
     cost: Number(c.cost) || 0, costTier: String(c.costTier || "").replace(/[^$]/g, ""),
-    booking: BOOK.hasOwnProperty(c.booking) ? c.booking : "none", mine: !!mine
+    booking: BOOK.hasOwnProperty(c.booking) ? c.booking : "none", mine: !!mine,
+    kind: String(c.kind || "").toLowerCase().slice(0, 30), unique: c.unique === true
   };
   if (!hasLL(out) || (out.lat === 0 && out.lng === 0)) { out.lat = null; out.lng = null; }
   return out;
@@ -1809,6 +2524,9 @@ function candPrompt(p, exclude, count) {
     "- Match their tastes closely. Interests rated 1-2 get at most one item, and only a standout. Never suggest what they avoid. Lean into what they love.\n" +
     "- Anchors are worth planning a day around: sights, museums, hikes, markets, neighborhoods to wander, shows, tours, and destination restaurants only if food is a big interest. No ordinary meals, hotels or transit.\n" +
     "- Spread across several neighborhoods so each day can have its own area. Give accurate latitude/longitude.\n" +
+    learnedText() +
+    "- Include at least 3 things that only make sense HERE (unique: true): local institutions, signature experiences, things they couldn't do at home. Encourage something new, not just their usual.\n" +
+    "- Also return timeShiftHours: the destination's UTC offset minus " + (p.from || PROFILE.homeCity || "home") + "'s, for these dates (0 if same time zone).\n" +
     "- category: one of " + Object.keys(CATS).join(", ") + ".\n" +
     "- hours: typical opening hours for each weekday as \"HH:MM-HH:MM\" (24-hour; several ranges separated by commas; \"closed\" if closed that day; \"00:00-24:00\" for parks, streets and neighborhoods that are always open).\n" +
     "- minutes: typical visit length. bestTime: when it's best (morning | afternoon | evening | any).\n" +
@@ -1816,7 +2534,7 @@ function candPrompt(p, exclude, count) {
     "- cost: US dollars per person (0 if free). booking: now (sells out) | daybefore | walkin | none.\n" +
     (exclude.length ? "- ALREADY LISTED, don't repeat: " + exclude.join("; ") + "\n" : "") +
     "\nReply with ONLY one JSON object, no prose:\n" +
-    '{"homeBase":' + (p.stay ? '{"name":"","lat":0.0,"lng":0.0}' : "null") + ',"activities":[' + ACT_SHAPE + "]}" +
+    '{"homeBase":' + (p.stay ? '{"name":"","lat":0.0,"lng":0.0}' : "null") + ',"timeShiftHours":0,"activities":[' + ACT_SHAPE + "]}" +
     (p.stay ? "\nhomeBase is where they're staying, with accurate coordinates." : "");
 }
 function wishErrorCopy(e) {
@@ -1868,6 +2586,7 @@ async function loadCandidates(more) {
       if (DRAFT !== d) return;
     }
     fresh.forEach(c => d.cands.push(c));
+    if (Number.isFinite(Number(raw.timeShiftHours))) d.shift = Math.max(-12, Math.min(12, Number(raw.timeShiftHours)));
     const hb = raw.homeBase;
     if (hb && Number.isFinite(Number(hb.lat)) && Number(hb.lat) !== 0) d.home = { name: String(hb.name || d.prefs.stay), lat: Number(hb.lat), lng: Number(hb.lng) };
     saveDraft();
@@ -1941,11 +2660,76 @@ function fillTrip() {
   const d = DRAFT, days = draftDays();
   const anchors = Object.keys(d.place).map(id => ({ c: candById(id), pl: d.place[id] })).filter(x => x.c && x.pl.day < days.length)
     .sort((a, b) => a.pl.day - b.pl.day || toMin(a.pl.start) - toMin(b.pl.start))
-    .map(({ c, pl }) => ({ date: days[pl.day], start: pl.start, end: toHM(toMin(pl.start) + c.minutes), name: c.name, neighborhood: c.neighborhood, address: c.address }));
+    .map(({ c, pl }) => ({ date: days[pl.day], start: pl.start, end: toHM(toMin(pl.start) + c.minutes), name: c.name, neighborhood: c.neighborhood, address: c.address, fill: !!c.fill, fixed: !!c.fixed }));
   if (!anchors.length) { toast("Place at least one pick on a day first."); return; }
   if (!sampleFn) { toast(noClaudeCopy("Filling in your days")); return; }
   const spare = d.wish.map(candById).filter(c => c && !(d.place[c.id] && d.place[c.id].day < days.length)).map(c => c.name + (c.neighborhood ? " (" + c.neighborhood + ")" : ""));
-  generate(Object.assign({}, d.prefs, { anchors, spare, tripId: d.tripId || null }));
+  if (!d.learned) { learnFrom(Object.keys(d.place).map(candById).filter(c => c && !c.placeholder)); d.learned = true; saveDraft(); }
+  generate(Object.assign({}, d.prefs, { anchors, spare, extra: d.extra || null, tripId: d.tripId || null }));
+}
+
+// Learned preferences: count the kinds of places someone anchors trips on, and nudge future suggestions.
+function learnedText() {
+  const L = Object.entries(PROFILE.learned || {}).filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  return L.length ? "- From past trips they often pick: " + L.map(([k, n]) => k + " (" + n + ")").join(", ") + ". Include a couple of those here, but don't let them crowd out what's special about this place.\n" : "";
+}
+function learnFrom(cands) {
+  if (!cands.length) return;
+  const p = JSON.parse(JSON.stringify(PROFILE));
+  cands.forEach(c => { const k = c.kind || String(c.category || "").toLowerCase(); if (k) p.learned[k] = (p.learned[k] || 0) + 1; });
+  saveProfile(p);
+}
+// While the wish list loads (about a minute), show what's happening and ask a few quick questions that shape the itinerary.
+const WAIT_QS = [
+  ["daytrip", "Up for a day trip out of town?", ["Yes, one day", "Maybe", "Stay in town"]],
+  ["getaround", "How do you want to get around?", ["Walk and rideshare", "Rental car", "Public transit"]],
+  ["splurge", "One splurge meal on this trip?", ["Yes, make it special", "Keep it casual"]],
+  ["vibe", "This trip, you want to…", ["See the highlights", "Live like a local", "A bit of both"]]
+];
+function waitHTML(p) {
+  const L = S.wishLoad || {}, x = (DRAFT && DRAFT.extra) || {};
+  const found = (L.names || []).length, checking = !!L.status;
+  const step = (txt, state) => '<li class="' + state + '"><span class="st"></span>' + txt + "</li>";
+  return '<div class="wait">' +
+    '<div class="wait-head"><ol class="wait-steps">' +
+      step("Reading your travel profile", "done") +
+      step("Finding the best of " + esc(p.dest) + (found ? " · " + found + " so far" : ""), checking ? "done" : "now") +
+      step(PLACES ? "Checking hours and photos on Google Maps" : "Checking the details", checking ? "now" : "") +
+      step("Ranking them for you", "") +
+    '</ol><div class="gen-line"><i id="wishBar" style="width:6%"></i></div><div class="gen-stops" id="wishNames"></div><p class="gen-status" id="wishStatus">This takes about a minute. Hold tight, and help us tune it while you wait.</p></div>' +
+    '<section class="wait-qs"><h2 class="sec-h">While we look: a few quick questions</h2>' +
+      WAIT_QS.map(([k, q, opts]) => '<div class="wait-q"><div class="qlabel">' + q + '</div><div class="filters" role="group">' + opts.map(o => '<button type="button" data-wq="' + k + '" data-v="' + esc(o) + '" aria-pressed="' + (x[k] === o) + '">' + esc(o) + "</button>").join("") + "</div></div>").join("") +
+      '<label class="f" for="wqFor">Anything you\'d cross town for? <input class="inp" id="wqFor" value="' + esc(x.crossTown || "") + '" placeholder="e.g. the best tacos, a speakeasy, a great view"></label>' +
+    "</section>" +
+    '<div class="wish-grid skel" aria-hidden="true">' + "<div></div>".repeat(6) + "</div></div>";
+}
+function extraText(x) {
+  if (!x) return "";
+  const L = [];
+  if (x.daytrip) L.push("Day trip out of town: " + x.daytrip);
+  if (x.getaround) L.push("Getting around: " + x.getaround);
+  if (x.splurge) L.push("Splurge meal: " + x.splurge);
+  if (x.vibe) L.push("This trip they want to: " + x.vibe);
+  if (x.crossTown) L.push("Worth crossing town for: " + x.crossTown);
+  return L.length ? "QUICK ANSWERS: " + L.join(" · ") : "";
+}
+// Anchor-board placeholders: generic slots ("Lunch", "Hike") filled with real places later, or fixed blocks ("Nap").
+const PLACEHOLDERS = [["Breakfast", 45, "Food & drink", true], ["Lunch", 60, "Food & drink", true], ["Dinner", 90, "Food & drink", true], ["Coffee", 30, "Food & drink", true],
+  ["Hike", 120, "Outdoors", true], ["Shopping", 90, "Shopping", true], ["Drinks", 60, "Nightlife", true], ["Nap", 120, "Experiences", false], ["Free time", 60, "Experiences", false]];
+function addPlaceholder(name, minutes, category, fill) {
+  const c = { id: uid(), name, category, minutes, placeholder: true, fill, fixed: !fill, neighborhood: "", why: fill ? "We'll suggest a real place near your other stops." : "We'll plan around this.", hours: null, lat: null, lng: null, bestTime: "any", cost: 0, booking: "none" };
+  DRAFT.cands.push(c); DRAFT.wish.push(c.id); saveDraft();
+  if (HOSTED && !PLACEHOLDERS.some(([n]) => n === name)) fetch("/api/answers", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ field: "placeholder", value: name }) }).catch(() => {});
+  render(); openPlace(c.id);
+}
+// Routines (nap, bedtime) as blocked time on the board, shifted for the time zone: home time for two days, halfway on day 3, local after.
+function routineBlocks(di) {
+  const shift = (DRAFT && DRAFT.shift) || 0, adj = di < 2 ? shift : di === 2 ? Math.round(shift / 2 * 2) / 2 : 0;
+  return (PROFILE.routines || []).map(r => {
+    const m = /(\d{1,2}:\d{2})(?:\s*[-–]\s*(\d{1,2}:\d{2}))?/.exec(r.when || ""); if (!m) return null;
+    const a = toMin(m[1]) + adj * 60, b = m[2] ? toMin(m[2]) + adj * 60 : a + 60;
+    return { a, b, label: r.what + (r.who ? " (" + r.who + ")" : "") + (adj ? " · home time" : "") };
+  }).filter(Boolean);
 }
 
 /* ---------- Planning views ---------- */
@@ -1964,6 +2748,8 @@ function draftBanner() {
 }
 // Plain-grid map shared by the planning steps (basemap tiles aren't allowed in the page).
 function planMap(label, points, paths, home, legend) {
+  if (GMAPS_KEY) return mapSlotHTML(esc(label), legend, { points: points.map(pt => Object.assign({}, pt)), paths, home,
+    onPick: id => { const el = document.querySelector('.wcard[data-pin="' + id + '"], .anc[data-pin="' + id + '"], .tray-item[data-pin="' + id + '"]'); if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1200); } highlightPin(id); } });
   const ll = points.filter(hasLL), all = ll.concat(hasLL(home) ? [home] : []);
   if (all.length < 2) return '<section class="panel map"><h3>' + esc(label) + '</h3><p class="note">Pins show up here once there are places to plot.</p></section>';
   const W = 600, H = 460, P = 36;
@@ -1995,6 +2781,7 @@ function wishCard(c) {
   const on = DRAFT.wish.includes(c.id), hs = hoursSummary(c);
   return '<article class="wcard' + (on ? " on" : "") + '" data-pin="' + c.id + '" style="--c:var(' + CATS[c.category] + ')">' + tileHTML(c) +
     '<div class="wbody"><h2 class="hidden">' + esc(c.name) + "</h2>" +
+      (c.unique ? '<span class="pill only">Only in ' + esc(String(DRAFT.prefs.dest).split(",")[0]) + "</span>" : "") +
       (c.fitWhy ? '<span class="fitwhy">' + esc(c.fitWhy) + "</span>" : c.mine ? '<span class="fitwhy">Your idea</span>' : "") +
       (c.why ? '<p class="why">' + esc(c.why) + "</p>" : "") +
       (c.verified === false && PLACES ? '<span class="unverified">Not found on Google Maps. Double-check it exists.</span>' : "") +
@@ -2005,13 +2792,14 @@ function wishCard(c) {
 }
 function renderWish() {
   const d = DRAFT, p = d.prefs, n = draftDays().length, L = S.wishLoad;
-  const cats = ["All"].concat(Object.keys(CATS).filter(k => d.cands.some(c => c.category === k)));
+  const real = d.cands.filter(c => !c.placeholder);
+  const cats = ["All"].concat(Object.keys(CATS).filter(k => real.some(c => c.category === k)));
   if (!cats.includes(S.wishCat)) S.wishCat = "All";
-  const list = d.cands.filter(c => S.wishCat === "All" || c.category === S.wishCat);
+  const list = real.filter(c => S.wishCat === "All" || c.category === S.wishCat);
   let main;
   if (L && L.busy && !L.more) {
-    main = '<div class="wish-load"><div class="gen-line"><i id="wishBar" style="width:6%"></i></div><div class="gen-stops" id="wishNames"></div><p class="gen-status" id="wishStatus">Finding the best things to do in ' + esc(p.dest) + " for you…</p></div>";
-  } else if (!d.cands.length) {
+    main = waitHTML(p);
+  } else if (!real.length) {
     main = '<p class="err">' + esc((L && L.err) || "No ideas yet.") + '</p><button class="btn" id="wishRetry">Try again</button>';
   } else {
     main = '<div class="filters" role="group" aria-label="Filter by type">' + cats.map(k => '<button type="button" data-cat="' + esc(k) + '" aria-pressed="' + (S.wishCat === k) + '">' + esc(k) + "</button>").join("") + "</div>" +
@@ -2020,7 +2808,7 @@ function renderWish() {
         '<form class="look" id="lookForm"><label for="lookInput" class="hidden">Add a place you already have in mind</label><input id="lookInput" placeholder="Something else in mind? e.g. a friend\'s favorite bar" autocomplete="off"><button class="btn" type="submit"' + (S.wishLook.busy ? " disabled" : "") + ">" + (S.wishLook.busy ? "Looking…" : "Add") + "</button></form></div>" +
       (L && L.err ? '<p class="err">' + esc(L.err) + "</p>" : "") + (S.wishLook.err ? '<p class="err">' + esc(S.wishLook.err) + "</p>" : "");
   }
-  const pts = d.cands.map(c => { const on = d.wish.includes(c.id); return { id: c.id, lat: c.lat, lng: c.lng, title: c.name, color: on ? "var(--accent)" : "var(--muted)", filled: on }; });
+  const pts = real.map(c => { const on = d.wish.includes(c.id); return { id: c.id, lat: c.lat, lng: c.lng, title: c.name, color: on ? "var(--accent)" : "var(--muted)", filled: on }; });
   const k = d.wish.length;
   return '<div class="wrap planflow">' + stepsHTML(2) +
     '<h1 class="pf-title">What do you want to do in ' + esc(p.dest) + "?</h1>" +
@@ -2035,7 +2823,8 @@ function updateWishLoad() {
   const box = $("#wishNames"); if (!box || !S.wishLoad) return;
   box.innerHTML = S.wishLoad.names.map(s => '<span class="chip">' + esc(s) + "</span>").join("");
   $("#wishBar").style.width = Math.min(95, 6 + S.wishLoad.names.length / 19 * 90) + "%";
-  if (S.wishLoad.status) $("#wishStatus").textContent = S.wishLoad.status;
+  if (S.wishLoad.status) { $("#wishStatus").textContent = S.wishLoad.status; const st = document.querySelectorAll(".wait-steps li"); if (st[1]) st[1].className = "done"; if (st[2]) st[2].className = "now"; }
+  else if (S.wishLoad.names.length) { const st = document.querySelectorAll(".wait-steps li"); if (st[1]) st[1].innerHTML = '<span class="st"></span>Finding the best of ' + esc(DRAFT.prefs.dest) + " · " + S.wishLoad.names.length + " so far"; }
 }
 function bindWish() {
   document.querySelectorAll("[data-wish]").forEach(b => b.addEventListener("click", () => {
@@ -2044,13 +2833,18 @@ function bindWish() {
     saveDraft(); render();
   }));
   document.querySelectorAll("[data-cat]").forEach(b => b.addEventListener("click", () => { S.wishCat = b.dataset.cat; render(); }));
+  document.querySelectorAll("[data-wq]").forEach(b => b.addEventListener("click", () => {
+    DRAFT.extra = Object.assign({}, DRAFT.extra, { [b.dataset.wq]: b.dataset.v }); saveDraft();
+    b.parentNode.querySelectorAll("button").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+  }));
+  const wf = $("#wqFor"); if (wf) wf.addEventListener("input", () => { DRAFT.extra = Object.assign({}, DRAFT.extra, { crossTown: wf.value.trim() }); saveDraft(); });
   const more = $("#moreBtn"); if (more) more.addEventListener("click", () => loadCandidates(true));
   const retry = $("#wishRetry"); if (retry) retry.addEventListener("click", () => loadCandidates(false));
   const lf = $("#lookForm"); if (lf) lf.addEventListener("submit", e => { e.preventDefault(); lookupPlace($("#lookInput").value); });
   bindPins();
 }
 function bindPins() {
-  const hl = id => document.querySelectorAll("[data-pin]").forEach(el => el.classList.toggle("hl", el.dataset.pin === id));
+  const hl = id => { document.querySelectorAll("[data-pin]").forEach(el => el.classList.toggle("hl", el.dataset.pin === id)); highlightPin(id); };
   document.querySelectorAll(".wcard[data-pin], .anc[data-pin], .tray-item[data-pin]").forEach(el => {
     el.addEventListener("mouseenter", () => hl(el.dataset.pin)); el.addEventListener("mouseleave", () => hl(null));
   });
@@ -2080,14 +2874,14 @@ function ancCard(c, di, gs, ln) {
   const pl = DRAFT.place[c.id], s = toMin(pl.start), iss = issuesAt(c, di, s);
   const h = Math.max(c.minutes / 60 * PXH, 34);
   const pos = ln && ln.of > 1 ? "left:calc(5px + " + ln.lane + " * (100% - 10px) / " + ln.of + ");right:auto;width:calc((100% - 10px) / " + ln.of + " - 2px);" : "";
-  return '<div class="anc' + (iss.length ? " warn" : "") + '" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" style="' + pos + "top:" + px(s - gs) + "px;height:" + h + 'px"' +
+  return '<div class="anc' + (iss.length ? " warn" : "") + (c.placeholder ? " ph" : "") + '" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" style="' + pos + "top:" + px(s - gs) + "px;height:" + h + 'px"' +
     ' aria-label="' + esc(c.name + ", " + fmtShort(s) + " to " + fmtShort(s + c.minutes) + (iss.length ? ". Warning: " + iss.join(". ") : "") + ". Press Enter to move.") + '">' +
     "<b>" + esc(c.name) + '</b><span class="t">' + fmtShort(s) + "–" + fmtShort(s + c.minutes) + "</span>" + (iss.length ? '<span class="w">⚠ ' + esc(iss[0]) + "</span>" : "") +
     '<button class="anc-x" type="button" data-unplace="' + c.id + '" aria-label="Move ' + esc(c.name) + ' back to the wish list">×</button></div>';
 }
 function trayItem(c) {
   const hs = hoursSummary(c);
-  return '<div class="tray-item" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" style="--c:var(' + CATS[c.category] + ')" aria-label="' + esc(c.name) + '. Press Enter to place it on a day.">' +
+  return '<div class="tray-item' + (c.placeholder ? " ph" : "") + '" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" style="--c:var(' + CATS[c.category] + ')" aria-label="' + esc(c.name) + '. Press Enter to place it on a day.">' +
     "<b>" + esc(c.name) + "</b><small>~" + durText(c.minutes) + (hs ? " · " + esc(hs) : "") + "</small></div>";
 }
 function spreadText(di) {
@@ -2118,6 +2912,7 @@ function renderAnchors() {
     let inner = box(gs, ds, "offhours") + box(de, ge, "offhours");
     if (w.blockBefore != null) inner += box(gs, w.blockBefore, "blocked", "Landing ~" + fmtTime(p.arrive));
     if (w.blockAfter != null) inner += box(w.blockAfter, ge, "blocked top", "Head out for your " + fmtTime(p.leave) + " departure");
+    routineBlocks(di).forEach(rb => { inner += box(rb.a, rb.b, "blocked routine top", rb.label); });
     const mine = placedIds.filter(id => d.place[id].day === di), ln = lanes(mine);
     inner += mine.map(id => ancCard(candById(id), di, gs, ln[id])).join("");
     return '<div class="day-col" style="--c:' + lineVar(di) + '"><div class="day-h"><span class="bullet">' + (di + 1) + "</span><span><b>Day " + (di + 1) + "</b><small>" + esc(fmtDay(date)) + "</small></span></div>" +
@@ -2135,6 +2930,8 @@ function renderAnchors() {
     '<div class="grid wide"><section aria-label="Days">' +
       '<section class="panel tray" id="tray" aria-label="Wish list, not yet placed"><h3>Wish list <small>' + (unplaced.length ? "drag onto a day, or tap to place" : "everything is placed · drag a card here to unschedule it") + "</small></h3>" +
         '<div class="tray-items">' + unplaced.map(trayItem).join("") + "</div>" +
+        '<div class="ph-row"><span class="pf-k">Add a placeholder</span><div class="pf-chips">' + PLACEHOLDERS.map(([n], i) => '<button type="button" class="pill ph-add" data-ph="' + i + '">+ ' + n + "</button>").join("") +
+          '<form id="phCustom" class="ph-custom"><label for="phName" class="hidden">Custom placeholder</label><input id="phName" placeholder="Something else…" maxlength="40"><button class="pill ph-add" type="submit">Add</button></form></div></div>' +
         '<div class="row2"><button class="btn small" id="suggestBtn">' + (placedIds.length ? "Re-suggest a layout" : "Suggest a layout") + '</button><a class="lnk" href="#wish">Add more to the wish list</a></div></section>' +
       '<div class="board-scroll"><div class="board" style="grid-template-columns:52px repeat(' + n + ', minmax(150px, 1fr))"><div class="gutter"><div class="day-h"></div><div class="gutter-l" style="height:' + H + 'px">' + labels + "</div></div>" + cols + "</div></div>" +
       '<div class="board-foot"><button class="btn primary" id="fillBtn"' + (placedIds.length ? "" : " disabled") + ">Fill in my days →</button>" +
@@ -2168,6 +2965,8 @@ function bindAnchors() {
     toast(r.left ? "Placed " + r.placed + ". " + r.left + " didn't fit, so they'll be ideas when we fill in." : "Laid out " + r.placed + " picks, keeping each day in one area.");
   });
   const fb = $("#fillBtn"); if (fb) fb.addEventListener("click", fillTrip);
+  document.querySelectorAll("[data-ph]").forEach(b => b.addEventListener("click", () => { const [n, m, c, f] = PLACEHOLDERS[+b.dataset.ph]; addPlaceholder(n, m, c, f); }));
+  const pc = $("#phCustom"); if (pc) pc.addEventListener("submit", e => { e.preventDefault(); const n = $("#phName").value.trim(); if (n) addPlaceholder(n[0].toUpperCase() + n.slice(1), 60, "Experiences", true); });
 }
 function showBands(c) {
   const { gs, ge } = gridRange(), days = draftDays();
@@ -2253,11 +3052,16 @@ const PROF_ENUM = { pace: ["Relaxed", "Moderate", "Jam-packed"], budget: ["Budge
 const PROF_LISTS = ["loves", "avoids", "diet", "beenTo", "dreamTrips"];
 
 function emptyProfile() {
-  return { homeCity: "", travelsWith: "", pace: "", budget: "", lodging: "", dayStart: "", dayEnd: "", interests: {}, loves: [], avoids: [], diet: [], needs: "", beenTo: [], dreamTrips: [], notes: "" };
+  return { homeCity: "", travelsWith: "", pace: "", budget: "", lodging: "", dayStart: "", dayEnd: "", interests: {}, loves: [], avoids: [], diet: [], needs: "", beenTo: [], dreamTrips: [], notes: "", persona: { title: "", tagline: "" }, routines: [], dietLevel: {}, learned: {} };
 }
 function normProfile(raw) {
   const p = Object.assign(emptyProfile(), raw || {});
   ["homeCity", "travelsWith", "needs", "notes"].forEach(k => { p[k] = String(p[k] || "").trim(); });
+  const pe = p.persona && typeof p.persona === "object" ? p.persona : {};
+  p.persona = { title: String(pe.title || "").trim().slice(0, 60), tagline: String(pe.tagline || "").trim().slice(0, 160) };
+  p.routines = (Array.isArray(p.routines) ? p.routines : []).filter(x => x && x.what).slice(0, 8).map(x => ({ what: String(x.what).slice(0, 40), when: String(x.when || "").slice(0, 20), who: String(x.who || "").slice(0, 40) }));
+  p.dietLevel = p.dietLevel && typeof p.dietLevel === "object" ? p.dietLevel : {};
+  p.learned = p.learned && typeof p.learned === "object" ? p.learned : {};
   Object.keys(PROF_ENUM).forEach(k => { if (!PROF_ENUM[k].includes(p[k])) p[k] = ""; });
   ["dayStart", "dayEnd"].forEach(k => { p[k] = /^\d{2}:\d{2}$/.test(p[k]) ? p[k] : ""; });
   const ints = {};
@@ -2283,7 +3087,7 @@ function applyProfileToForm() {
   if (p.homeCity) FORM.from = p.homeCity;
   ["pace", "budget", "lodging", "dayStart", "dayEnd"].forEach(k => { if (p[k]) FORM[k] = p[k]; });
   INTERESTS.forEach(([k]) => { if (p.interests[k]) FORM[k] = p.interests[k]; });
-  if (p.diet.length) FORM.diet = p.diet.slice();
+  if (p.diet.length) { FORM.diet = p.diet.slice(); FORM.dietLevel = Object.assign({}, p.dietLevel); }
   store("mytin.form", FORM);
 }
 // The parts of the profile the plan form doesn't already carry.
@@ -2293,6 +3097,7 @@ function profileText(p) {
   if (p.loves.length) L.push("Seeks out: " + p.loves.join("; "));
   if (p.avoids.length) L.push("Avoid: " + p.avoids.join("; "));
   if (p.needs) L.push("Planning needs: " + p.needs);
+  if (p.routines.length) L.push("Daily routines (home time): " + p.routines.map(x => x.what + (x.when ? " " + x.when : "") + (x.who ? " (" + x.who + ")" : "")).join("; "));
   if (p.beenTo.length) L.push("Has already been to: " + p.beenTo.join(", "));
   if (p.notes) L.push("Other: " + p.notes);
   return L.length ? "TRAVELER PROFILE (long-standing tastes; the trip details above win if they conflict):\n" + L.map(x => "- " + x).join("\n") : "";
@@ -2306,7 +3111,7 @@ function profileBanner() {
 function profileOpener() {
   return hasProfile()
     ? "Welcome back. Everything I know about how you travel is on the right. What would you like to add or change?"
-    : "Hi! I'm going to learn how you like to travel, so every trip starts from you instead of a blank form. It's about eight quick questions. Skip any you like, and if you change your mind later, just say so.\n\nTo start: where do you usually travel from, and who usually comes with you?";
+    : "Hi! I'm going to learn how you like to travel, so every trip starts from you instead of a blank form. It's about seven quick questions. Skip any you like, and if you change your mind later, just say so.\n\nTo start: where do you usually travel from, and who usually comes with you?";
 }
 function profilePrompt() {
   const transcript = CHAT.messages.slice(-40).map(m => (m.role === "user" ? "Them: " : "You: ") + m.text).join("\n");
@@ -2314,18 +3119,21 @@ function profilePrompt() {
     "HOW TO TALK\n" +
     "- One question per message, in one to three short sentences. Warm and plain, like a well-traveled friend. No lists, no emoji.\n" +
     "- Briefly react to their last answer before asking the next thing (a few words, specific to what they said).\n" +
-    "- About 8 to 10 questions in all. Skip anything earlier answers already settle. If they skip a question, move on without fuss.\n" +
+    "- About 7 or 8 questions in all. Skip anything earlier answers already settle. If they skip a question, move on without fuss.\n" +
     "- If they change an earlier answer, update the profile and confirm in a few words (\"Updated: no red-eyes.\").\n" +
-    "- Cover roughly in this order: where they travel from and who usually comes; pace, and whether they're an early bird or a night owl; budget and what's worth splurging on; where they like to stay; food (how much it drives a trip, favorite kinds of meals, dietary needs); how they feel about museums and history, the outdoors, nightlife and shopping; things they always seek out and things they avoid; places they've been and places on their list; anything that affects planning (mobility, kids, motion sickness).\n" +
+    "- Cover roughly in this order: where they travel from and who usually comes; pace, and whether they're an early bird or a night owl; budget and what's worth splurging on; food (how much it drives a trip, favorite kinds of meals, dietary needs); how they feel about museums and history, the outdoors, nightlife and shopping; things they always seek out and things they avoid; anything that affects planning (mobility, motion sickness, and kids' naps and bedtimes: get the usual times). Don't ask where they like to stay or where they've been; record those only if they bring them up.\n" +
     "- When everything is covered, set done to true and close in two sentences: the profile is saved, and they can come back any time to add more. If they keep talking after that, keep helping.\n\n" +
     "PROFILE RULES\n" +
     "- Return the WHOLE profile every time, carrying forward everything already in it. Record only what they said or clearly implied; leave unknown fields empty and unknown interests 0.\n" +
     "- pace: Relaxed | Moderate | Jam-packed. budget: Budget (about $200 per person per day) | Mid-range (about $300) | Splurge (about $500+). lodging: Hotel | Boutique hotel | Vacation rental | No preference. dayStart, dayEnd: HH:MM, 24-hour.\n" +
     "- interests: 1-5 for food, culture, outdoors, nightlife, shopping (5 = a reason to take the trip, 1 = skip it).\n" +
-    "- loves and avoids: short, specific phrases (\"natural wine bars\", \"long lines\"). diet: only from " + DIETS.join(", ") + ". beenTo and dreamTrips: place names.\n\n" +
+    "- loves and avoids: short, specific phrases (\"natural wine bars\", \"long lines\"). diet: only from " + DIETS.join(", ") + ". beenTo and dreamTrips: place names.\n" +
+    "- routines: daily fixed times the plan must respect, on home time, e.g. {\"what\":\"Nap\",\"when\":\"12:30-14:30\",\"who\":\"daughter\"} or {\"what\":\"Bedtime\",\"when\":\"19:00\",\"who\":\"daughter\"}.\n" +
+    "- dietLevel: for each diet entry, how strict it is: preference | restriction | allergy. Ask if it isn't clear.\n" +
+    "- persona: once you know three or more things, give them a travel persona for a shareable card. title: 2-5 words, warm, specific and a little playful (\"The Slow-Morning Food Hunter\", not \"Foodie Traveler\"). tagline: one sentence in second person that captures how they travel. Refine both as you learn more.\n\n" +
     "THE PROFILE SO FAR\n" + JSON.stringify(PROFILE) + "\n\n" +
     "THE CONVERSATION\n" + transcript + "\n\n" +
-    'Reply with ONLY one JSON object, no prose: {"reply":"your next message","done":false,"profile":{"homeCity":"","travelsWith":"","pace":"","budget":"","lodging":"","dayStart":"","dayEnd":"","interests":{"food":0,"culture":0,"outdoors":0,"nightlife":0,"shopping":0},"loves":[],"avoids":[],"diet":[],"needs":"","beenTo":[],"dreamTrips":[],"notes":""}}';
+    'Reply with ONLY one JSON object, no prose: {"reply":"your next message","done":false,"profile":{"homeCity":"","travelsWith":"","pace":"","budget":"","lodging":"","dayStart":"","dayEnd":"","interests":{"food":0,"culture":0,"outdoors":0,"nightlife":0,"shopping":0},"loves":[],"avoids":[],"diet":[],"needs":"","beenTo":[],"dreamTrips":[],"notes":"","persona":{"title":"","tagline":""},"routines":[],"dietLevel":{}}}';
 }
 function profErrorCopy(e) {
   const c = e && e.code;
@@ -2361,18 +3169,19 @@ async function sendProfile(text) {
 }
 
 function renderProfile() {
-  return '<div class="wrap prof"><span class="eyebrow">Travel profile</span><h1>How do you like to travel?</h1>' +
+  return '<div class="wrap prof"><span class="eyebrow">' + (onboarding() ? "Step 1 of 2 · Your travel style" : "Travel profile") + '</span><h1>How do you like to travel?</h1>' +
     '<p class="lede">A short chat, about three minutes. What you tell me is saved' + (HOSTED && ME ? " to your account" : " in this browser") + ' and becomes the starting point for every trip you plan.</p>' +
     '<div class="prof-grid"><section class="chat" aria-label="Profile chat">' +
       '<div class="chat-log" id="profLog" aria-live="polite"></div>' +
       '<form class="chat-input" id="profForm"><textarea id="profInput" rows="1" placeholder="Type your answer" aria-label="Your answer"></textarea><button class="btn primary" type="submit" id="profSend">Send</button></form>' +
-      '<div class="chat-foot"><button class="lnk" type="button" id="profSkip">Skip this question</button><span class="err" id="profErr" role="alert"></span></div>' +
-    '</section><aside class="panel prof-panel" id="profPanel" aria-label="What I know about you"></aside></div></div>';
+      '<div class="chat-foot"><button class="lnk" type="button" id="profSkip">Skip this question</button><span class="err" id="profErr" role="alert"></span>' +
+        (onboarding() ? '<button class="lnk" type="button" id="profLater">Finish later</button>' : "") + "</div>" +
+    '</section><aside class="prof-side"><section class="panel card-panel" id="cardPanel"></section><section class="panel prof-panel" id="profPanel" aria-label="What I know about you"></section></aside></div></div>';
 }
 function profLogHTML() {
   return CHAT.messages.map(m => '<div class="msg ' + (m.role === "user" ? "user" : "assistant") + '">' + esc(m.text) + "</div>").join("") +
     (profBusy ? '<div class="msg assistant typing" aria-label="Claude is typing"><i></i><i></i><i></i></div>' : "") +
-    (CHAT.done && !profBusy ? '<div class="prof-done"><span>Your profile is saved.</span><a class="btn small primary" href="#plan">Plan a trip with it</a></div>' : "");
+    (CHAT.done && !profBusy ? '<div class="prof-done"><span>Your profile is saved. Your travel card is ready to share.</span><a class="btn small primary" href="' + (HOSTED && !savedTrips().length ? "#start" : "#plan") + '">' + (HOSTED && !savedTrips().length ? "Next: pick a starting point →" : "Plan a trip with it") + "</a></div>" : "");
 }
 function profPanelHTML() {
   const p = PROFILE;
@@ -2380,13 +3189,14 @@ function profPanelHTML() {
   const chips = (key, label) => p[key].length ? '<div class="pf-sec"><span class="pf-k">' + label + '</span><div class="pf-chips">' +
     p[key].map((v, i) => '<span class="pf-chip">' + esc(v) + '<button type="button" data-rm="' + key + '" data-i="' + i + '" aria-label="Remove ' + esc(v) + '">×</button></span>').join("") + "</div></div>" : "";
   const hours = p.dayStart || p.dayEnd ? (fmtTime(p.dayStart) || "?") + " to " + (fmtTime(p.dayEnd) || "?") : "";
-  const basics = row("Home", p.homeCity) + row("Travels with", p.travelsWith) + row("Pace", p.pace) + row("Budget", p.budget) + row("Stays", p.lodging) + row("Day", hours) + row("Needs", p.needs) + row("Also", p.notes);
+  const basics = row("Home", p.homeCity) + row("Travels with", p.travelsWith) + row("Pace", p.pace) + row("Budget", p.budget) + row("Stays", p.lodging) + row("Day", hours) +
+    row("Routines", p.routines.map(x => x.what + (x.when ? " " + x.when : "") + (x.who ? " (" + x.who + ")" : "")).join(" · ")) + row("Needs", p.needs) + row("Also", p.notes);
   const ints = INTERESTS.filter(([k]) => p.interests[k]).map(([k, l]) => '<div class="pf-int"><span>' + esc(l) + '</span><span class="dots" role="img" aria-label="' + p.interests[k] + ' out of 5">' +
     [1, 2, 3, 4, 5].map(n => "<i" + (n <= p.interests[k] ? ' class="on"' : "") + "></i>").join("") + "</span></div>").join("");
   const body = hasProfile()
     ? (basics ? '<div class="pf-sec">' + basics + "</div>" : "") + (ints ? '<div class="pf-sec"><span class="pf-k">Interests</span>' + ints + "</div>" : "") +
       chips("loves", "Seeks out") + chips("avoids", "Avoids") + chips("diet", "Diet") + chips("beenTo", "Been to") + chips("dreamTrips", "On the list") +
-      '<div class="pf-actions"><a class="btn small primary" href="#plan">Plan a trip with this</a><button class="btn small ghost" type="button" id="profReset">Start over</button></div>'
+      '<div class="pf-actions"><a class="btn small primary" href="' + (HOSTED ? "#start" : "#plan") + '">Plan a trip with this</a><button class="btn small ghost" type="button" id="profReset">Start over</button></div>'
     : '<p class="pf-empty">Nothing yet. What I learn shows up here as we talk, and it\'s saved right away.</p>';
   return "<h3>What I know about you <small>" + (HOSTED && ME ? "saved to your account" : "saved in this browser") + "</small></h3>" + body;
 }
@@ -2394,6 +3204,10 @@ function updateProfileUI() {
   const log = $("#profLog"); if (!log) return; // they navigated away mid-reply
   log.innerHTML = profLogHTML(); log.scrollTop = log.scrollHeight;
   $("#profPanel").innerHTML = profPanelHTML();
+  const card = $("#cardPanel"), cardHTML = cardPanelHTML();
+  card.classList.toggle("hidden", !cardHTML);
+  if (card.dataset.html !== cardHTML || !cardHTML) { card.innerHTML = cardHTML; card.dataset.html = cardHTML; bindCard(); }
+  else drawProfileCard($("#profCard"));
   $("#profErr").textContent = profErr;
   $("#profSend").disabled = profBusy; $("#profSkip").disabled = profBusy;
   $("#profPanel").querySelectorAll("[data-rm]").forEach(b => b.addEventListener("click", () => {
@@ -2417,6 +3231,8 @@ function bindProfile() {
   ta.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); $("#profForm").requestSubmit(); } });
   $("#profForm").addEventListener("submit", e => { e.preventDefault(); const v = ta.value; if (!v.trim() || profBusy) return; ta.value = ""; fit(); sendProfile(v); });
   $("#profSkip").addEventListener("click", () => sendProfile("I'd rather skip this one."));
+  const later = $("#profLater");
+  if (later) later.addEventListener("click", () => { CHAT.skipped = true; saveChat(); location.hash = "start"; });
   if (window.matchMedia("(pointer: fine)").matches) ta.focus();
 }
 
@@ -2424,8 +3240,8 @@ function bindProfile() {
 function renderTripsMenu() {
   const list = savedTrips();
   const pop = $("#tripsMenu");
-  pop.innerHTML = '<button data-load="example"><strong>San Francisco weekend</strong><small>Example from the 2020 template</small></button>' +
-    (list.length ? list.map(t => '<button data-load="' + esc(t.id) + '"><strong>' + esc(t.destination) + "</strong><small>" + esc(fmtRange(t.startDate, t.endDate)) + "</small></button>").join("") : '<div class="empty">Trips you build are saved here, in this browser.</div>');
+  pop.innerHTML = (HOSTED ? "" : '<button data-load="example"><strong>San Francisco weekend</strong><small>Example from the 2020 template</small></button>') +
+    (list.length ? list.map(t => '<button data-load="' + esc(t.id) + '"><strong>' + esc(t.destination) + "</strong><small>" + esc(fmtRange(t.startDate, t.endDate)) + "</small></button>").join("") : '<div class="empty">Trips you build are saved here, ' + (HOSTED ? "in your account" : "in this browser") + '.</div>');
   pop.querySelectorAll("[data-load]").forEach(b => b.addEventListener("click", () => {
     const id = b.dataset.load;
     S.trip = id === "example" ? normalize(JSON.parse(JSON.stringify(EXAMPLE))) : normalize(savedTrips().find(x => x.id === id));

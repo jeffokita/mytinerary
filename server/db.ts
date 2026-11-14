@@ -48,3 +48,56 @@ export function saveDocs(email: string, docs: { key: unknown; value: unknown; up
   } catch (e) { db.exec("ROLLBACK"); throw e; }
   return saved;
 }
+
+// Free-text "Other" answers (occasion and the like), counted so the most common become real options.
+db.exec(`
+CREATE TABLE IF NOT EXISTS answers (
+  field     TEXT NOT NULL,
+  value     TEXT NOT NULL,
+  count     INTEGER NOT NULL DEFAULT 1,
+  last_seen INTEGER NOT NULL,
+  PRIMARY KEY (field, value)
+);
+-- Read-only links to one trip. The trip is read live from docs, so later edits show up.
+CREATE TABLE IF NOT EXISTS shares (
+  token      TEXT PRIMARY KEY,
+  email      TEXT NOT NULL,
+  trip_id    TEXT NOT NULL,
+  owner_name TEXT NOT NULL DEFAULT '',
+  created    INTEGER NOT NULL
+);
+-- People who asked for an invite (from a shared trip or the landing page), and the ones approved.
+CREATE TABLE IF NOT EXISTS invite_requests (
+  email    TEXT PRIMARY KEY,
+  name     TEXT NOT NULL DEFAULT '',
+  via      TEXT NOT NULL DEFAULT '',
+  created  INTEGER NOT NULL,
+  approved INTEGER NOT NULL DEFAULT 0
+);
+`);
+export function recordAnswer(field: string, value: string) {
+  const v = value.trim().toLowerCase().replace(/\s+/g, " ").slice(0, 80);
+  if (!v) return;
+  db.prepare(`INSERT INTO answers (field, value, last_seen) VALUES (?, ?, ?)
+    ON CONFLICT (field, value) DO UPDATE SET count = count + 1, last_seen = excluded.last_seen`).run(field, v, Date.now());
+}
+export const topAnswers = () => db.prepare("SELECT field, value, count, last_seen FROM answers ORDER BY field, count DESC, last_seen DESC LIMIT 200").all();
+export function shareFor(email: string, tripId: string, ownerName: string) {
+  const row = db.prepare("SELECT token FROM shares WHERE email = ? AND trip_id = ?").get(email, tripId) as { token: string } | undefined;
+  if (row) { db.prepare("UPDATE shares SET owner_name = ? WHERE token = ?").run(ownerName, row.token); return row.token; }
+  const token = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+  db.prepare("INSERT INTO shares (token, email, trip_id, owner_name, created) VALUES (?, ?, ?, ?, ?)").run(token, email, tripId, ownerName, Date.now());
+  return token;
+}
+export function sharedTrip(token: string) {
+  const s = db.prepare("SELECT email, trip_id, owner_name FROM shares WHERE token = ?").get(token) as { email: string; trip_id: string; owner_name: string } | undefined;
+  if (!s) return null;
+  const doc = db.prepare("SELECT value FROM docs WHERE email = ? AND key = ?").get(s.email, "trip:" + s.trip_id) as { value: string | null } | undefined;
+  return doc && doc.value ? { trip: JSON.parse(doc.value), owner: s.owner_name } : null;
+}
+export function requestInvite(email: string, name: string, via: string) {
+  db.prepare(`INSERT INTO invite_requests (email, name, via, created) VALUES (?, ?, ?, ?)
+    ON CONFLICT (email) DO UPDATE SET name = excluded.name, via = excluded.via`).run(email, name, via, Date.now());
+}
+export const approveInvite = (email: string) => db.prepare("UPDATE invite_requests SET approved = 1 WHERE email = ?").run(email).changes > 0;
+export const approvedEmails = () => (db.prepare("SELECT email FROM invite_requests WHERE approved = 1").all() as { email: string }[]).map(r => r.email);

@@ -6,7 +6,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { readFileSync } from "node:fs";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
-import { loadDocs, saveDocs } from "./db.ts";
+import { loadDocs, saveDocs, recordAnswer, topAnswers, shareFor, sharedTrip, requestInvite, approveInvite, approvedEmails } from "./db.ts";
+import * as google from "./google.ts";
 
 const PORT = Number(process.env.PORT || 4321);
 const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5-5";
@@ -37,7 +38,10 @@ async function body(req: IncomingMessage, max = 300_000): Promise<Record<string,
 const isHttps = (req: IncomingMessage) => req.headers["x-forwarded-proto"] === "https";
 const clientIp = (req: IncomingMessage) => String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() || req.socket.remoteAddress || "?";
 const appUrl = (req: IncomingMessage) => process.env.APP_URL?.replace(/\/$/, "") || `${isHttps(req) ? "https" : "http"}://${req.headers.host}`;
-const allowed = () => (process.env.ALLOWED_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+// Who can sign in: ALLOWED_EMAILS, plus invite requests approved from the admin email. The first ALLOWED_EMAILS address is the admin.
+const envAllowed = () => (process.env.ALLOWED_EMAILS || "").split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+const allowed = () => envAllowed().concat(approvedEmails());
+const adminEmail = () => envAllowed()[0] || "";
 function readCookie(req: IncomingMessage, name: string) {
   const m = String(req.headers.cookie ?? "").match(new RegExp(`(?:^|; )${name}=([^;]*)`));
   return m ? decodeURIComponent(m[1]) : null;
@@ -153,7 +157,7 @@ function km(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
   return 12742 * Math.asin(Math.sqrt(s));
 }
 const placeCache = new Map<string, { at: number; v: unknown }>();
-const FIELDS = ["id", "displayName", "formattedAddress", "location", "regularOpeningHours", "rating", "userRatingCount", "photos", "googleMapsUri", "businessStatus", "priceLevel"].map(f => "places." + f).join(",");
+const FIELDS = ["id", "displayName", "formattedAddress", "location", "regularOpeningHours", "rating", "userRatingCount", "photos", "googleMapsUri", "businessStatus", "priceLevel", "priceRange"].map(f => "places." + f).join(",");
 async function findPlace(item: any, dest: string) {
   const q = [item.name, item.address || item.neighborhood, dest].filter(Boolean).join(", ");
   const hasLL = Number.isFinite(item.lat) && Number.isFinite(item.lng);
@@ -175,6 +179,7 @@ async function findPlace(item: any, dest: string) {
       id: p.id, name: p.displayName?.text || item.name, address: p.formattedAddress || "", lat: loc.lat, lng: loc.lng,
       hours: hoursFrom(p.regularOpeningHours), rating: p.rating ?? null, ratingCount: p.userRatingCount ?? null,
       photo: p.photos?.[0]?.name ?? null, mapsUrl: p.googleMapsUri || "", status: p.businessStatus || "", priceLevel: p.priceLevel || "",
+      priceRange: p.priceRange ? { lo: Number(p.priceRange.startPrice?.units) || null, hi: Number(p.priceRange.endPrice?.units) || null } : null,
     };
   }
   placeCache.set(key, { at: Date.now(), v });
@@ -226,6 +231,22 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return res.end(readFileSync(APP_HTML));
   }
 
+  // A shared trip: the app reads the token from the path and loads it read-only.
+  if (/^\/t\/[\w-]{8,40}$/.test(path) && m === "GET") {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache" });
+    return res.end(readFileSync(APP_HTML));
+  }
+  // The admin's one-click approval from the invite-request email.
+  if (path.startsWith("/admin/approve/") && m === "GET") {
+    const [email, exp] = (verify(decodeURIComponent(path.slice(15))) ?? "").split("|");
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    if (!email || Number(exp) < Date.now() || !approveInvite(email)) return res.end("<p>This approval link has expired or the request no longer exists.</p>");
+    const token = seal(`${email}|${Date.now() + 7 * 864e5}|${randomBytes(9).toString("base64url")}`);
+    await sendEmail(email, "You're in: your Mytinerary invite", `You've been invited to the Mytinerary beta.\n\nTap to sign in (works once, for 7 days):\n${appUrl(req)}/auth/${encodeURIComponent(token)}\n\nAfter that, sign in any time at ${appUrl(req)} with this email.`);
+    console.log(`✅ Approved invite for ${email}`);
+    return res.end(`<p style="font-family:system-ui;padding:40px">Approved <b>${email.replace(/[<>&"]/g, "")}</b>. They've been emailed a sign-in link.</p>`);
+  }
+
   // The emailed link: /auth/<token>
   if (path.startsWith("/auth/") && m === "GET") {
     const data = verify(decodeURIComponent(path.slice(6)));
@@ -241,10 +262,35 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return res.end();
   }
 
+  // Connect Gmail & Calendar: off to Google's consent screen, then back here with a code.
+  if (path === "/auth/google/start" && m === "GET") {
+    const email = currentUser(req);
+    if (!email || !google.oauthConfigured()) { res.writeHead(302, { location: "/" }); return res.end(); }
+    const state = seal(`${email}|${Date.now() + 15 * 60_000}|${randomBytes(9).toString("base64url")}`);
+    res.writeHead(302, { location: google.authUrl(appUrl(req) + "/auth/google/callback", state, email) });
+    return res.end();
+  }
+  if (path === "/auth/google/callback" && m === "GET") {
+    const email = currentUser(req);
+    const [stateEmail, exp] = (verify(url.searchParams.get("state")) ?? "").split("|");
+    const code = url.searchParams.get("code");
+    let result = "denied";
+    if (email && stateEmail === email && Number(exp) > Date.now() && code) {
+      try {
+        const { missing } = await google.finishConnect(email, code, appUrl(req) + "/auth/google/callback");
+        result = missing.length ? "partial" : "connected";
+        console.log(`📅 ${email} connected Google${missing.length ? " (missing " + missing.length + " scopes)" : ""}`);
+      } catch (e) { console.error("Google connect failed:", e instanceof Error ? e.message : e); result = "error"; }
+    }
+    res.writeHead(302, { location: `/?google=${result}#plan` });
+    return res.end();
+  }
+
   if (!path.startsWith("/api/")) return send(res, 404, { error: "Not found" });
   const user = currentUser(req);
 
-  if (path === "/api/me") return send(res, 200, { hosted: true, user, claude: !!anthropic, places: !!GOOGLE_KEY });
+  if (path === "/api/me") return send(res, 200, { hosted: true, user, claude: !!anthropic, places: !!GOOGLE_KEY, googleOAuth: google.oauthConfigured(), googleConnected: !!user && google.isConnected(user),
+    mapsKey: user ? process.env.GOOGLE_MAPS_BROWSER_KEY || "" : "", mapId: process.env.GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID", admin: !!user && user === adminEmail() });
 
   if (path === "/api/login" && m === "POST") {
     const email = String((await body(req, 5_000)).email ?? "").trim().toLowerCase().slice(0, 200);
@@ -258,9 +304,52 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     // Same answer either way, so the form can't reveal who's invited.
     return send(res, 200, { ok: true });
   }
+  if (path.startsWith("/api/shared/") && m === "GET") {
+    const found = sharedTrip(path.slice(12));
+    return found ? send(res, 200, found) : send(res, 404, { error: "This shared trip is no longer available." });
+  }
+  if (path === "/api/invite-request" && m === "POST") {
+    if (rateLimited("invite:" + clientIp(req), 5, 3_600_000)) throw new HttpError(429, "Too many requests. Try again later.");
+    const b = await body(req, 5_000);
+    const email = String(b.email ?? "").trim().toLowerCase().slice(0, 200), name = String(b.name ?? "").trim().slice(0, 80), via = String(b.via ?? "").slice(0, 80);
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new HttpError(400, "Enter a valid email.");
+    if (!allowed().includes(email)) {
+      requestInvite(email, name, via);
+      const approve = `${appUrl(req)}/admin/approve/${encodeURIComponent(seal(`${email}|${Date.now() + 14 * 864e5}`))}`;
+      if (adminEmail()) await sendEmail(adminEmail(), `🙋 Invite request: ${name || email}`, `${name || "Someone"} (${email}) asked to join Mytinerary${via ? ` from ${via}` : ""}.\n\nApprove with one click (emails them a sign-in link):\n${approve}\n\nIgnore this email to leave them waiting.`);
+      console.log(`🙋 Invite request from ${email}${via ? " via " + via : ""}`);
+    }
+    return send(res, 200, { ok: true });
+  }
   if (path === "/api/logout" && m === "POST") return send(res, 200, { ok: true }, { "set-cookie": cookie(req, "", 0) });
 
   if (!user) throw new HttpError(401, "Please sign in.");
+  if (path.startsWith("/api/google/")) {
+    try {
+      if (path === "/api/google/events" && m === "GET") return send(res, 200, await google.listEvents(user, String(url.searchParams.get("timeMin")), String(url.searchParams.get("timeMax"))));
+      if (path === "/api/google/threads" && m === "GET") return send(res, 200, await google.searchThreads(user, String(url.searchParams.get("q") || ""), Number(url.searchParams.get("max")) || 30));
+      if (path === "/api/google/thread" && m === "GET") return send(res, 200, await google.getThread(user, String(url.searchParams.get("id"))));
+      if (path === "/api/google/disconnect" && m === "POST") { await google.disconnect(user); return send(res, 200, { ok: true }); }
+    } catch (e) {
+      if (e instanceof google.GoogleError) return send(res, e.code === "not_connected" || e.code === "needs_reauth" ? 409 : 502, { error: e.message, code: e.code });
+      throw e;
+    }
+  }
+  if (path === "/api/answers" && m === "POST") {
+    const b = await body(req, 5_000);
+    if (["occasion", "diet", "placeholder"].includes(String(b.field))) recordAnswer(String(b.field), String(b.value ?? ""));
+    return send(res, 200, { ok: true });
+  }
+  if (path === "/api/admin/answers" && m === "GET") {
+    if (user !== adminEmail()) throw new HttpError(403, "Only the admin can see this.");
+    return send(res, 200, { answers: topAnswers() });
+  }
+  if (path === "/api/share" && m === "POST") {
+    const b = await body(req, 5_000);
+    const tripId = String(b.tripId ?? "");
+    if (!/^[\w-]{1,40}$/.test(tripId)) throw new HttpError(400, "Bad trip.");
+    return send(res, 200, { url: `${appUrl(req)}/t/${shareFor(user, tripId, String(b.name ?? "").trim().slice(0, 60))}` });
+  }
   if (path === "/api/sync" && m === "GET") return send(res, 200, { docs: loadDocs(user) });
   if (path === "/api/sync" && m === "PUT") {
     const b = await body(req, 5_000_000);
