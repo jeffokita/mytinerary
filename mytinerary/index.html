@@ -472,6 +472,22 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .aw-pics figcaption { font-size: 12px; color: var(--muted); line-height: 1.3; }
 .anchor-why-link { margin: 10px 0 0; }
 
+/* Anchor board: pick reminders */
+.pick-card { position: fixed; z-index: 72; width: 280px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; box-shadow: 0 16px 40px rgba(0,0,0,.18); pointer-events: none; }
+.pd-photo { display: block; width: 100%; height: 130px; object-fit: cover; background: var(--paper); }
+.pd-tile { background: var(--c); opacity: .85; height: 60px; }
+.pd-body { padding: 10px 12px 12px; display: grid; gap: 4px; }
+.pd-body b { font-family: var(--display); font-weight: 600; font-size: 17px; line-height: 1.2; }
+.pick-detail { border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; background: var(--card); }
+.pick-list { display: grid; gap: 4px; max-height: 360px; overflow-y: auto; }
+.pick-row { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: center; text-align: left; background: none; border: 0; border-left: 4px solid var(--c); border-radius: 8px; padding: 6px 8px; cursor: pointer; font: inherit; color: inherit; }
+.pick-row:hover { background: var(--paper); }
+.pick-row img, .pick-dot { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--paper); display: block; }
+.pick-dot { background: color-mix(in srgb, var(--c) 22%, var(--card)); }
+.pick-row b { display: block; font-size: 14px; font-weight: 600; line-height: 1.25; }
+.pick-row small { display: block; font-size: 12px; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-row .when { font-family: var(--mono); font-size: 11px; color: var(--c); }
+
 /* Anchor board: click-to-add */
 .day-body { cursor: cell; }
 .slot-sel { position: absolute; left: 5px; right: 5px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 14%, transparent); border: 2px solid var(--accent); font-family: var(--mono); font-size: 11px; padding: 3px 7px; z-index: 4; pointer-events: none; }
@@ -1426,7 +1442,7 @@ window.addEventListener("hashchange", route);
 
 /* ---------- Render ---------- */
 function render(fresh) {
-  closeSlot();
+  closeSlot(); hidePickCard();
   if (!fresh && $("#planForm")) readForm(); // keep unsent form edits across re-renders
   const app = $("#app");
   const bs = $(".board-scroll"), bsl = bs ? bs.scrollLeft : 0;
@@ -3191,6 +3207,36 @@ function bindSlots() {
 }
 document.addEventListener("pointerdown", e => { if ($("#slotPop") && !e.target.closest("#slotPop, .day-body")) closeSlot(); });
 
+// Reminders of what each pick is: a hover card on the board, a "Your picks" list, and a fuller move panel.
+const photoUrl = (c, w) => c.photo && PLACES ? "/api/places/photo?name=" + encodeURIComponent(c.photo) + "&w=" + (w || 320) : "";
+function pickDetailHTML(c) {
+  const hs = hoursSummary(c), ph = photoUrl(c, 480);
+  return (ph ? '<img class="pd-photo" src="' + ph + '" alt="" loading="lazy">' : '<div class="pd-photo pd-tile" style="--c:var(' + (CATS[c.category] || "--l1") + ')"></div>') +
+    '<div class="pd-body"><span class="cat">' + esc(c.category) + (c.neighborhood ? " · " + esc(c.neighborhood) : "") + "</span><b>" + esc(c.name) + "</b>" +
+    (c.placeholder ? '<span class="small muted">' + esc(c.why) + "</span>" : (c.fitWhy ? '<span class="fitwhy">' + esc(c.fitWhy) + "</span>" : "") + (c.why ? '<span class="small">' + esc(c.why) + "</span>" : "")) +
+    '<span class="wmeta">' + (typeof c.rating === "number" ? "<span>★ " + c.rating.toFixed(1) + (c.ratingCount ? " · " + c.ratingCount.toLocaleString() + " reviews" : "") + "</span>" : "") +
+      (hs ? "<span>" + esc(hs) + "</span>" : "") + "<span>~" + durText(c.minutes) + (c.cost ? " · ~" + money(c.cost) + "/person" : "") + "</span></span></div>";
+}
+function showPickCard(el, c) {
+  hidePickCard(); if (!c) return;
+  const box = document.createElement("div"); box.id = "pickCard"; box.className = "pick-card"; box.innerHTML = pickDetailHTML(c);
+  document.body.appendChild(box);
+  const r = el.getBoundingClientRect(), w = box.offsetWidth, h = box.offsetHeight;
+  const left = r.right + 10 + w < innerWidth ? r.right + 10 : r.left - w - 10;
+  box.style.left = Math.max(8, left) + "px"; box.style.top = Math.max(8, Math.min(r.top, innerHeight - h - 8)) + "px";
+}
+function hidePickCard() { const b = $("#pickCard"); if (b) b.remove(); }
+function picksPanel(d, days, isPlaced) {
+  const picks = d.wish.map(candById).filter(c => c && !c.placeholder);
+  if (!picks.length) return "";
+  return '<section class="panel"><h3>Your picks <small>' + picks.length + " on your wish list</small></h3><div class=\"pick-list\">" + picks.map(c => {
+    const pl = isPlaced(c.id) ? d.place[c.id] : null, ph = photoUrl(c, 160);
+    return '<button type="button" class="pick-row" data-goto="' + c.id + '" style="--c:' + (pl ? lineVar(pl.day) : "var(--muted)") + '">' +
+      (ph ? '<img src="' + ph + '" alt="" loading="lazy">' : '<span class="pick-dot"></span>') +
+      "<span><b>" + esc(c.name) + '</b><small class="when">' + (pl ? "Day " + (pl.day + 1) + " · " + fmtShort(toMin(pl.start)) : "Not on a day yet") + "</small>" +
+      (c.fitWhy || c.why ? '<small class="muted">' + esc(c.fitWhy || c.why) + "</small>" : "") + "</span></button>";
+  }).join("") + "</div></section>";
+}
 // Why anchors: shown the first time someone reaches the board, then tucked behind a link.
 function anchorExplainer() {
   const open = !store("mytin.anchorTipSeen");
@@ -3276,6 +3322,7 @@ function renderAnchors() {
         '<span class="note">' + (warnCount ? '<strong class="warn-t">⚠ ' + warnCount + (warnCount === 1 ? " pick has a timing warning" : " picks have timing warnings") + ".</strong> You can still go ahead. " : "") + "Claude keeps your picks where they are and adds meals, nearby stops and how to get between them.</span></div>" +
     '</section><aside class="rail">' +
       planMap("Your days on the map", pts, paths, d.home, days.map((_, i) => '<span style="--c:' + lineVar(i) + '"><i></i>Day ' + (i + 1) + "</span>").join("") + '<span><i style="background:var(--muted)"></i>Not placed</span>') +
+      picksPanel(d, days, isPlaced) +
       '<section class="panel"><h3>How each day hangs together</h3><div class="day-sum">' + sums + "</div></section>" +
     "</aside></div></div>";
 }
@@ -3307,6 +3354,17 @@ function bindAnchors() {
   const awc = $("#anchorWhyClose"); if (awc) awc.addEventListener("click", () => { store("mytin.anchorTipSeen", true); render(); });
   const awo = $("#anchorWhyOpen"); if (awo) awo.addEventListener("click", () => { store("mytin.anchorTipSeen", false); render(); });
   bindSlots();
+  document.querySelectorAll(".anc[data-drag], .tray-item[data-drag]").forEach(el => {
+    el.addEventListener("mouseenter", () => { if (!drag) showPickCard(el, candById(el.dataset.drag)); });
+    el.addEventListener("mouseleave", hidePickCard);
+    el.addEventListener("pointerdown", hidePickCard);
+  });
+  document.querySelectorAll("[data-goto]").forEach(b => b.addEventListener("click", () => {
+    const el = document.querySelector('.anc[data-drag="' + b.dataset.goto + '"], .tray-item[data-drag="' + b.dataset.goto + '"]');
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    el.classList.add("flash"); setTimeout(() => el.classList.remove("flash"), 1200); highlightPin(b.dataset.goto);
+  }));
 }
 function showBands(c) {
   const { gs, ge } = gridRange(), days = draftDays();
@@ -3374,7 +3432,7 @@ function openPlace(id) {
     '<label class="f" for="plTime">Start time<input class="inp" type="time" step="900" id="plTime" value="' + (pl ? pl.start : pref) + '"></label>' +
     '<p class="note warn-t" id="plWarn" role="status"></p>' +
     '<div class="row2"><button class="btn primary" type="submit">' + (pl ? "Move" : "Place") + "</button>" + (pl ? '<button class="btn" type="button" id="plUnplace">Back to wish list</button>' : "") + '<button class="lnk" type="button" id="plRemove">Remove from wish list</button></div></form>' +
-    '<p class="small muted">~' + durText(c.minutes) + (c.neighborhood ? " · " + esc(c.neighborhood) : "") + '</p><p class="small">' + esc(c.why) + "</p>";
+    '<div class="pick-detail">' + pickDetailHTML(c) + "</div>" + (c.mapsUrl ? '<a class="lnk" href="' + esc(c.mapsUrl) + '" target="_blank" rel="noopener">Open in Google Maps</a>' : "");
   const chk = () => { const s = toMin($("#plTime").value); $("#plWarn").textContent = s == null ? "" : issuesAt(c, +$("#plDay").value, s).map(x => "⚠ " + x).join(" · "); };
   $("#plDay").addEventListener("change", chk); $("#plTime").addEventListener("input", chk); chk();
   $("#placeForm").addEventListener("submit", e => {
