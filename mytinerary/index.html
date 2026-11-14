@@ -479,8 +479,14 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .pd-body { padding: 10px 12px 12px; display: grid; gap: 4px; }
 .pd-body b { font-family: var(--display); font-weight: 600; font-size: 17px; line-height: 1.2; }
 .pick-detail { border: 1px solid var(--rule); border-radius: 12px; overflow: hidden; background: var(--card); }
-.pick-list { display: grid; gap: 4px; max-height: 360px; overflow-y: auto; }
-.pick-row { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 10px; align-items: center; text-align: left; background: none; border: 0; border-left: 4px solid var(--c); border-radius: 8px; padding: 6px 8px; cursor: pointer; font: inherit; color: inherit; }
+.pick-list { display: grid; gap: 4px; max-height: 520px; overflow-y: auto; }
+.pick-item { border-left: 4px solid var(--c); border-radius: 8px; }
+.pick-item.open { background: var(--paper); }
+.pick-more { padding: 0 8px 10px; display: grid; gap: 10px; }
+.pick-more .pd-photo { border-radius: 10px; height: 150px; }
+.pick-more .pd-body { padding: 0; }
+.chev { color: var(--muted); font-size: 12px; }
+.pick-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 10px; border-left: 0 !important; align-items: center; text-align: left; background: none; border: 0; border-left: 4px solid var(--c); border-radius: 8px; padding: 6px 8px; cursor: pointer; font: inherit; color: inherit; }
 .pick-row:hover { background: var(--paper); }
 .pick-row img, .pick-dot { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--paper); display: block; }
 .pick-dot { background: color-mix(in srgb, var(--c) 22%, var(--card)); }
@@ -503,6 +509,7 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .ph-custom { display: inline-flex; gap: 4px; }
 .ph-custom input { border: 1px solid var(--rule); border-radius: 999px; padding: 3px 10px; font-size: 13px; background: var(--card); width: 150px; }
 .anc.ph, .tray-item.ph { border-style: dashed; background: var(--paper); }
+.anc.routine { border-color: var(--l4); border-left-color: var(--l4); background: color-mix(in srgb, var(--l4) 8%, var(--card)); }
 .blocked.routine { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--l4) 10%, var(--card)) 0 6px, var(--card) 6px 12px); color: var(--l4); z-index: 1; }
 
 /* Itinerary */
@@ -1436,7 +1443,8 @@ function normItem(it) {
 function route() {
   const h = location.hash.replace("#", "");
   S.view = ["plan", "profile", "start", "discover"].includes(h) ? h : (h === "wish" || h === "anchors") ? (DRAFT ? h : "plan") : S.gen ? "gen" : homeView();
-  if (S.view === "anchors" && !DRAFT.suggested && !Object.keys(DRAFT.place).length && DRAFT.wish.length) { suggestPlan(false); DRAFT.suggested = true; saveDraft(); }
+  if (S.view === "anchors" && !DRAFT.suggested && !Object.keys(DRAFT.place).length && DRAFT.wish.length) { placeRoutines(); suggestPlan(false); DRAFT.suggested = true; saveDraft(); }
+  else if (S.view === "anchors" && DRAFT) placeRoutines();
   render();
   window.scrollTo(0, 0);
 }
@@ -1964,7 +1972,8 @@ function extraRules(p) {
   const r = [];
   if (p.occasion === "Race") r.push("- The trip is built around a race" + (p.occasionOther ? " (" + p.occasionOther + ")" : "") + ". The day before stays light on walking, includes packet pickup if there is one, an early carb-forward dinner and an early night. Race morning: an early, simple breakfast and getting to the start. After: a recovery meal and an easy afternoon.");
   const rt = (PROFILE.routines || []).filter(x => x.what);
-  if (rt.length) r.push("- DAILY ROUTINES, on home time (" + (p.from || PROFILE.homeCity || "home") + "): " + rt.map(x => x.what + (x.when ? " " + x.when : "") + (x.who ? " (" + x.who + ")" : "")).join("; ") +
+  if (rt.length && p.routinesPlaced) r.push("- Daily routines (naps, bedtime) are already placed on each day as FIXED BLOCKS at the times the traveler chose. Use those exact times and plan around them: be back at the home base for naps, and wrap up the evening in time for bedtime.");
+  else if (rt.length) r.push("- DAILY ROUTINES, on home time (" + (p.from || PROFILE.homeCity || "home") + "): " + rt.map(x => x.what + (x.when ? " " + x.when : "") + (x.who ? " (" + x.who + ")" : "")).join("; ") +
     ". Put each one into every day as its own block (kind \"free\", category \"Routine\", a clear name like \"Nap time\" or \"Bedtime routine\", who set if it's one person) and plan around it: be back at the home base for naps and wrap up the evening in time for bedtime. If the destination is in a different time zone, keep routines on home time for the first two days (a 7pm Pacific bedtime is 9pm Central), shift them halfway on day 3, and use local time from day 4 on.");
   const names = travelerNames(p);
   if (names.length > 1) r.push("- Travelers: " + names.join(", ") + ". If some of them have separate plans (see ALREADY PLANNED and notes), split the group for that part of the day by giving those items a \"who\" list of names. Items with an empty who are for everyone. Overlapping items are fine only when their who lists don't overlap.");
@@ -2034,11 +2043,12 @@ function dayPrompt(t, di) {
     "\n- Home base: " + hb.name + (hb.neighborhood ? " (" + hb.neighborhood + ")" : "") + (Number.isFinite(hb.lat) ? " at " + hb.lat + "," + hb.lng : "") +
     "\n- Day themes: " + t.days.map((d, i) => "Day " + (i + 1) + " " + d.title).join("; ") + "\n\n" +
     "PLAN DAY " + (di + 1) + " OF " + n + ": " + date + " (" + fmtDay(date) + "), working title \"" + t.days[di].title + "\"\n" +
-    (di === 0 ? "- Arrival day: start with an Arrive item (kind \"transit\", no lat/lng) and Check in (kind \"lodging\" with the home base coords).\n" : "") +
+    (di === 0 ? "- Arrival day: start with an Arrive item (kind \"transit\", no lat/lng) and Check in (kind \"lodging\" with the home base coords). Right after arriving, the priorities are settling in and eating: if they land near a mealtime, that meal comes before any activity.\n" +
+      (toMin(p.arrive) != null && toMin(p.arrive) >= LATE_ARRIVAL ? "- They land late (" + fmtTime(p.arrive) + "). After check-in, the evening is ONLY an easy dinner near the home base (or on the way from the airport) and settling in, done before bedtime. No sightseeing, bars or other activities tonight.\n" : "") : "") +
     (di === n - 1 ? "- Departure day: end with Check out (kind \"lodging\") and Depart (kind \"transit\", no lat/lng).\n" : "") +
     "- Include this day's ANCHORS, placeholders and fixed blocks from the list above at their exact times.\n" +
     wxPrompt(t.weather && t.weather.days[date]) +
-    (routineBlocks(di, t.shift || 0).length ? "- TODAY'S ROUTINES, already converted to local time (use these exact times, not the home-time ones above): " + routineBlocks(di, t.shift || 0).map(r => r.label.split(" ·")[0] + " " + fmtTime(toHM(r.a)) + (r.b - r.a > 60 ? "–" + fmtTime(toHM(r.b)) : "")).join("; ") + ".\n" : "") +
+    (!p.routinesPlaced && routineBlocks(di, t.shift || 0).length ? "- TODAY'S ROUTINES, already converted to local time (use these exact times, not the home-time ones above): " + routineBlocks(di, t.shift || 0).map(r => r.label.split(" ·")[0] + " " + fmtTime(toHM(r.a)) + (r.b - r.a > 60 ? "–" + fmtTime(toHM(r.b)) : "")).join("; ") + ".\n" : "") +
     (others.length ? "- Other days already use these places, so don't repeat them: " + others.join("; ") + "\n" : "") +
     "\nRULES\n" +
     "- Real, well-established places with accurate lat/lng. Prefer local favorites over tourist traps unless they asked for classics.\n" +
@@ -2684,14 +2694,19 @@ function draftDays() {
   return out;
 }
 // The usable part of a day: daily hours, minus landing on day 1 and getting to the airport on the last day.
+const LATE_ARRIVAL = 16 * 60 + 30; // landing at 4:30pm or later
 function dayWindow(di, n) {
   const p = DRAFT.prefs;
   let s = toMin(p.dayStart) ?? 540, e = toMin(p.dayEnd) ?? 1320;
   if (e <= s) e = Math.min(s + 600, 1439);
   let blockBefore = null, blockAfter = null;
-  if (di === 0 && toMin(p.arrive) != null) { blockBefore = toMin(p.arrive) + 90; s = Math.max(s, blockBefore); }
+  let arrivalEvening = false;
+  if (di === 0 && toMin(p.arrive) != null) {
+    blockBefore = toMin(p.arrive) + 90; s = Math.max(s, blockBefore);
+    if (toMin(p.arrive) >= LATE_ARRIVAL) { arrivalEvening = true; blockBefore = e; s = e; } // landing late: settle in and eat
+  }
   if (di === n - 1 && toMin(p.leave) != null) { blockAfter = Math.max(toMin(p.leave) - 150, 0); e = Math.min(e, blockAfter); }
-  return { s, e, blockBefore, blockAfter };
+  return { s, e, blockBefore, blockAfter, arrivalEvening };
 }
 function gridRange() {
   const p = DRAFT.prefs;
@@ -2745,7 +2760,8 @@ function issuesAt(c, di, start, buf) {
   const days = draftDays(), out = [], end = start + c.minutes;
   const oc = openCheck(c, days[di], start); if (oc) out.push(oc);
   const w = dayWindow(di, days.length);
-  if (w.blockBefore != null && start < w.blockBefore) out.push("Before you'll be in town");
+  if (w.arrivalEvening && !c.fixed) out.push("Arrival evening is for checking in and dinner");
+  else if (w.blockBefore != null && start < w.blockBefore) out.push("Before you'll be in town");
   if (w.blockAfter != null && end > w.blockAfter) out.push("Runs into your trip home");
   const clash = Object.keys(DRAFT.place).find(id => {
     const o = DRAFT.place[id], oc2 = candById(id);
@@ -2754,7 +2770,7 @@ function issuesAt(c, di, start, buf) {
     return start < oe + (buf || 0) && os < end + (buf || 0);
   });
   if (clash) out.push("Overlaps " + candById(clash).name);
-  if (!c.fixed) { const rb = routineBlocks(di).find(r => start < r.b && r.a < end); if (rb) out.push("During " + rb.label.split(" ·")[0].toLowerCase()); }
+
   return out;
 }
 
@@ -2924,7 +2940,7 @@ function fillTrip() {
   if (!sampleFn) { toast(noClaudeCopy("Filling in your days")); return; }
   const spare = d.wish.map(candById).filter(c => c && !(d.place[c.id] && d.place[c.id].day < days.length)).map(c => c.name + (c.neighborhood ? " (" + c.neighborhood + ")" : ""));
   if (!d.learned) { learnFrom(Object.keys(d.place).map(candById).filter(c => c && !c.placeholder)); d.learned = true; saveDraft(); }
-  generate(Object.assign({}, d.prefs, { anchors, spare, extra: d.extra || null, tripId: d.tripId || null }));
+  generate(Object.assign({}, d.prefs, { anchors, spare, extra: d.extra || null, tripId: d.tripId || null, routinesPlaced: !!d.routinesPlaced }));
 }
 
 // Learned preferences: count the kinds of places someone anchors trips on, and nudge future suggestions.
@@ -2982,6 +2998,20 @@ function addPlaceholder(name, minutes, category, fill) {
   render(); openPlace(c.id);
 }
 // Routines (nap, bedtime) as blocked time on the board, shifted for the time zone: home time for two days, halfway on day 3, local after.
+function placeRoutines() {
+  const d = DRAFT; if (!d || d.routinesPlaced || !(PROFILE.routines || []).length) return;
+  const days = draftDays();
+  days.forEach((_, di) => routineBlocks(di).forEach(rb => {
+    const w = dayWindow(di, days.length);
+    const arr = di === 0 ? toMin(DRAFT.prefs.arrive) : null;
+    if ((arr != null && rb.b <= arr + 60) || (w.blockAfter != null && rb.a >= w.blockAfter)) return; // not in town yet, or already gone
+    const name = rb.label.split(" ·")[0];
+    const c = { id: uid(), name, category: "Experiences", minutes: Math.max(30, rb.b - rb.a), placeholder: true, fill: false, fixed: true, routine: true,
+      neighborhood: "", why: "From your travel profile" + (rb.label.includes("home time") ? ", on home time while you adjust" : "") + ". Drag it if today needs a different time.", hours: null, lat: null, lng: null, bestTime: "any", cost: 0, booking: "none" };
+    d.cands.push(c); d.wish.push(c.id); d.place[c.id] = { day: di, start: toHM(rb.a) };
+  }));
+  d.routinesPlaced = true; saveDraft();
+}
 function routineBlocks(di, shiftHours) {
   const shift = shiftHours != null ? shiftHours : (DRAFT && DRAFT.shift) || 0, adj = di < 2 ? shift : di === 2 ? Math.round(shift / 2 * 2) / 2 : 0;
   return (PROFILE.routines || []).map(r => {
@@ -3233,10 +3263,15 @@ function picksPanel(d, days, isPlaced) {
   if (!picks.length) return "";
   return '<section class="panel"><h3>Your picks <small>' + picks.length + " on your wish list</small></h3><div class=\"pick-list\">" + picks.map(c => {
     const pl = isPlaced(c.id) ? d.place[c.id] : null, ph = photoUrl(c, 160);
-    return '<button type="button" class="pick-row" data-goto="' + c.id + '" style="--c:' + (pl ? lineVar(pl.day) : "var(--muted)") + '">' +
+    const open = S.pickOpen === c.id;
+    return '<div class="pick-item' + (open ? " open" : "") + '" style="--c:' + (pl ? lineVar(pl.day) : "var(--muted)") + '">' +
+      '<button type="button" class="pick-row" data-pick="' + c.id + '" aria-expanded="' + open + '">' +
       (ph ? '<img src="' + ph + '" alt="" loading="lazy">' : '<span class="pick-dot"></span>') +
       "<span><b>" + esc(c.name) + '</b><small class="when">' + (pl ? "Day " + (pl.day + 1) + " · " + fmtShort(toMin(pl.start)) : "Not on a day yet") + "</small>" +
-      (c.fitWhy || c.why ? '<small class="muted">' + esc(c.fitWhy || c.why) + "</small>" : "") + "</span></button>";
+      (!open && (c.fitWhy || c.why) ? '<small class="muted">' + esc(c.fitWhy || c.why) + "</small>" : "") + '</span><span class="chev" aria-hidden="true">' + (open ? "▴" : "▾") + "</span></button>" +
+      (open ? '<div class="pick-more">' + pickDetailHTML(c) + '<div class="row2"><button class="btn small" type="button" data-goto="' + c.id + '">Show on board</button>' +
+        (c.mapsUrl ? '<a class="btn small" href="' + esc(c.mapsUrl) + '" target="_blank" rel="noopener">Google Maps</a>' : "") +
+        '<button class="lnk" type="button" data-unwish="' + c.id + '">Remove</button></div></div>' : "") + "</div>";
   }).join("") + "</div></section>";
 }
 // Why anchors: shown the first time someone reaches the board, then tucked behind a link.
@@ -3260,7 +3295,7 @@ function ancCard(c, di, gs, ln) {
   const pl = DRAFT.place[c.id], s = toMin(pl.start), iss = issuesAt(c, di, s);
   const h = Math.max(c.minutes / 60 * PXH, 34);
   const pos = ln && ln.of > 1 ? "left:calc(5px + " + ln.lane + " * (100% - 10px) / " + ln.of + ");right:auto;width:calc((100% - 10px) / " + ln.of + " - 2px);" : "";
-  return '<div class="anc' + (iss.length ? " warn" : "") + (c.placeholder ? " ph" : "") + '" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" style="' + pos + "top:" + px(s - gs) + "px;height:" + h + 'px"' +
+  return '<div class="anc' + (iss.length ? " warn" : "") + (c.placeholder ? " ph" : "") + (c.routine ? " routine" : "") + '" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" style="' + pos + "top:" + px(s - gs) + "px;height:" + h + 'px"' +
     ' aria-label="' + esc(c.name + ", " + fmtShort(s) + " to " + fmtShort(s + c.minutes) + (iss.length ? ". Warning: " + iss.join(". ") : "") + ". Press Enter to move.") + '">' +
     "<b>" + esc(c.name) + '</b><span class="t">' + fmtShort(s) + "–" + fmtShort(s + c.minutes) + "</span>" + (iss.length ? '<span class="w">⚠ ' + esc(iss[0]) + "</span>" : "") +
     '<button class="anc-x" type="button" data-unplace="' + c.id + '" aria-label="Move ' + esc(c.name) + ' back to the wish list">×</button></div>';
@@ -3296,9 +3331,9 @@ function renderAnchors() {
     const w = dayWindow(di, n);
     const box = (a, b, cls, txt) => { const t = Math.max(a, gs), u = Math.min(b, ge); return u > t ? '<div class="' + cls + '" style="top:' + px(t - gs) + "px;height:" + px(u - t) + 'px">' + (txt ? "<span>" + esc(txt) + "</span>" : "") + "</div>" : ""; };
     let inner = box(gs, ds, "offhours") + box(de, ge, "offhours");
-    if (w.blockBefore != null) inner += box(gs, w.blockBefore, "blocked", "Landing ~" + fmtTime(p.arrive));
+    if (w.blockBefore != null) inner += box(gs, w.blockBefore, "blocked" + (w.arrivalEvening ? " top" : ""), w.arrivalEvening ? "Landing ~" + fmtTime(p.arrive) + ". This evening is for checking in and dinner." : "Landing ~" + fmtTime(p.arrive));
     if (w.blockAfter != null) inner += box(w.blockAfter, ge, "blocked top", "Head out for your " + fmtTime(p.leave) + " departure");
-    routineBlocks(di).forEach(rb => { inner += box(rb.a, rb.b, "blocked routine top", rb.label); });
+
     const mine = placedIds.filter(id => d.place[id].day === di), ln = lanes(mine);
     inner += mine.map(id => ancCard(candById(id), di, gs, ln[id])).join("");
     return '<div class="day-col" style="--c:' + lineVar(di) + '"><div class="day-h"><span class="bullet">' + (di + 1) + "</span><span><b>Day " + (di + 1) + "</b><small>" + esc(fmtDay(date)) + "</small>" + (d.weather && d.weather.days[date] ? wxChip(d.weather.days[date], { compact: true }) : "") + "</span></div>" +
@@ -3361,6 +3396,12 @@ function bindAnchors() {
     el.addEventListener("mouseleave", hidePickCard);
     el.addEventListener("pointerdown", hidePickCard);
   });
+  document.querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => { S.pickOpen = S.pickOpen === b.dataset.pick ? null : b.dataset.pick; render(); }));
+  document.querySelectorAll("[data-unwish]").forEach(b => b.addEventListener("click", () => {
+    const id = b.dataset.unwish, c = candById(id);
+    if (!confirm("Remove " + (c ? c.name : "this") + " from your wish list?")) return;
+    DRAFT.wish = DRAFT.wish.filter(x => x !== id); delete DRAFT.place[id]; S.pickOpen = null; saveDraft(); render();
+  }));
   document.querySelectorAll("[data-goto]").forEach(b => b.addEventListener("click", () => {
     const el = document.querySelector('.anc[data-drag="' + b.dataset.goto + '"], .tray-item[data-drag="' + b.dataset.goto + '"]');
     if (!el) return;
