@@ -792,6 +792,7 @@ async function pullSync() {
     CHAT = store("mytin.profileChat") || { messages: [], done: false };
     DRAFT = store("mytin.draft");
     FORM = store("mytin.form") || defaultForm();
+    if (!store("mytin.form") && hasProfile()) applyProfileToForm(); // a fresh plan starts from the travel profile
     const list = savedTrips();
     const last = list.find(t => t.id === store("mytin.lastOpened")) || (S.trip && !S.trip.example ? list.find(t => t.id === S.trip.id) : list[0]);
     if (last) S.trip = normalize(last);
