@@ -1,10 +1,12 @@
 // Hosted Mytinerary: serves the single-page app and gives it the three things it can't do from a
 // public web page — call Claude, look places up on Google, and sign people in by email link.
-// Invite-only: ALLOWED_EMAILS lists who can sign in. No database; sessions are signed cookies.
+// Invite-only: ALLOWED_EMAILS lists who can sign in; sessions are signed cookies. Each person's profile,
+// plans and trips are kept in SQLite (db.ts) so they follow the sign-in across devices.
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
+import { loadDocs, saveDocs } from "./db.ts";
 
 const PORT = Number(process.env.PORT || 4321);
 const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5-5";
@@ -259,6 +261,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (path === "/api/logout" && m === "POST") return send(res, 200, { ok: true }, { "set-cookie": cookie(req, "", 0) });
 
   if (!user) throw new HttpError(401, "Please sign in.");
+  if (path === "/api/sync" && m === "GET") return send(res, 200, { docs: loadDocs(user) });
+  if (path === "/api/sync" && m === "PUT") {
+    const b = await body(req, 5_000_000);
+    return send(res, 200, { saved: saveDocs(user, Array.isArray(b.docs) ? b.docs.slice(0, 200) : []) });
+  }
   if (path === "/api/claude" && m === "POST") return claude(req, res, user);
   if (path === "/api/places/match" && m === "POST") return placesMatch(req, res, user);
   if (path === "/api/places/photo" && m === "GET") return placePhoto(req, res, user, url);

@@ -456,6 +456,7 @@ const hostedP = !MOCK && !hasRuntime && /^https?:$/.test(location.protocol)
 Promise.all([sampleP, mcpP, hostedP]).then(([s, m, h]) => {
   if (h && h.hosted) { HOSTED = true; ME = h.user; PLACES = !!(h.places && ME); if (ME && h.claude) s = hostedSample(); }
   sampleFn = s; mcpApi = m; runtimeSettled = true; render(); maybeAutoScan();
+  if (HOSTED && ME) pullSync();
 });
 // Same shape as the claude.ai sampling function: fn(prompt) -> {text}, fn.json(prompt, {onText, signal, modelTier}) -> parsed JSON.
 function hostedSample() {
@@ -560,6 +561,66 @@ function updateWho() {
   $("#logoutBtn").addEventListener("click", () => fetch("/api/logout", { method: "POST" }).finally(() => location.replace("/")));
 }
 
+/* Sync (hosted only): profile, plan in progress, form defaults and trips are saved to the server under your
+   sign-in, so they follow you across devices. This browser keeps a copy too; the newest save wins. */
+const SYNC_KEYS = { "mytin.profile": "profile", "mytin.profileChat": "profileChat", "mytin.draft": "draft", "mytin.form": "form" };
+let syncReady = false, syncTimer = null, syncSent = {}; // syncSent: doc key -> JSON last known to match the server
+function localDocs() {
+  const out = {};
+  Object.keys(SYNC_KEYS).forEach(k => { out[SYNC_KEYS[k]] = store(k); });
+  (store("mytin.trips") || []).forEach(t => { out["trip:" + t.id] = t; });
+  return out;
+}
+function syncTouch() {
+  if (!(HOSTED && ME && syncReady)) return;
+  clearTimeout(syncTimer); syncTimer = setTimeout(pushSync, 1200);
+}
+async function pushSync() {
+  const now = Date.now(), cur = localDocs(), docs = [];
+  Object.keys(cur).forEach(k => { if (syncSent[k] !== JSON.stringify(cur[k] ?? null)) docs.push({ key: k, value: cur[k] ?? null, updated: now }); });
+  Object.keys(syncSent).forEach(k => { if (k.startsWith("trip:") && !(k in cur) && syncSent[k] !== "null") docs.push({ key: k, value: null, updated: now }); });
+  if (!docs.length) return;
+  try {
+    const r = await fetch("/api/sync", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ docs }) });
+    if (!r.ok) throw new Error(String(r.status));
+    const meta = store("mytin.syncmeta") || {};
+    docs.forEach(d => { syncSent[d.key] = JSON.stringify(d.value); meta[d.key] = d.updated; });
+    store("mytin.syncmeta", meta);
+  } catch (e) { clearTimeout(syncTimer); syncTimer = setTimeout(pushSync, 15000); } // offline or a server hiccup: try again
+}
+async function pullSync() {
+  let server;
+  try { const r = await fetch("/api/sync"); if (!r.ok) throw new Error(String(r.status)); server = (await r.json()).docs || []; }
+  catch (e) { syncReady = true; return; } // keep working from this browser's copy
+  const meta = store("mytin.syncmeta") || {}, cur = localDocs();
+  const trips = new Map((store("mytin.trips") || []).map(t => [t.id, t]));
+  let changed = false;
+  server.forEach(d => {
+    const serverJSON = JSON.stringify(d.value);
+    syncSent[d.key] = serverJSON;
+    if (JSON.stringify(cur[d.key] ?? null) === serverJSON) { meta[d.key] = d.updated; return; }
+    if ((meta[d.key] || 0) >= d.updated) return; // this browser has newer, unsent edits; pushSync sends them
+    meta[d.key] = d.updated; changed = true;      // saved elsewhere since this browser last synced: take it
+    if (d.key.startsWith("trip:")) { const id = d.key.slice(5); if (d.value) trips.set(id, d.value); else trips.delete(id); }
+    else { const lk = Object.keys(SYNC_KEYS).find(k => SYNC_KEYS[k] === d.key); localStorage.setItem(lk, JSON.stringify(d.value)); }
+  });
+  localStorage.setItem("mytin.syncmeta", JSON.stringify(meta));
+  if (changed) {
+    localStorage.setItem("mytin.trips", JSON.stringify([...trips.values()].sort((a, b) => String(b.created || "").localeCompare(String(a.created || ""))).slice(0, 12)));
+    PROFILE = normProfile(store("mytin.profile"));
+    CHAT = store("mytin.profileChat") || { messages: [], done: false };
+    DRAFT = store("mytin.draft");
+    FORM = store("mytin.form") || defaultForm();
+    const list = savedTrips();
+    const last = list.find(t => t.id === store("mytin.lastOpened")) || (S.trip && !S.trip.example ? list.find(t => t.id === S.trip.id) : list[0]);
+    if (last) S.trip = normalize(last);
+    else if (S.trip && !S.trip.example) S.trip = normalize(JSON.parse(JSON.stringify(EXAMPLE))); // that trip was removed on another device
+    if (!["wish", "anchors"].includes(S.view) || DRAFT) render(); else location.hash = "plan";
+  }
+  syncReady = true;
+  pushSync(); // anything only this browser has, e.g. trips made before sync existed
+}
+
 /* ---------- Helpers ---------- */
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? "" : v).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -592,7 +653,13 @@ function addMin(t, mins) {
 const money = n => "$" + Math.round(n).toLocaleString("en-US");
 function uid() { return Math.random().toString(36).slice(2, 9); }
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 3200); }
-function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null"); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
+function store(k, v) {
+  try {
+    if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null");
+    localStorage.setItem(k, JSON.stringify(v));
+    if (k === "mytin.trips" || SYNC_KEYS[k]) syncTouch();
+  } catch (e) { return null; }
+}
 const MODE = { walk: "Walk", transit: "Transit", rideshare: "Rideshare", drive: "Drive", ferry: "Ferry", train: "Train", bike: "Bike" };
 const BOOK = { now: "Book now", daybefore: "Book day before", walkin: "Walk in", none: "" };
 const MEALS = ["breakfast", "brunch", "lunch", "dinner", "drinks", "coffee", "snack", "dessert"];
@@ -2295,7 +2362,7 @@ async function sendProfile(text) {
 
 function renderProfile() {
   return '<div class="wrap prof"><span class="eyebrow">Travel profile</span><h1>How do you like to travel?</h1>' +
-    '<p class="lede">A short chat, about three minutes. What you tell me is saved in this browser and becomes the starting point for every trip you plan.</p>' +
+    '<p class="lede">A short chat, about three minutes. What you tell me is saved' + (HOSTED && ME ? " to your account" : " in this browser") + ' and becomes the starting point for every trip you plan.</p>' +
     '<div class="prof-grid"><section class="chat" aria-label="Profile chat">' +
       '<div class="chat-log" id="profLog" aria-live="polite"></div>' +
       '<form class="chat-input" id="profForm"><textarea id="profInput" rows="1" placeholder="Type your answer" aria-label="Your answer"></textarea><button class="btn primary" type="submit" id="profSend">Send</button></form>' +
@@ -2321,7 +2388,7 @@ function profPanelHTML() {
       chips("loves", "Seeks out") + chips("avoids", "Avoids") + chips("diet", "Diet") + chips("beenTo", "Been to") + chips("dreamTrips", "On the list") +
       '<div class="pf-actions"><a class="btn small primary" href="#plan">Plan a trip with this</a><button class="btn small ghost" type="button" id="profReset">Start over</button></div>'
     : '<p class="pf-empty">Nothing yet. What I learn shows up here as we talk, and it\'s saved right away.</p>';
-  return "<h3>What I know about you <small>saved in this browser</small></h3>" + body;
+  return "<h3>What I know about you <small>" + (HOSTED && ME ? "saved to your account" : "saved in this browser") + "</small></h3>" + body;
 }
 function updateProfileUI() {
   const log = $("#profLog"); if (!log) return; // they navigated away mid-reply
