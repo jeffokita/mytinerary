@@ -517,7 +517,8 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .wx { display: inline-flex; gap: 4px; align-items: center; font-family: var(--mono); font-size: 12px; white-space: nowrap; color: var(--ink); }
 .wx.typ { color: var(--muted); }
 .day-wx { margin-top: -2px; }
-.day-h .wx { display: block; font-size: 10px; margin-top: 1px; }
+.day-h > span:last-child { min-width: 0; }
+.day-h .wx { display: block; font-size: 10px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wx-days { display: grid; gap: 6px; }
 .wx-day { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; padding: 4px 6px; border-radius: 8px; }
 .wx-day.on { background: var(--paper); }
@@ -1181,8 +1182,9 @@ function weatherStale(w, dates) {
 function wxChip(w, opts) {
   if (!w) return "";
   const [icon, label] = wxLabel(w.code);
-  return '<span class="wx' + (w.kind === "typical" ? " typ" : "") + '" title="' + (w.kind === "typical" ? "Typical for this date (5-year average)" : "Forecast") + '">' + icon + " " + w.hi + "°/" + w.lo + "°" +
-    (w.rain ? " · " + w.rain + "% rain" : "") + (opts && opts.label ? " · " + (w.kind === "typical" ? "typical" : label.toLowerCase()) : "") + "</span>";
+  const tip = (w.kind === "typical" ? "Typical for this date (5-year average): " : "Forecast: ") + label + ", high " + w.hi + "°, low " + w.lo + "°" + (w.rain ? ", " + w.rain + "% chance of rain" : "");
+  return '<span class="wx' + (w.kind === "typical" ? " typ" : "") + '" title="' + esc(tip) + '">' + icon + " " + w.hi + "°/" + w.lo + "°" +
+    (w.rain ? " · " + w.rain + "%" + (opts && opts.compact ? "" : " rain") : "") + (opts && opts.label ? " · " + (w.kind === "typical" ? "typical" : label.toLowerCase()) : "") + "</span>";
 }
 function wxPrompt(w) {
   if (!w) return "";
@@ -3299,7 +3301,7 @@ function renderAnchors() {
     routineBlocks(di).forEach(rb => { inner += box(rb.a, rb.b, "blocked routine top", rb.label); });
     const mine = placedIds.filter(id => d.place[id].day === di), ln = lanes(mine);
     inner += mine.map(id => ancCard(candById(id), di, gs, ln[id])).join("");
-    return '<div class="day-col" style="--c:' + lineVar(di) + '"><div class="day-h"><span class="bullet">' + (di + 1) + "</span><span><b>Day " + (di + 1) + "</b><small>" + esc(fmtDay(date)) + "</small>" + (d.weather && d.weather.days[date] ? wxChip(d.weather.days[date]) : "") + "</span></div>" +
+    return '<div class="day-col" style="--c:' + lineVar(di) + '"><div class="day-h"><span class="bullet">' + (di + 1) + "</span><span><b>Day " + (di + 1) + "</b><small>" + esc(fmtDay(date)) + "</small>" + (d.weather && d.weather.days[date] ? wxChip(d.weather.days[date], { compact: true }) : "") + "</span></div>" +
       '<div class="day-body" data-day="' + di + '" style="height:' + H + "px;--pxh:" + PXH + 'px">' + inner + '<div class="drop-ghost hidden"></div></div></div>';
   }).join("");
   const warnCount = placedIds.filter(id => issuesAt(candById(id), d.place[id].day, toMin(d.place[id].start)).length).length;
