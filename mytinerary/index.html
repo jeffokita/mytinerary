@@ -1861,8 +1861,9 @@ function framePrompt(p) {
     "- If lodging is ALREADY BOOKED or \"Already staying at\" is given, use it as homeBase (same name and address, accurate lat/lng, estimated nightly price, \"booked\": true, empty alternatives).\n" +
     "- homeBase.routine: 3 go-to spots near the home base (coffee, a late bite or fallback dinner, and one practical stop such as a market or pharmacy).\n" +
     "- watchouts: 2-4 timely, specific heads-ups (sell-outs, closures by weekday, weather, local events on these dates).\n" +
-    "- dayThemes: one 3-6 word working title per day (" + dates.length + " days, " + p.start + " to " + p.end + "), so the days feel distinct and each stays in one part of town.\n\n" +
-    'Reply with ONLY one JSON object, no prose: {"title":"short trip name","destination":"' + p.dest.replace(/"/g, "") + '","summary":"one-sentence thesis of the trip","homeBase":{"name":"","type":"Hotel|Boutique hotel|Vacation rental","neighborhood":"","address":"","lat":0.0,"lng":0.0,"nightly":0,"booked":false,"why":"one sentence","alternatives":[{"name":"","nightly":0,"why":""}],"routine":[{"role":"Coffee","name":"","note":""}]},"watchouts":[""],"dayThemes":[""]}';
+    "- dayThemes: one 3-6 word working title per day (" + dates.length + " days, " + p.start + " to " + p.end + "), so the days feel distinct and each stays in one part of town.\n" +
+    "- timeShiftHours: the destination's UTC offset minus " + (p.from || PROFILE.homeCity || "home") + "'s on these dates (0 if the same time zone).\n\n" +
+    'Reply with ONLY one JSON object, no prose: {"title":"short trip name","destination":"' + p.dest.replace(/"/g, "") + '","summary":"one-sentence thesis of the trip","homeBase":{"name":"","type":"Hotel|Boutique hotel|Vacation rental","neighborhood":"","address":"","lat":0.0,"lng":0.0,"nightly":0,"booked":false,"why":"one sentence","alternatives":[{"name":"","nightly":0,"why":""}],"routine":[{"role":"Coffee","name":"","note":""}]},"watchouts":[""],"dayThemes":[""],"timeShiftHours":0}';
 }
 function dayPrompt(t, di) {
   const p = t.prefs, dates = t.days.map(d => d.date), date = dates[di], n = dates.length, hb = t.homeBase;
@@ -1876,6 +1877,7 @@ function dayPrompt(t, di) {
     (di === 0 ? "- Arrival day: start with an Arrive item (kind \"transit\", no lat/lng) and Check in (kind \"lodging\" with the home base coords).\n" : "") +
     (di === n - 1 ? "- Departure day: end with Check out (kind \"lodging\") and Depart (kind \"transit\", no lat/lng).\n" : "") +
     "- Include this day's ANCHORS, placeholders and fixed blocks from the list above at their exact times.\n" +
+    (routineBlocks(di, t.shift || 0).length ? "- TODAY'S ROUTINES, already converted to local time (use these exact times, not the home-time ones above): " + routineBlocks(di, t.shift || 0).map(r => r.label.split(" ·")[0] + " " + fmtTime(toHM(r.a)) + (r.b - r.a > 60 ? "–" + fmtTime(toHM(r.b)) : "")).join("; ") + ".\n" : "") +
     (others.length ? "- Other days already use these places, so don't repeat them: " + others.join("; ") + "\n" : "") +
     "\nRULES\n" +
     "- Real, well-established places with accurate lat/lng. Prefer local favorites over tourist traps unless they asked for classics.\n" +
@@ -1925,6 +1927,7 @@ async function generate(p) {
     trip = normalize(Object.assign(frame, {
       id: p.tripId || uid(), startDate: p.start, endDate: p.end, travelers: p.travelers, tripType: p.tripType, pace: p.pace, budget: p.budget, occasion: p.occasion,
       destination: frame.destination || p.dest, prefs: p, created: new Date().toISOString(), status: "draft",
+      shift: Number.isFinite(Number(frame.timeShiftHours)) ? Number(frame.timeShiftHours) : (DRAFT && DRAFT.shift) || 0,
       plan: p.anchors && DRAFT ? JSON.parse(JSON.stringify(DRAFT)) : null,
       scanKey: p.booked && p.booked.startDate ? p.booked.destination + "|" + p.booked.startDate : null,
       days: dates.map((d, i) => ({ date: d, title: (frame.dayThemes || [])[i] || "Day " + (i + 1), pitch: "", items: [], pending: true }))
@@ -2751,8 +2754,8 @@ function addPlaceholder(name, minutes, category, fill) {
   render(); openPlace(c.id);
 }
 // Routines (nap, bedtime) as blocked time on the board, shifted for the time zone: home time for two days, halfway on day 3, local after.
-function routineBlocks(di) {
-  const shift = (DRAFT && DRAFT.shift) || 0, adj = di < 2 ? shift : di === 2 ? Math.round(shift / 2 * 2) / 2 : 0;
+function routineBlocks(di, shiftHours) {
+  const shift = shiftHours != null ? shiftHours : (DRAFT && DRAFT.shift) || 0, adj = di < 2 ? shift : di === 2 ? Math.round(shift / 2 * 2) / 2 : 0;
   return (PROFILE.routines || []).map(r => {
     const m = /(\d{1,2}:\d{2})(?:\s*[-–]\s*(\d{1,2}:\d{2}))?/.exec(r.when || ""); if (!m) return null;
     const a = toMin(m[1]) + adj * 60, b = m[2] ? toMin(m[2]) + adj * 60 : a + 60;
