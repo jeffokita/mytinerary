@@ -1559,7 +1559,7 @@ function renderTimeline(d, di) {
     if (it.why) body += '<span class="why">' + esc(it.why) + "</span>";
     if (it.tip) body += '<span class="tip"><b>Pro tip</b>' + esc(it.tip) + "</span>";
     if (minor && it.booked) body += '<div class="foot"><span class="pill booked">Booked</span></div>';
-    if (it.kind === "free" && !S.readOnly) body += '<div class="foot">' + (it.who && it.who.length ? '<span class="pill who">' + esc(it.who.join(" & ")) + "</span>" : "") + '<button class="lnk" data-remove="' + ii + '">Remove</button></div>';
+    if (it.kind === "free" && !S.readOnly) body += '<div class="foot">' + (it.who && it.who.length ? '<span class="pill who">' + esc(it.who.join(" & ")) + "</span>" : "") + '<button class="lnk" data-move="' + ii + '">Move</button><button class="lnk" data-remove="' + ii + '">Remove</button></div>';
     if (!minor) {
       const foot = [];
       if (it.anchor) foot.push('<span class="pill pick">Your pick</span>');
@@ -1575,7 +1575,7 @@ function renderTimeline(d, di) {
       const q = encodeURIComponent((it.address || it.name + " " + (it.neighborhood || "") + " " + (S.trip.destination || "")).trim());
       foot.push('<a class="lnk" href="' + (it.mapsUrl ? esc(it.mapsUrl) : "https://www.google.com/maps/search/?api=1&query=" + q) + '" target="_blank" rel="noopener">Map</a>');
       foot.push('<a class="lnk" href="' + gcalLink(it, d) + '" target="_blank" rel="noopener">Add to calendar</a>');
-      if (!S.readOnly) { foot.push('<button class="lnk" data-swap="' + ii + '">Change</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
+      if (!S.readOnly) { foot.push('<button class="lnk" data-move="' + ii + '">Move</button>'); foot.push('<button class="lnk" data-swap="' + ii + '">Change</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
       body += '<div class="foot">' + foot.join("") + "</div>";
     }
     html += '<div class="stop" data-id="' + it.id + '">' +
@@ -1737,6 +1737,7 @@ function bindTrip() {
   ensureTripWeather(S.trip);
   document.querySelectorAll("[data-retry-day]").forEach(b => b.addEventListener("click", () => retryDay(+b.dataset.retryDay)));
   document.querySelectorAll("[data-who]").forEach(b => b.addEventListener("click", () => { S.who = b.dataset.who; render(); }));
+  document.querySelectorAll("[data-move]").forEach(b => b.addEventListener("click", () => openMove(S.day, +b.dataset.move)));
   document.querySelectorAll("[data-remove]").forEach(b => b.addEventListener("click", () => {
     const t = S.trip, d = t.days[S.day], it = d.items[+b.dataset.remove];
     if (!it || !confirm("Remove " + it.name + " from day " + (S.day + 1) + "?")) return;
@@ -2135,6 +2136,42 @@ function updateGen() {
 }
 document.addEventListener("click", e => { if (e.target && e.target.id === "genStop" && genCtl) genCtl.abort(); });
 
+// Move any stop (naps and other routines included) to a new time or day.
+function openMove(di, ii) {
+  const t = S.trip, it = t.days[di].items[ii]; if (!it) return;
+  const len = Math.max(15, (toMin(it.end) ?? (toMin(it.time) + 60)) - toMin(it.time));
+  openDrawer("Move · Day " + (di + 1), it.name, fmtTime(it.time) + (it.end ? " to " + fmtTime(it.end) : ""));
+  $("#drawerBody").innerHTML = '<form id="moveForm" class="place-form">' +
+    '<label class="f" for="mvDay">Day<select class="inp" id="mvDay">' + t.days.map((d, i) => '<option value="' + i + '"' + (i === di ? " selected" : "") + ">Day " + (i + 1) + " · " + esc(fmtDay(d.date)) + "</option>").join("") + "</select></label>" +
+    '<div class="row"><label class="f" for="mvStart">Starts<input class="inp" type="time" step="300" id="mvStart" value="' + esc(it.time) + '"></label>' +
+    '<label class="f" for="mvEnd">Ends<input class="inp" type="time" step="300" id="mvEnd" value="' + esc(it.end || toHM(toMin(it.time) + len)) + '"></label></div>' +
+    '<p class="note" id="mvNote"></p><div class="row2"><button class="btn primary" type="submit">Move</button><button class="lnk" type="button" id="mvCancel">Cancel</button></div></form>';
+  let endTouched = false;
+  const start = $("#mvStart"), end = $("#mvEnd");
+  const clash = () => {
+    const ti = +$("#mvDay").value, s0 = toMin(start.value), e0 = toMin(end.value);
+    const hit = t.days[ti].items.find(x => x !== it && x.kind !== "transit" && toMin(x.time) < e0 && s0 < (toMin(x.end) ?? toMin(x.time) + 30) &&
+      !((it.who || []).length && (x.who || []).length && !(it.who.some(w => x.who.includes(w)))));
+    $("#mvNote").textContent = hit ? "Overlaps " + hit.name + " (" + fmtTime(hit.time) + "). You can still move it." : "";
+  };
+  start.addEventListener("input", () => { if (!endTouched && toMin(start.value) != null) end.value = toHM(toMin(start.value) + len); clash(); });
+  end.addEventListener("input", () => { endTouched = true; clash(); });
+  $("#mvDay").addEventListener("change", clash);
+  $("#mvCancel").addEventListener("click", closeDrawer);
+  $("#moveForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const s0 = toMin(start.value), e0 = toMin(end.value);
+    if (s0 == null || e0 == null || e0 <= s0) { $("#mvNote").textContent = "The end needs to be after the start."; return; }
+    const ti = +$("#mvDay").value;
+    t.days[di].items.splice(ii, 1);
+    it.time = toHM(s0); it.end = toHM(e0); it.transitFromPrev = ti === di ? it.transitFromPrev : null;
+    const dest = t.days[ti].items; dest.push(it); dest.sort((a, b) => (toMin(a.time) ?? 0) - (toMin(b.time) ?? 0));
+    markEdited(t); saveTrip(t); closeDrawer();
+    if (ti !== di) S.day = ti;
+    render(); toast("Moved " + it.name + " to " + fmtTime(it.time) + (ti !== di ? " on day " + (ti + 1) : "") + ".");
+  });
+  clash();
+}
 // Edits after confirming are flagged so the trip can be re-confirmed.
 function markEdited(t) { if (t.status === "confirmed") t.editedAfterConfirm = true; }
 // "8:30pm start bedtime routine" -> { time: "20:30", name: "Start bedtime routine" }
