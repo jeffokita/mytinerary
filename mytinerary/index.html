@@ -540,7 +540,9 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .ph-custom { display: inline-flex; gap: 4px; }
 .ph-custom input { border: 1px solid var(--rule); border-radius: 999px; padding: 3px 10px; font-size: 13px; background: var(--card); width: 150px; }
 .anc.ph, .tray-item.ph { border-style: dashed; background: var(--paper); }
-.anc.routine { border-color: var(--l4); border-left-color: var(--l4); background: color-mix(in srgb, var(--l4) 8%, var(--card)); }
+.anc.rtn { border-color: var(--l4); border-left-color: var(--l4); background: color-mix(in srgb, var(--l4) 8%, var(--card)); }
+.anc.rsv { border-style: solid; border-color: var(--good); border-left-color: var(--good); background: color-mix(in srgb, var(--good) 9%, var(--card)); }
+.anc.rsv b::after { content: "Booked"; margin-left: 6px; font: 600 9px var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--good); vertical-align: 1px; }
 .blocked.routine { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--l4) 10%, var(--card)) 0 6px, var(--card) 6px 12px); color: var(--l4); z-index: 1; }
 
 /* Itinerary */
@@ -1474,8 +1476,8 @@ function normItem(it) {
 function route() {
   const h = location.hash.replace("#", "");
   S.view = ["plan", "profile", "start", "discover"].includes(h) ? h : (h === "wish" || h === "anchors") ? (DRAFT ? "anchors" : "plan") : S.gen ? "gen" : homeView();
-  if (S.view === "anchors" && !DRAFT.suggested && !Object.keys(DRAFT.place).length && DRAFT.wish.length) { placeRoutines(); suggestPlan(false); DRAFT.suggested = true; saveDraft(); }
-  else if (S.view === "anchors" && DRAFT) placeRoutines();
+  if (S.view === "anchors" && !DRAFT.suggested && !Object.keys(DRAFT.place).length && DRAFT.wish.length) { placeBookings(); placeRoutines(); suggestPlan(false); DRAFT.suggested = true; saveDraft(); }
+  else if (S.view === "anchors" && DRAFT) { placeBookings(); placeRoutines(); }
   render();
   window.scrollTo(0, 0);
 }
@@ -2032,7 +2034,7 @@ function prefsText(p) {
     p.anchors && p.anchors.length
       ? "ANCHORS the traveler placed (fixed: keep each on exactly this date and time, with the same name, and set \"anchor\": true on it). Build each day around its anchors: pick meals and extra stops close to them so the day doesn't zigzag across the city, and choose sensible transit between them.\n" +
         p.anchors.map(a => "- " + a.date + " " + a.start + "-" + a.end + " " + a.name + (a.neighborhood ? " (" + a.neighborhood + ")" : "") +
-          (a.fill ? " [PLACEHOLDER: replace with a specific real place near that day's other stops; keep the time; anchor true]" : a.fixed ? " [FIXED BLOCK: keep exactly as given, kind \"free\"]" : "")).join("\n")
+          (a.reserved ? " [RESERVATION: the same booking listed under ALREADY BOOKED; include it once, at this time, with booked true]" : a.fill ? " [PLACEHOLDER: replace with a specific real place near that day's other stops; keep the time; anchor true]" : a.fixed ? " [FIXED BLOCK: keep exactly as given, kind \"free\"]" : "")).join("\n")
       : "",
     extraText(p.extra),
     p.spare && p.spare.length ? "Also on their wish list but not scheduled (add one only where it fits naturally near that day's anchors): " + p.spare.join("; ") : "",
@@ -2789,9 +2791,10 @@ function issuesAt(c, di, start, buf) {
   const days = draftDays(), out = [], end = start + c.minutes;
   const oc = openCheck(c, days[di], start); if (oc) out.push(oc);
   const w = dayWindow(di, days.length);
+  if (c.reserved && (di !== c.reserved.day || start !== toMin(c.reserved.start))) out.push("Doesn't match your reservation (" + fmtDay(days[c.reserved.day]).split(" ")[0] + " " + fmtShort(toMin(c.reserved.start)) + ")");
   if (w.arrivalEvening && !c.fixed) out.push("Arrival evening is for checking in and dinner");
-  else if (w.blockBefore != null && start < w.blockBefore) out.push("Before you'll be in town");
-  if (w.blockAfter != null && end > w.blockAfter) out.push("Runs into your trip home");
+  else if (!c.fixed && w.blockBefore != null && start < w.blockBefore) out.push("Before you'll be in town");
+  if (!c.reserved && w.blockAfter != null && end > w.blockAfter) out.push("Runs into your trip home");
   const clash = Object.keys(DRAFT.place).find(id => {
     const o = DRAFT.place[id], oc2 = candById(id);
     if (id === c.id || !oc2 || o.day !== di) return false;
@@ -2964,7 +2967,7 @@ function fillTrip() {
   const d = DRAFT, days = draftDays();
   const anchors = Object.keys(d.place).map(id => ({ c: candById(id), pl: d.place[id] })).filter(x => x.c && x.pl.day < days.length)
     .sort((a, b) => a.pl.day - b.pl.day || toMin(a.pl.start) - toMin(b.pl.start))
-    .map(({ c, pl }) => ({ date: days[pl.day], start: pl.start, end: toHM(toMin(pl.start) + c.minutes), name: c.name, neighborhood: c.neighborhood, address: c.address, fill: !!c.fill, fixed: !!c.fixed }));
+    .map(({ c, pl }) => ({ date: days[pl.day], start: pl.start, end: toHM(toMin(pl.start) + c.minutes), name: c.name, neighborhood: c.neighborhood, address: c.address, fill: !!c.fill, fixed: !!c.fixed, reserved: !!c.reserved }));
   if (!anchors.length) { toast("Place at least one pick on a day first."); return; }
   if (!sampleFn) { toast(noClaudeCopy("Filling in your days")); return; }
   const spare = d.wish.map(candById).filter(c => c && !(d.place[c.id] && d.place[c.id].day < days.length)).map(c => c.name + (c.neighborhood ? " (" + c.neighborhood + ")" : ""));
@@ -3010,6 +3013,29 @@ function addPlaceholder(name, minutes, category, fill) {
   render(); openPlace(c.id);
 }
 // Routines (nap, bedtime) as blocked time on the board, shifted for the time zone: home time for two days, halfway on day 3, local after.
+// Reservations from Gmail & Calendar go on the board at their booked times. They can be moved, with a warning.
+function placeBookings() {
+  const d = DRAFT; if (!d || d.bookingsPlaced) return;
+  const items = ((d.prefs.booked && d.prefs.booked.items) || []).slice().sort((a, b) => (a.type === "lodging") - (b.type === "lodging")), days = draftDays();
+  const arrivals = {}; // day -> when they're actually in town (flight or train end), so check-in lands after it
+  items.forEach(b => {
+    const m = /(\d{4}-\d{2}-\d{2})[ T](\d{1,2}:\d{2})/.exec(String(b.start || ""));
+    if (!m) return;
+    const di = days.indexOf(m[1]); if (di < 0) return;
+    let start = toMin(m[2]); const endM = /(\d{4}-\d{2}-\d{2})[ T](\d{1,2}:\d{2})/.exec(String(b.end || ""));
+    const type = String(b.type || "other").toLowerCase();
+    let minutes = endM && endM[1] === m[1] ? toMin(endM[2]) - start : { flight: 45, car: 30, train: 45, lodging: 30, restaurant: 90, event: 120 }[type] || 60;
+    minutes = Math.max(15, Math.min(minutes, 240));
+    if (type === "flight" || type === "train") arrivals[di] = Math.max(arrivals[di] || 0, start + minutes);
+    let suffix = "";
+    if (type === "lodging" && arrivals[di] && arrivals[di] + 45 > start) { suffix = " (check-in from " + fmtShort(start) + ")"; start = Math.ceil((arrivals[di] + 45) / 15) * 15; }
+    const name = type === "lodging" ? "Check in: " + String(b.title || "").replace(/^stay at\s+/i, "") + suffix : String(b.title || type);
+    const c = { id: uid(), name, category: type === "restaurant" ? "Food & drink" : "Experiences", minutes, placeholder: true, fill: false, fixed: true,
+      reserved: { day: di, start: toHM(start) }, neighborhood: b.place || "", address: b.address || "", why: "Your reservation, from your calendar and email.", hours: null, lat: null, lng: null, bestTime: "any", cost: 0, booking: "none" };
+    d.cands.push(c); d.wish.push(c.id); d.place[c.id] = { day: di, start: toHM(start) };
+  });
+  d.bookingsPlaced = true; saveDraft();
+}
 function placeRoutines() {
   const d = DRAFT; if (!d || d.routinesPlaced || !(PROFILE.routines || []).length) return;
   const days = draftDays();
@@ -3303,7 +3329,7 @@ function ancCard(c, di, gs, ln) {
   const pl = DRAFT.place[c.id], s = toMin(pl.start), iss = issuesAt(c, di, s);
   const h = Math.max(c.minutes / 60 * PXH, 34);
   const pos = ln && ln.of > 1 ? "left:calc(5px + " + ln.lane + " * (100% - 10px) / " + ln.of + ");right:auto;width:calc((100% - 10px) / " + ln.of + " - 2px);" : "";
-  return '<div class="anc' + (iss.length ? " warn" : "") + (c.placeholder ? " ph" : "") + (c.routine ? " routine" : "") + '" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" style="' + pos + "top:" + px(s - gs) + "px;height:" + h + 'px"' +
+  return '<div class="anc' + (iss.length ? " warn" : "") + (c.placeholder ? " ph" : "") + (c.routine ? " rtn" : "") + (c.reserved ? " rsv" : "") + '" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" style="' + pos + "top:" + px(s - gs) + "px;height:" + h + 'px"' +
     ' aria-label="' + esc(c.name + ", " + fmtShort(s) + " to " + fmtShort(s + c.minutes) + (iss.length ? ". Warning: " + iss.join(". ") : "") + ". Press Enter to move.") + '">' +
     "<b>" + esc(c.name) + '</b><span class="t">' + fmtShort(s) + "–" + fmtShort(s + c.minutes) + "</span>" + (iss.length ? '<span class="w">⚠ ' + esc(iss[0]) + "</span>" : "") +
     '<button class="anc-x" type="button" data-unplace="' + c.id + '" aria-label="Move ' + esc(c.name) + ' back to the wish list">×</button></div>';
