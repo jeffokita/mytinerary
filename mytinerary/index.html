@@ -569,6 +569,30 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .wx-line { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 0; }
 .wx-line span { display: inline-flex; gap: 6px; font-size: 13px; color: var(--muted); }
 
+/* Split itineraries: the day's line branches into tracks, then merges */
+.avs { display: inline-flex; padding-left: 6px; vertical-align: middle; }
+.av { width: 22px; height: 22px; border-radius: 50%; background: var(--p); color: var(--on-c); display: inline-grid; place-items: center; font: 700 11px var(--body); border: 2px solid var(--card); margin-left: -6px; }
+.who-bar button { display: inline-flex; align-items: center; gap: 4px; }
+.split-row { display: grid; grid-template-columns: 88px 40px minmax(0, 1fr); align-items: start; }
+.split-row .time { font-family: var(--mono); font-size: 13px; padding-top: 18px; text-align: right; padding-right: 8px; }
+.split-row .time small { display: block; color: var(--muted); font-size: 11px; }
+.node.fork, .node.merge { border-radius: 8px; font-size: 14px; }
+.node.merge { width: 16px; height: 16px; margin-top: 8px; border-width: 3px; }
+.tracks { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 10px; margin: 8px 0; }
+@media (max-width: 700px) { .tracks { grid-template-columns: 1fr; } }
+.track { border-left: 4px solid var(--p); border-radius: 0 14px 14px 0; background: color-mix(in srgb, var(--p) 7%, var(--card)); padding: 10px 12px; display: grid; gap: 10px; align-content: start; }
+.track-h { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.tstop { display: grid; gap: 4px; }
+.t-time { font-family: var(--mono); font-size: 12px; }
+.t-leg { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.card.compact { margin: 0; padding: 10px 12px; gap: 4px; }
+.card.compact .name { font-size: 17px; }
+.card.compact .why { font-size: 14px; }
+.merge-row, .meanwhile { display: grid; grid-template-columns: 88px 40px minmax(0, 1fr); }
+.merge-row .txt, .meanwhile .txt { font-family: var(--mono); font-size: 12px; color: var(--muted); padding: 8px 0; }
+.merge-row .txt { color: var(--ink); font-weight: 600; }
+.meanwhile .txt { font-style: italic; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
 /* Real map */
 .gmap-slot { border-radius: 10px; overflow: hidden; background: var(--paper); }
 .gmap { width: 100%; aspect-ratio: 600 / 460; }
@@ -1578,7 +1602,7 @@ function renderTrip() {
             (S.readOnly || d.pending ? "" : '<form class="rework" id="reworkForm"><label for="reworkInput" class="hidden">Change this day</label><input id="reworkInput" placeholder="Not feeling it? e.g. rainy day, more indoors, sleep in" autocomplete="off"><button class="btn small" type="submit" id="reworkBtn">Rework day</button></form>' +
               '<form class="rework" id="quickAdd"><label for="quickInput" class="hidden">Add to this day</label><input id="quickInput" placeholder="Add something, e.g. 8:30pm start bedtime routine" autocomplete="off"><button class="btn small" type="submit">Add</button></form>') +
           "</div>" +
-          (names.length > 1 ? '<div class="who-bar"><span class="pf-k">Showing</span><div class="filters" role="group">' + ["all"].concat(names).map(n => '<button type="button" data-who="' + esc(n) + '" aria-pressed="' + (S.who === n) + '">' + (n === "all" ? "Everyone" : esc(n)) + "</button>").join("") + "</div></div>" : "") +
+          (names.length > 1 ? '<div class="who-bar"><span class="pf-k">Showing</span><div class="filters" role="group">' + ["all"].concat(names).map(n => '<button type="button" data-who="' + esc(n) + '" aria-pressed="' + (S.who === n) + '">' + (n === "all" ? avatars(names, names) + " Everyone" : avatars([n], names) + " " + esc(n)) + "</button>").join("") + "</div></div>" : "") +
           '<span class="note" id="reworkNote"></span>' +
         "</div>" +
         (d.pending ? '<div class="day-pending" role="status"><p class="gen-status">Planning day ' + (S.day + 1) + " around your picks…</p>" + '<div class="skel-rows"><div></div><div></div><div></div><div></div></div></div>'
@@ -1612,48 +1636,84 @@ function stopNumbers(d) {
   return map;
 }
 
+// People get initials and a steady color, so splits read at a glance.
+const PERSON_COLORS = ["--l2", "--l6", "--l3", "--l4", "--l5", "--l7", "--l1"];
+const personColor = (names, n) => "var(" + PERSON_COLORS[Math.max(0, names.indexOf(n)) % PERSON_COLORS.length] + ")";
+const avatars = (list, names) => '<span class="avs">' + list.map(n => '<span class="av" style="--p:' + personColor(names, n) + '" title="' + esc(n) + '">' + esc(n.slice(0, 1).toUpperCase()) + "</span>").join("") + "</span>";
+const forEveryone = (it, names) => names.length < 2 || !it.who || !it.who.length || names.every(n => it.who.includes(n));
+// One stop's card: what it is, why, tips, and its actions.
+function stopCard(it, ii, d, nums, compact) {
+  const minor = it.kind === "transit" || it.kind === "lodging";
+  const cls = "card" + (it.kind === "free" ? " free" : "") + (minor ? " transitk" : "") + (S.hl === it.id ? " hl" : "") + (compact ? " compact" : "");
+  let body = '<span class="cat">' + esc(it.category || it.kind) + (it.neighborhood ? " · " + esc(it.neighborhood) : "") + "</span>" + '<span class="name">' + esc(it.name) + "</span>";
+  if (it.why) body += '<span class="why">' + esc(it.why) + "</span>";
+  if (it.tip && !compact) body += '<span class="tip"><b>Pro tip</b>' + esc(it.tip) + "</span>";
+  if (minor && it.booked) body += '<div class="foot"><span class="pill booked">Booked</span></div>';
+  if (it.kind === "free" && !S.readOnly) body += '<div class="foot"><button class="lnk" data-move="' + ii + '">Move</button><button class="lnk" data-remove="' + ii + '">Remove</button></div>';
+  if (!minor && it.kind !== "free") {
+    const foot = [];
+    if (it.anchor) foot.push('<span class="pill pick">Your pick</span>');
+    if (typeof it.rating === "number") foot.push('<span class="pill">★ ' + it.rating.toFixed(1) + "</span>");
+    if (it.gStatus === "CLOSED_PERMANENTLY" || it.gStatus === "CLOSED_TEMPORARILY") foot.push('<span class="pill now">Google lists it as closed</span>');
+    else if (it.hours && it.time) { const w = openCheck({ hours: it.hours, minutes: Math.max(15, (toMin(it.end) ?? toMin(it.time) + 60) - toMin(it.time)) }, d.date, toMin(it.time)); if (w) foot.push('<span class="pill daybefore">⚠ ' + esc(w) + "</span>"); }
+    if (it.verified === false) foot.push('<span class="pill daybefore">Not found on Google Maps</span>');
+    if (it.priceRange && it.priceRange.lo) foot.push('<span class="pill" title="From Google Maps">' + esc(it.costTier || "") + (it.costTier ? " · " : "") + money(it.priceRange.lo) + (it.priceRange.hi ? "–" + money(it.priceRange.hi) : "+") + "/person</span>");
+    else if (it.cost) foot.push('<span class="pill"' + (it.priceFrom === "google" ? ' title="Estimated from Google\'s price level"' : "") + ">" + esc(it.costTier || "") + (it.costTier ? " · " : "") + "~" + money(it.cost) + "/person</span>");
+    if (it.booked) foot.push('<span class="pill booked">Booked</span>');
+    else if (BOOK[it.booking]) foot.push('<span class="pill ' + it.booking + '">' + BOOK[it.booking] + "</span>");
+    const q = encodeURIComponent((it.address || it.name + " " + (it.neighborhood || "") + " " + (S.trip.destination || "")).trim());
+    foot.push('<a class="lnk" href="' + (it.mapsUrl ? esc(it.mapsUrl) : "https://www.google.com/maps/search/?api=1&query=" + q) + '" target="_blank" rel="noopener">Map</a>');
+    if (!compact) foot.push('<a class="lnk" href="' + gcalLink(it, d) + '" target="_blank" rel="noopener">Add to calendar</a>');
+    if (!S.readOnly) { foot.push('<button class="lnk" data-move="' + ii + '">Move</button>'); foot.push('<button class="lnk" data-swap="' + ii + '">Change</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
+    body += '<div class="foot">' + foot.join("") + "</div>";
+  }
+  return '<div class="' + cls + '">' + body + "</div>";
+}
+const legHTML = it => it.transitFromPrev ? esc(MODE[it.transitFromPrev.mode] || it.transitFromPrev.mode || "Travel") + " · " + Math.round(Number(it.transitFromPrev.minutes)) + " min" : "";
+function stopRow(it, ii, d, nums, first) {
+  const minor = it.kind === "transit" || it.kind === "lodging", num = nums[it.id];
+  const node = it.kind === "lodging" ? '<span class="node minor home"></span>' : minor ? '<span class="node minor"></span>' : '<span class="node">' + (num || "") + "</span>";
+  return (it.transitFromPrev && !first ? '<div class="leg"><span></span><span class="rail-col"></span><span class="txt">' + legHTML(it) + "</span></div>" : "") +
+    '<div class="stop" data-id="' + it.id + '"><span class="time">' + esc(fmtTime(it.time)) + (it.end ? "<small>to " + esc(fmtTime(it.end)) + "</small>" : "") + "</span>" +
+    '<span class="rail-col">' + node + "</span>" + stopCard(it, ii, d, nums) + "</div>";
+}
+// Split stretches: one track per subgroup, side by side, then everyone meets up again.
+function splitTracks(xs, names) {
+  const groups = new Map();
+  xs.forEach(x => { const key = names.filter(n => x.it.who.includes(n)).join("|") || x.it.who.join("|"); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(x); });
+  const tracks = [...groups.entries()].map(([k, list]) => ({ who: k.split("|"), xs: list }));
+  const covered = new Set(xs.flatMap(x => x.it.who)), rest = names.filter(n => !covered.has(n));
+  if (rest.length) tracks.push({ who: rest, xs: [] });
+  return tracks;
+}
+function renderSplit(xs, next, d, nums, names) {
+  const tracks = splitTracks(xs, names), t0 = Math.min(...xs.map(x => toMin(x.it.time) ?? 0));
+  const meet = next ? "Back together" + (next.it.kind === "lodging" || next.it.kind === "transit" ? "" : " at " + esc(next.it.name)) + " · " + esc(fmtTime(next.it.time)) : "Everyone's plans end here";
+  if (S.who !== "all") { // one person's view: their track, with what everyone else is doing alongside
+    const mine = tracks.filter(t => t.who.includes(S.who)), others = tracks.filter(t => !t.who.includes(S.who) && t.xs.length);
+    return mine.flatMap(t => t.xs).map((x, k) => stopRow(x.it, x.ii, d, nums, k === 0)).join("") +
+      (mine.every(t => !t.xs.length) ? '<div class="meanwhile"><span></span><span class="rail-col"></span><span class="txt">Free time while the group splits up</span></div>' : "") +
+      others.map(t => '<div class="meanwhile"><span></span><span class="rail-col"></span><span class="txt">Meanwhile ' + avatars(t.who, names) + " " + esc(t.who.join(" & ")) + ": " + t.xs.map(x => esc(x.it.name) + " (" + esc(fmtTime(x.it.time)) + ")").join(", ") + "</span></div>").join("");
+  }
+  return '<div class="split-row"><span class="time">' + esc(fmtTime(toHM(t0))) + '<small>splitting up</small></span><span class="rail-col"><span class="node fork" aria-hidden="true">⑂</span></span>' +
+    '<div class="tracks" style="--n:' + tracks.length + '">' + tracks.map(t => '<section class="track" style="--p:' + personColor(names, t.who[0]) + '" aria-label="' + esc(t.who.join(" and ")) + '">' +
+      '<div class="track-h">' + avatars(t.who, names) + "<b>" + esc(t.who.join(" & ")) + "</b></div>" +
+      (t.xs.length ? t.xs.map((x, k) => '<div class="tstop" data-id="' + x.it.id + '">' + (k && x.it.transitFromPrev ? '<span class="t-leg">' + legHTML(x.it) + "</span>" : "") +
+        '<span class="t-time">' + esc(fmtTime(x.it.time)) + (x.it.end ? "–" + esc(fmtTime(x.it.end)) : "") + "</span>" + stopCard(x.it, x.ii, d, nums, true) + "</div>").join("")
+        : '<p class="note">No plans set: free time, or join one of the others.</p>') + "</section>").join("") + "</div></div>" +
+    '<div class="merge-row"><span></span><span class="rail-col"><span class="node merge" aria-hidden="true"></span></span><span class="txt">' + meet + "</span></div>";
+}
 function renderTimeline(d, di) {
-  const c = lineVar(di);
-  const nums = stopNumbers(d);
-  let html = '<div class="timeline" style="--c:' + c + '">';
+  const nums = stopNumbers(d), names = travelerNames(S.trip.prefs);
+  const segs = []; let cur = null;
   d.items.forEach((it, ii) => {
-    if (S.who !== "all" && it.who && it.who.length && !it.who.includes(S.who)) return; // someone else's part of the day
-    const tr = it.transitFromPrev;
-    if (tr && ii > 0) {
-      html += '<div class="leg"><span></span><span class="rail-col"></span><span class="txt">' + esc(MODE[tr.mode] || tr.mode || "Travel") + " · " + Math.round(Number(tr.minutes)) + " min</span></div>";
-    }
-    const minor = it.kind === "transit" || it.kind === "lodging";
-    const num = nums[it.id];
-    const node = it.kind === "lodging" ? '<span class="node minor home"></span>' : minor ? '<span class="node minor"></span>' : '<span class="node">' + (num || "") + "</span>";
-    const cls = "card" + (it.kind === "free" ? " free" : "") + (minor ? " transitk" : "") + (S.hl === it.id ? " hl" : "");
-    let body = '<span class="cat">' + esc(it.category || it.kind) + (it.neighborhood ? " · " + esc(it.neighborhood) : "") + "</span>" +
-      '<span class="name">' + esc(it.name) + "</span>";
-    if (it.why) body += '<span class="why">' + esc(it.why) + "</span>";
-    if (it.tip) body += '<span class="tip"><b>Pro tip</b>' + esc(it.tip) + "</span>";
-    if (minor && it.booked) body += '<div class="foot"><span class="pill booked">Booked</span></div>';
-    if (it.kind === "free" && !S.readOnly) body += '<div class="foot">' + (it.who && it.who.length ? '<span class="pill who">' + esc(it.who.join(" & ")) + "</span>" : "") + '<button class="lnk" data-move="' + ii + '">Move</button><button class="lnk" data-remove="' + ii + '">Remove</button></div>';
-    if (!minor) {
-      const foot = [];
-      if (it.anchor) foot.push('<span class="pill pick">Your pick</span>');
-      if (it.who && it.who.length) foot.push('<span class="pill who">' + esc(it.who.join(" & ")) + "</span>");
-      if (typeof it.rating === "number") foot.push('<span class="pill">★ ' + it.rating.toFixed(1) + "</span>");
-      if (it.gStatus === "CLOSED_PERMANENTLY" || it.gStatus === "CLOSED_TEMPORARILY") foot.push('<span class="pill now">Google lists it as closed</span>');
-      else if (it.hours && it.time) { const w = openCheck({ hours: it.hours, minutes: Math.max(15, (toMin(it.end) ?? toMin(it.time) + 60) - toMin(it.time)) }, d.date, toMin(it.time)); if (w) foot.push('<span class="pill daybefore">⚠ ' + esc(w) + "</span>"); }
-      if (it.verified === false) foot.push('<span class="pill daybefore">Not found on Google Maps</span>');
-      if (it.priceRange && it.priceRange.lo) foot.push('<span class="pill" title="From Google Maps">' + esc(it.costTier || "") + (it.costTier ? " · " : "") + money(it.priceRange.lo) + (it.priceRange.hi ? "–" + money(it.priceRange.hi) : "+") + "/person</span>");
-      else if (it.cost) foot.push('<span class="pill"' + (it.priceFrom === "google" ? ' title="Estimated from Google\'s price level"' : "") + ">" + esc(it.costTier || "") + (it.costTier ? " · " : "") + "~" + money(it.cost) + "/person</span>");
-      if (it.booked) foot.push('<span class="pill booked">Booked</span>');
-      else if (BOOK[it.booking]) foot.push('<span class="pill ' + it.booking + '">' + BOOK[it.booking] + "</span>");
-      const q = encodeURIComponent((it.address || it.name + " " + (it.neighborhood || "") + " " + (S.trip.destination || "")).trim());
-      foot.push('<a class="lnk" href="' + (it.mapsUrl ? esc(it.mapsUrl) : "https://www.google.com/maps/search/?api=1&query=" + q) + '" target="_blank" rel="noopener">Map</a>');
-      foot.push('<a class="lnk" href="' + gcalLink(it, d) + '" target="_blank" rel="noopener">Add to calendar</a>');
-      if (!S.readOnly) { foot.push('<button class="lnk" data-move="' + ii + '">Move</button>'); foot.push('<button class="lnk" data-swap="' + ii + '">Change</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
-      body += '<div class="foot">' + foot.join("") + "</div>";
-    }
-    html += '<div class="stop" data-id="' + it.id + '">' +
-      '<span class="time">' + esc(fmtTime(it.time)) + (it.end ? "<small>to " + esc(fmtTime(it.end)) + "</small>" : "") + "</span>" +
-      '<span class="rail-col">' + node + "</span>" +
-      '<div class="' + cls + '">' + body + "</div></div>";
+    if (forEveryone(it, names)) { cur = null; segs.push({ x: { it, ii } }); }
+    else { if (!cur) { cur = { split: [] }; segs.push(cur); } cur.split.push({ it, ii }); }
+  });
+  let html = '<div class="timeline" style="--c:' + lineVar(di) + '">';
+  segs.forEach((sg, k) => {
+    if (sg.x) html += stopRow(sg.x.it, sg.x.ii, d, nums, k === 0 || !!segs[k - 1].split);
+    else html += renderSplit(sg.split, (segs.slice(k + 1).find(s => s.x) || {}).x, d, nums, names);
   });
   return html + "</div>";
 }
@@ -1692,7 +1752,7 @@ function renderMap(t) {
       '<span style="--c:' + col + '"><i></i>Day ' + (S.day + 1) + '</span><span><i style="background:var(--ink);width:10px;height:10px"></i>' + esc(hb.name || "Home base") + "</span>",
       { points: ps.map(it => ({ id: it.id, lat: it.lat, lng: it.lng, label: String(nums[it.id] || ""), color: col, filled: true, title: it.name })), paths: [{ color: col, pts: ps }],
         home: hasLL(hb) ? { lat: hb.lat, lng: hb.lng, name: hb.name } : null,
-        onPick: id => { const el = document.querySelector('.stop[data-id="' + id + '"]'); if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.querySelector(".card").classList.add("hl"); } highlightPin(id); } });
+        onPick: id => { const el = document.querySelector('.stop[data-id="' + id + '"], .tstop[data-id="' + id + '"]'); if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.querySelector(".card").classList.add("hl"); } highlightPin(id); } });
   }
   const pts = [];
   const hb = t.homeBase;
@@ -1848,7 +1908,7 @@ function bindTrip() {
     const dot = document.querySelector('.stop-c[data-id="' + id + '"] circle');
     if (dot) dot.setAttribute("r", "14");
   };
-  document.querySelectorAll(".stop").forEach(s => s.addEventListener("mouseenter", () => { hl(s.dataset.id); highlightPin(s.dataset.id); }));
+  document.querySelectorAll(".stop, .tstop").forEach(s => s.addEventListener("mouseenter", () => { hl(s.dataset.id); highlightPin(s.dataset.id); }));
   document.querySelectorAll(".stop-c").forEach(g => g.addEventListener("click", () => {
     hl(g.dataset.id);
     const el = document.querySelector('.stop[data-id="' + g.dataset.id + '"]');
