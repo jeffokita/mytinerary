@@ -285,7 +285,8 @@ textarea.inp { min-height: 88px; resize: vertical; }
 .steps li.cur { color: var(--ink); font-weight: 600; }
 .steps li.cur .n { border-color: var(--accent); background: var(--accent); color: #fff; }
 .steps li.done .n { border-color: var(--ink); background: var(--ink); color: var(--paper); }
-.steps a:hover { color: var(--ink); }
+.steps a:hover, .step-link:hover { color: var(--ink); }
+.step-link { display: flex; align-items: center; gap: 8px; text-decoration: none; padding: 0; font-size: 14px; color: inherit; }
 .row2 { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .filters button { border: 1px solid var(--rule); background: var(--card); border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer; }
@@ -502,6 +503,14 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .sug-row.lifted { opacity: .35; }
 .pick-item.sug-item:not(.added) { border-left-color: transparent; }
 #topPicks { justify-self: start; }
+
+/* Done planning: how full should the days be */
+.fill-opts { display: grid; gap: 8px; }
+.fill-opt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; border: 1px solid var(--rule); border-radius: 12px; padding: 12px; cursor: pointer; background: var(--card); }
+.fill-opt:has(input:checked) { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
+.fill-opt input { margin-top: 3px; accent-color: var(--ink); }
+.fill-opt b { display: block; font-size: 15px; }
+.fill-opt small { display: block; color: var(--muted); font-size: 13px; line-height: 1.35; margin-top: 2px; }
 
 /* Anchor board: commute estimates */
 .commute { position: absolute; left: 50%; transform: translate(-50%, -50%); z-index: 3; font-family: var(--mono); font-size: 10px; background: var(--card); border: 1px solid var(--rule); border-radius: 999px; padding: 1px 7px; white-space: nowrap; pointer-events: auto; color: var(--muted); }
@@ -2112,7 +2121,7 @@ function prefsText(p) {
           (a.reserved ? " [RESERVATION: the same booking listed under ALREADY BOOKED; include it once, at this time, with booked true]" : a.fill ? " [PLACEHOLDER: replace with a specific real place near that day's other stops; keep the time; anchor true]" : a.fixed ? " [FIXED BLOCK: keep exactly as given, kind \"free\"]" : "")).join("\n")
       : "",
     extraText(p.extra),
-    p.spare && p.spare.length ? "Also on their wish list but not scheduled (add one only where it fits naturally near that day's anchors): " + p.spare.join("; ") : "",
+    p.spare && p.spare.length && (!p.fillLevel || p.fillLevel === "full") ? "Also on their wish list but not scheduled (add one only where it fits naturally near that day's anchors): " + p.spare.join("; ") : "",
     p.booked && p.booked.items && p.booked.items.length
       ? "ALREADY BOOKED (fixed; build around these):\n" + p.booked.items.map(b => "- " + b.type + ": " + b.title + (b.start ? " | " + b.start : "") + (b.end ? " to " + b.end : "") + (b.place ? " | " + b.place : "") + (b.address ? " | " + b.address : "")).join("\n")
       : ""
@@ -2159,8 +2168,12 @@ function dayPrompt(t, di) {
     "\nRULES\n" +
     "- Real, well-established places with accurate lat/lng. Prefer local favorites over tourist traps unless they asked for classics.\n" +
     "- Keep the day in one part of town, close to its anchors, so it doesn't zigzag.\n" +
-    "- Meals are fixed points; activities flex between them. Breakfast or coffee, lunch and dinner on full days; drinks if nightlife >= 3. Respect daily hours and dietary needs.\n" +
-    "- Include a free-time block so the day can breathe. Every item after the first has transitFromPrev with a realistic mode and minutes. Order by time.\n" +
+    (p.fillLevel === "mine"
+      ? "- JUST WHAT THEY PLANNED: include only their anchors, placeholders, fixed blocks and reservations (plus arrival, check-in, check-out and departure). Do NOT add any other stops, meals or free-time blocks. Fill in placeholders with real places as asked.\n"
+      : p.fillLevel === "meals"
+      ? "- MEALS ONLY: add breakfast or coffee, lunch and dinner where the day has a gap, close to their stops, respecting dietary needs. Do NOT add any other activities, sights or bars.\n"
+      : "- Meals are fixed points; activities flex between them. Breakfast or coffee, lunch and dinner on full days; drinks if nightlife >= 3. Respect daily hours and dietary needs.\n- Include a free-time block so the day can breathe.\n") +
+    "- Every item after the first has transitFromPrev with a realistic mode and minutes. Order by time.\n" +
     "- No two items may overlap in time, unless it's a split: both have non-empty who lists with no names in common.\n" +
     "- Getting between places is never its own item: put the drive, ride or walk in the next item's transitFromPrev. Arrive and Depart items are only for the trip's first arrival and final departure.\n" +
     "- booking: \"now\" for things that sell out, \"daybefore\" for reservations that rarely fill, \"walkin\", or \"none\".\n" +
@@ -3038,6 +3051,24 @@ function suggestPlan(all) {
   return { placed, left: items.length - placed };
 }
 
+const FILL_LEVELS = [
+  ["mine", "Just what I planned", "Only your stops, reservations and routines, with travel times between them. Nothing new gets added."],
+  ["meals", "Add meals", "Breakfast, lunch and dinner near your stops where there's a gap. No extra activities."],
+  ["full", "Add meals and a few nearby ideas", "Meals plus a stop or two near your anchors where the day has room, and a little free time."]
+];
+function openBuild() {
+  const existing = DRAFT.tripId && savedTrips().some(t => t.id === DRAFT.tripId), level = DRAFT.fillLevel || "meals";
+  openDrawer(existing ? "Update your itinerary" : "Done planning", "How full should your days be?", "Everything you placed stays exactly where it is.");
+  $("#drawerBody").innerHTML = '<form id="buildForm" class="place-form"><div class="fill-opts" role="radiogroup">' + FILL_LEVELS.map(([v, l, h]) =>
+    '<label class="fill-opt"><input type="radio" name="fill" value="' + v + '"' + (v === level ? " checked" : "") + '><span><b>' + l + "</b><small>" + h + "</small></span></label>").join("") + "</div>" +
+    (existing ? '<p class="note warn-t" style="margin:0">This replaces the current itinerary, including changes you made on the itinerary page.</p>' : "") +
+    '<button class="btn primary" type="submit">' + (existing ? "Update my itinerary" : "See my itinerary") + "</button></form>";
+  $("#buildForm").addEventListener("submit", e => {
+    e.preventDefault();
+    DRAFT.fillLevel = ($("#buildForm").querySelector("input[name=fill]:checked") || {}).value || "meals"; saveDraft();
+    closeDrawer(); fillTrip();
+  });
+}
 function fillTrip() {
   const d = DRAFT, days = draftDays();
   const anchors = Object.keys(d.place).map(id => ({ c: candById(id), pl: d.place[id] })).filter(x => x.c && x.pl.day < days.length)
@@ -3047,7 +3078,7 @@ function fillTrip() {
   if (!sampleFn) { toast(noClaudeCopy("Filling in your days")); return; }
   const spare = d.wish.map(candById).filter(c => c && !(d.place[c.id] && d.place[c.id].day < days.length)).map(c => c.name + (c.neighborhood ? " (" + c.neighborhood + ")" : ""));
   if (!d.learned) { learnFrom(Object.keys(d.place).map(candById).filter(c => c && !c.placeholder)); d.learned = true; saveDraft(); }
-  generate(Object.assign({}, d.prefs, { anchors, spare, extra: d.extra || null, tripId: d.tripId || null, routinesPlaced: !!d.routinesPlaced }));
+  generate(Object.assign({}, d.prefs, { anchors, spare, extra: d.extra || null, tripId: d.tripId || null, routinesPlaced: !!d.routinesPlaced, fillLevel: d.fillLevel || "meals" }));
 }
 
 // Learned preferences: count the kinds of places someone anchors trips on, and nudge future suggestions.
@@ -3151,7 +3182,9 @@ function stepsHTML(n) {
   return '<ol class="steps">' + steps.map(([h, l], i) => {
     const st = i + 1 < n ? "done" : i + 1 === n ? "cur" : "";
     const inner = '<span class="n">' + (i + 1) + "</span>" + l;
-    return '<li class="' + st + '"' + (st === "cur" ? ' aria-current="step"' : "") + ">" + (st === "done" && h && DRAFT ? '<a href="#' + h + '">' + inner + "</a>" : inner) + "</li>";
+    const tripLink = !h && DRAFT && DRAFT.tripId && savedTrips().some(t => t.id === DRAFT.tripId);
+    return '<li class="' + st + (tripLink ? " done" : "") + '"' + (st === "cur" ? ' aria-current="step"' : "") + ">" +
+      (st === "done" && h && DRAFT ? '<a href="#' + h + '">' + inner + "</a>" : tripLink ? '<button class="lnk step-link" type="button" data-open-trip="' + esc(DRAFT.tripId) + '">' + inner + "</button>" : inner) + "</li>";
   }).join("") + "</ol>";
 }
 function draftBanner() {
@@ -3582,12 +3615,19 @@ function renderAnchors() {
         '<p class="note slot-tip">Tip: click any empty time on a day to add something, like lunch, a hike or nap time. Drag down to set how long.</p>' +
         (unplaced.length ? '<div class="row2"><button class="btn small" id="suggestBtn">Lay these out for me</button></div>' : "") + "</section>" +
       '<div class="board-scroll"><div class="board" style="grid-template-columns:52px repeat(' + n + ', minmax(150px, 1fr))"><div class="gutter"><div class="day-h"></div><div class="gutter-l" style="height:' + H + 'px">' + labels + "</div></div>" + cols + "</div></div>" +
-      '<div class="board-foot"><button class="btn primary" id="fillBtn"' + (placedIds.length ? "" : " disabled") + ">Fill in my days →</button>" +
-        '<span class="note">' + (warnCount ? '<strong class="warn-t">⚠ ' + warnCount + (warnCount === 1 ? " pick has a timing warning" : " picks have timing warnings") + ".</strong> You can still go ahead. " : "") + "Claude keeps your picks where they are and adds meals, nearby stops and how to get between them.</span></div>" +
+      '<div class="board-foot"><button class="btn primary" id="fillBtn"' + (placedIds.length ? "" : " disabled") + ">" + (d.tripId && savedTrips().some(t => t.id === d.tripId) ? "Update my itinerary →" : "Done planning: see my itinerary →") + "</button>" +
+        '<span class="note">' + (warnCount ? '<strong class="warn-t">⚠ ' + warnCount + (warnCount === 1 ? " pick has a timing warning" : " picks have timing warnings") + ".</strong> You can still go ahead. " : "") + "Next you choose how full your days should be: just your plans, plus meals, or plus a few nearby ideas.</span></div>" +
     '</section><aside class="rail">' + suggestionsPanel(d, isPlaced) +
       planMap("Your days on the map", pts, paths, d.home, days.map((_, i) => '<span style="--c:' + lineVar(i) + '"><i></i>Day ' + (i + 1) + "</span>").join("") + '<span><i style="background:var(--muted)"></i>Not placed</span>') +
       '<section class="panel"><h3>How each day hangs together</h3><div class="day-sum">' + sums + "</div></section>" +
-    "</aside></div></div>";
+    "</aside></div></div>" + boardNextbar(d, placedIds, warnCount);
+}
+function boardNextbar(d, placedIds, warnCount) {
+  const picks = placedIds.filter(id => { const c = candById(id); return c && !c.placeholder; }).length, existing = d.tripId && savedTrips().some(t => t.id === d.tripId);
+  return '<div class="nextbar"><div class="wrap"><span><strong>' + picks + (picks === 1 ? " anchor" : " anchors") + "</strong> on your days" +
+    (warnCount ? ' · <span class="warn-t">' + warnCount + " timing " + (warnCount === 1 ? "warning" : "warnings") + "</span>" : "") + "</span>" +
+    '<span class="row2">' + (existing ? '<button class="btn" type="button" data-open-trip="' + esc(d.tripId) + '">View itinerary</button>' : "") +
+    '<button class="btn primary" type="button" data-fill' + (placedIds.length ? "" : " disabled") + ">" + (existing ? "Update my itinerary →" : "Done planning: see my itinerary →") + "</button></span></div></div>";
 }
 
 let drag = null;
@@ -3612,7 +3652,8 @@ function bindAnchors() {
     const r = suggestPlan(false); render();
     toast(r.left ? "Placed " + r.placed + ". " + r.left + " didn't fit, so they'll be ideas when we fill in." : "Laid out " + r.placed + " picks, keeping each day in one area.");
   });
-  const fb = $("#fillBtn"); if (fb) fb.addEventListener("click", fillTrip);
+  const fb = $("#fillBtn"); if (fb) fb.addEventListener("click", openBuild);
+  document.querySelectorAll("[data-fill]").forEach(b => b.addEventListener("click", openBuild));
   const awc = $("#anchorWhyClose"); if (awc) awc.addEventListener("click", () => { store("mytin.anchorTipSeen", true); render(); });
   const awo = $("#anchorWhyOpen"); if (awo) awo.addEventListener("click", () => { store("mytin.anchorTipSeen", false); render(); });
   bindSlots();
