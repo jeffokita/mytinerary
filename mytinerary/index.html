@@ -504,7 +504,19 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .pick-item.sug-item:not(.added) { border-left-color: transparent; }
 #topPicks { justify-self: start; }
 
-/* Done planning: how full should the days be */
+/* Who's going, on the board */
+.anc-split { position: absolute; right: 1px; bottom: 1px; border: 1px solid var(--rule); background: var(--card); color: var(--ink); width: 20px; height: 20px; border-radius: 50%; font-size: 14px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .12s; }
+.anc:hover .anc-split, .anc:focus-within .anc-split { opacity: 1; }
+@media (hover: none) { .anc-split { opacity: 1; } }
+.anc-split:hover { background: var(--ink); color: var(--paper); }
+.anc-who .avs { padding-left: 6px; margin-top: 2px; }
+.anc-who .av { width: 18px; height: 18px; font-size: 9px; }
+.who-pick { display: grid; gap: 6px; }
+.who-pick .filters { margin: 0; }
+.who-pick button { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px 4px 4px; font-size: 13px; }
+.who-pick .av { width: 20px; height: 20px; font-size: 10px; }
+
+/* Build your itinerary: how full should the days be */
 .fill-opts { display: grid; gap: 8px; }
 .fill-opt { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; border: 1px solid var(--rule); border-radius: 12px; padding: 12px; cursor: pointer; background: var(--card); }
 .fill-opt:has(input:checked) { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink); }
@@ -796,6 +808,18 @@ async function replaceClosed(t) {
   t.days.forEach((d, di) => d.items.forEach((it, ii) => { if (closedOnGoogle(it)) bad.push({ di, ii, it }); }));
   return replaceItems(t, bad, "Google Maps lists these places as closed.");
 }
+// Stops Claude added that Google says are closed at that time get swapped for a similar place that's open then.
+// The traveler's own picks stay put (they already see a warning on the board and the itinerary).
+function closedAtTime(it, date) {
+  if (!it.hours || !it.time || ["transit", "lodging", "free"].includes(it.kind)) return "";
+  return openCheck({ hours: it.hours, minutes: Math.max(15, (toMin(it.end) ?? toMin(it.time) + 60) - toMin(it.time)) }, date, toMin(it.time));
+}
+async function fixHours(t) {
+  const bad = [], mine = [];
+  t.days.forEach((d, di) => d.items.forEach((it, ii) => { if (closedAtTime(it, d.date)) (it.anchor || it.booked ? mine : bad).push({ di, ii, it }); }));
+  const n = await replaceItems(t, bad, "These stops are scheduled at a time the place isn't open (by Google's hours). Pick a similar place that is open for the whole time slot.");
+  return { fixed: n, mine: mine.length };
+}
 // Days are planned in parallel, so two days can pick the same spot. Keep the first, swap the later ones (never anchors or the hotel).
 async function fixRepeats(t) {
   const seen = new Set(), bad = [];
@@ -820,8 +844,10 @@ async function enrichTrip(t) {
   if (t.homeBase && t.homeBase.name) todo.push(t.homeBase);
   const res = await placesMatch(t.destination, todo);
   if (res) todo.forEach((o, i) => applyPlace(o, res[i]));
-  const fixed = await replaceClosed(t);
-  if (fixed) toast("Swapped out " + fixed + (fixed === 1 ? " place" : " places") + " Google lists as closed.");
+  const fixed = await replaceClosed(t), hrs = await fixHours(t);
+  const notes = [fixed ? "swapped " + fixed + (fixed === 1 ? " place" : " places") + " Google lists as closed" : "", hrs.fixed ? "swapped " + hrs.fixed + " that wouldn't be open at that time" : "",
+    hrs.mine ? hrs.mine + " of your picks " + (hrs.mine === 1 ? "is" : "are") + " outside opening hours (look for ⚠)" : ""].filter(Boolean);
+  if (notes.length) toast(notes.join("; ").replace(/^./, c => c.toUpperCase()) + ".");
   saveTrip(t);
   if (S.trip && S.trip.id === t.id && S.view === "trip") render();
 }
@@ -2118,7 +2144,7 @@ function prefsText(p) {
     p.anchors && p.anchors.length
       ? "ANCHORS the traveler placed (fixed: keep each on exactly this date and time, with the same name, and set \"anchor\": true on it). Build each day around its anchors: pick meals and extra stops close to them so the day doesn't zigzag across the city, and choose sensible transit between them.\n" +
         p.anchors.map(a => "- " + a.date + " " + a.start + "-" + a.end + " " + a.name + (a.neighborhood ? " (" + a.neighborhood + ")" : "") +
-          (a.reserved ? " [RESERVATION: the same booking listed under ALREADY BOOKED; include it once, at this time, with booked true]" : a.fill ? " [PLACEHOLDER: replace with a specific real place near that day's other stops; keep the time; anchor true]" : a.fixed ? " [FIXED BLOCK: keep exactly as given, kind \"free\"]" : "")).join("\n")
+          (a.who && a.who.length ? " [ONLY FOR: " + a.who.join(", ") + " (set who accordingly; everyone else does something else then)]" : "") + (a.reserved ? " [RESERVATION: the same booking listed under ALREADY BOOKED; include it once, at this time, with booked true]" : a.fill ? " [PLACEHOLDER: replace with a specific real place near that day's other stops; keep the time; anchor true]" : a.fixed ? " [FIXED BLOCK: keep exactly as given, kind \"free\"]" : "")).join("\n")
       : "",
     extraText(p.extra),
     p.spare && p.spare.length && (!p.fillLevel || p.fillLevel === "full") ? "Also on their wish list but not scheduled (add one only where it fits naturally near that day's anchors): " + p.spare.join("; ") : "",
@@ -2162,12 +2188,14 @@ function dayPrompt(t, di) {
       (toMin(p.arrive) != null && toMin(p.arrive) >= LATE_ARRIVAL ? "- They land late (" + fmtTime(p.arrive) + "). After check-in, the evening is ONLY an easy dinner near the home base (or on the way from the airport) and settling in, done before bedtime. No sightseeing, bars or other activities tonight.\n" : "") : "") +
     (di === n - 1 ? "- Departure day: end with Check out (kind \"lodging\") and Depart (kind \"transit\", no lat/lng).\n" : "") +
     "- Include this day's ANCHORS, placeholders and fixed blocks from the list above at their exact times.\n" +
+    "- Only schedule a place when it's open for the whole stop. Check each place's opening hours for " + fmtDay(date) + " (a weekday), and pick something else if it's closed then.\n" +
     wxPrompt(t.weather && t.weather.days[date]) +
     (!p.routinesPlaced && routineBlocks(di, t.shift || 0).length ? "- TODAY'S ROUTINES, already converted to local time (use these exact times, not the home-time ones above): " + routineBlocks(di, t.shift || 0).map(r => r.label.split(" ·")[0] + " " + fmtTime(toHM(r.a)) + (r.b - r.a > 60 ? "–" + fmtTime(toHM(r.b)) : "")).join("; ") + ".\n" : "") +
     (others.length ? "- Other days already use these places, so don't repeat them: " + others.join("; ") + "\n" : "") +
     "\nRULES\n" +
     "- Real, well-established places with accurate lat/lng. Prefer local favorites over tourist traps unless they asked for classics.\n" +
     "- Keep the day in one part of town, close to its anchors, so it doesn't zigzag.\n" +
+    "- Variety within the day: never two of the same kind of place on one day (two barbecue spots, two Tex-Mex meals, two art museums). Meals should differ from the day's anchors too: if an anchor is a barbecue joint, other meals that day aren't barbecue.\n" +
     (p.fillLevel === "mine"
       ? "- JUST WHAT THEY PLANNED: include only their anchors, placeholders, fixed blocks and reservations (plus arrival, check-in, check-out and departure). Do NOT add any other stops, meals or free-time blocks. Fill in placeholders with real places as asked.\n"
       : p.fillLevel === "meals"
@@ -2886,10 +2914,13 @@ function issuesAt(c, di, start, buf) {
   const clash = Object.keys(DRAFT.place).find(id => {
     const o = DRAFT.place[id], oc2 = candById(id);
     if (id === c.id || !oc2 || o.day !== di || (c.reserved && oc2.reserved)) return false; // two real bookings: that's just the plan
+    const wa = cardWho(c), wb = cardWho(oc2);
+    if (wa.length && wb.length && !wa.some(n => wb.includes(n))) return false; // different people: the group splits here
     const os = toMin(o.start), oe = os + oc2.minutes;
     return start < oe + (buf || 0) && os < end + (buf || 0);
   });
   if (clash) out.push("Overlaps " + candById(clash).name);
+  const twin = sameKindOn(c, di); if (twin) out.push("Another " + kindOf(c) + " spot today (" + twin.name + ")");
 
   return out;
 }
@@ -3018,6 +3049,19 @@ async function lookupPlace(q) {
 }
 
 // Lay out unplaced wish-list items: hardest-to-fit first, each to the day whose picks are closest, capped by pace.
+const KIND_WORDS = [["barbecue", /\b(bbq|barbe?cue|brisket|smokehouse)\b/i], ["tex-mex", /\b(tex-?mex|taco|taqueria|mexican)\b/i], ["pizza", /\bpizz/i], ["steakhouse", /\bsteak/i],
+  ["art museum", /\b(art museum|museum of art|gallery)\b/i], ["museum", /\bmuseum\b/i], ["garden", /\b(garden|arboretum|botanic)/i], ["market", /\bmarket\b/i], ["zoo", /\b(zoo|aquarium)\b/i], ["brewery", /\b(brew|beer)/i]];
+function kindOf(c) {
+  const hay = (c.kind || "") + " " + c.name;
+  const hit = KIND_WORDS.find(([, re]) => re.test(hay));
+  return hit ? hit[0] : (c.kind || "").toLowerCase().trim();
+}
+// Another pick of the same kind already on that day (two barbecue joints, two art museums...).
+function sameKindOn(c, di) {
+  const k = kindOf(c); if (!k || c.placeholder) return null;
+  const id = Object.keys(DRAFT.place).find(x => { const o = candById(x); return o && x !== c.id && !o.placeholder && DRAFT.place[x].day === di && kindOf(o) === k; });
+  return id ? candById(id) : null;
+}
 function findSlot(c, di) {
   const w = dayWindow(di, draftDays().length);
   const pref = { morning: 600, afternoon: 840, evening: 1140, any: 630 }[c.bestTime];
@@ -3042,7 +3086,7 @@ function suggestPlan(all) {
       if (mine.length >= cap) return;
       const slot = findSlot(c, di); if (slot == null) return;
       const near = mine.filter(hasLL);
-      const score = mine.length * 5 + (near.length && hasLL(c) ? Math.min(...near.map(o => km(o, c))) : mine.length ? 2 : 0);
+      const score = mine.length * 5 + (near.length && hasLL(c) ? Math.min(...near.map(o => km(o, c))) : mine.length ? 2 : 0) + (sameKindOn(c, di) ? 100 : 0);
       if (!best || score < best.score) best = { di, slot, score };
     });
     if (best) { d.place[c.id] = { day: best.di, start: toHM(best.slot) }; placed++; }
@@ -3058,7 +3102,7 @@ const FILL_LEVELS = [
 ];
 function openBuild() {
   const existing = DRAFT.tripId && savedTrips().some(t => t.id === DRAFT.tripId), level = DRAFT.fillLevel || "meals";
-  openDrawer(existing ? "Update your itinerary" : "Done planning", "How full should your days be?", "Everything you placed stays exactly where it is.");
+  openDrawer(existing ? "Update your itinerary" : "Build your itinerary", "How full should your days be?", "Everything you placed stays exactly where it is. You can come back and change things any time.");
   $("#drawerBody").innerHTML = '<form id="buildForm" class="place-form"><div class="fill-opts" role="radiogroup">' + FILL_LEVELS.map(([v, l, h]) =>
     '<label class="fill-opt"><input type="radio" name="fill" value="' + v + '"' + (v === level ? " checked" : "") + '><span><b>' + l + "</b><small>" + h + "</small></span></label>").join("") + "</div>" +
     (existing ? '<p class="note warn-t" style="margin:0">This replaces the current itinerary, including changes you made on the itinerary page.</p>' : "") +
@@ -3073,7 +3117,7 @@ function fillTrip() {
   const d = DRAFT, days = draftDays();
   const anchors = Object.keys(d.place).map(id => ({ c: candById(id), pl: d.place[id] })).filter(x => x.c && x.pl.day < days.length)
     .sort((a, b) => a.pl.day - b.pl.day || toMin(a.pl.start) - toMin(b.pl.start))
-    .map(({ c, pl }) => ({ date: days[pl.day], start: pl.start, end: toHM(toMin(pl.start) + c.minutes), name: c.name, neighborhood: c.neighborhood, address: c.address, fill: !!c.fill, fixed: !!c.fixed, reserved: !!c.reserved }));
+    .map(({ c, pl }) => ({ date: days[pl.day], start: pl.start, end: toHM(toMin(pl.start) + c.minutes), name: c.name, neighborhood: c.neighborhood, address: c.address, fill: !!c.fill, fixed: !!c.fixed, reserved: !!c.reserved, who: cardWho(c) }));
   if (!anchors.length) { toast("Place at least one pick on a day first."); return; }
   if (!sampleFn) { toast(noClaudeCopy("Filling in your days")); return; }
   const spare = d.wish.map(candById).filter(c => c && !(d.place[c.id] && d.place[c.id].day < days.length)).map(c => c.name + (c.neighborhood ? " (" + c.neighborhood + ")" : ""));
@@ -3161,7 +3205,8 @@ function placeRoutines() {
     const arr = di === 0 ? toMin(DRAFT.prefs.arrive) : null;
     if ((arr != null && rb.b <= arr + 60) || (w.blockAfter != null && rb.a >= w.blockAfter)) return; // not in town yet, or already gone
     const name = rb.label.split(" ·")[0];
-    const c = { id: uid(), name, category: "Experiences", minutes: Math.max(30, rb.b - rb.a), placeholder: true, fill: false, fixed: true, routine: true,
+    const who = (PROFILE.routines || []).map(r => r.who).find(w => w && rb.label.includes("(" + w + ")"));
+    const c = { id: uid(), name, category: "Experiences", minutes: Math.max(30, rb.b - rb.a), placeholder: true, fill: false, fixed: true, routine: true, who: who && draftNames().includes(who) ? [who] : [],
       neighborhood: "", why: "From your travel profile" + (rb.label.includes("home time") ? ", on home time while you adjust" : "") + ". Drag it if today needs a different time.", hours: null, lat: null, lng: null, bestTime: "any", cost: 0, booking: "none" };
     d.cands.push(c); d.wish.push(c.id); d.place[c.id] = { day: di, start: toHM(rb.a) };
   }));
@@ -3268,7 +3313,7 @@ function guessCategory(name) {
   return "Experiences";
 }
 function closeSlot() { const p = $("#slotPop"); if (p) p.remove(); document.querySelectorAll(".slot-sel").forEach(x => x.remove()); }
-function openSlot(di, start, minutes, x, y, dragged) {
+function openSlot(di, start, minutes, x, y, dragged, split) {
   closeSlot();
   const date = draftDays()[di], end = start + minutes;
   const pop = document.createElement("form");
@@ -3276,7 +3321,7 @@ function openSlot(di, start, minutes, x, y, dragged) {
   pop.innerHTML = '<div class="sp-time" id="spTime">Day ' + (di + 1) + " · " + esc(fmtDay(date)) + " · " + fmtShort(start) + "–" + fmtShort(end) + "</div>" +
     '<label for="spName" class="hidden">What is it?</label><input id="spName" class="inp" autocomplete="off" placeholder="Add something, e.g. Lunch, Hike, Nap">' +
     '<div class="pf-chips">' + PLACEHOLDERS.map(([n], i) => '<button type="button" class="pill ph-add" data-sp="' + i + '">' + n + "</button>").join("") + "</div>" +
-    '<label class="sp-fill"><input type="checkbox" id="spFill" checked> Suggest a real place for this</label>' +
+    '<label class="sp-fill"><input type="checkbox" id="spFill" checked> Suggest a real place for this</label>' + whoPickerHTML(split ? split.who : null) +
     '<div class="row2"><button class="btn small primary" type="submit">Add</button><button class="lnk" type="button" id="spCancel">Cancel</button></div>';
   document.body.appendChild(pop);
   const w = pop.offsetWidth, h = pop.offsetHeight;
@@ -3294,6 +3339,7 @@ function openSlot(di, start, minutes, x, y, dragged) {
     name.focus();
   }));
   $("#spCancel").addEventListener("click", closeSlot);
+  bindWhoPicker(pop);
   pop.addEventListener("keydown", e => { if (e.key === "Escape") closeSlot(); });
   pop.addEventListener("submit", e => {
     e.preventDefault();
@@ -3301,6 +3347,11 @@ function openSlot(di, start, minutes, x, y, dragged) {
     const label = n[0].toUpperCase() + n.slice(1), preset = PLACEHOLDERS.find(([p]) => p.toLowerCase() === n.toLowerCase());
     const c = { id: uid(), name: label, category: preset ? preset[2] : guessCategory(n), minutes: mins, placeholder: true, fill: fill.checked, fixed: !fill.checked,
       neighborhood: "", why: fill.checked ? "We'll suggest a real place near your other stops." : "We'll plan around this.", hours: null, lat: null, lng: null, bestTime: "any", cost: 0, booking: "none" };
+    c.who = readWhoPicker(pop);
+    if (split && c.who.length) { // splitting off from a card: whoever isn't going to the new thing stays with the original
+      const from = candById(split.from), rest = draftNames().filter(n => !c.who.includes(n));
+      if (from && !cardWho(from).length && rest.length) from.who = rest;
+    }
     DRAFT.cands.push(c); DRAFT.wish.push(c.id); DRAFT.place[c.id] = { day: di, start: toHM(start) }; saveDraft();
     if (HOSTED && !preset) fetch("/api/answers", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ field: "placeholder", value: n }) }).catch(() => {});
     closeSlot(); render();
@@ -3551,14 +3602,32 @@ function commuteLabels(ids, gs) {
   }
   return out;
 }
+// Who a board card is for. Empty means everyone; with fewer than two names there's nothing to split.
+const draftNames = () => travelerNames(DRAFT && DRAFT.prefs);
+const cardWho = c => { const names = draftNames(); return names.length > 1 && c.who && c.who.length && !names.every(n => c.who.includes(n)) ? names.filter(n => c.who.includes(n)) : []; };
+function whoPickerHTML(sel) {
+  const names = draftNames(); if (names.length < 2) return "";
+  const on = sel && sel.length ? sel : names;
+  return '<div class="who-pick"><span class="qlabel">Who\'s going?</span><div class="filters" role="group">' +
+    names.map(n => '<button type="button" data-whopick="' + esc(n) + '" aria-pressed="' + on.includes(n) + '">' + avatars([n], names) + " " + esc(n) + "</button>").join("") + "</div></div>";
+}
+function bindWhoPicker(root) {
+  root.querySelectorAll("[data-whopick]").forEach(b => b.addEventListener("click", () => {
+    b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+    if (!root.querySelector('[data-whopick][aria-pressed="true"]')) b.setAttribute("aria-pressed", "true"); // someone has to go
+  }));
+}
+const readWhoPicker = root => { const names = draftNames(), sel = [...root.querySelectorAll('[data-whopick][aria-pressed="true"]')].map(b => b.dataset.whopick); return sel.length === names.length ? [] : sel; };
 function ancCard(c, di, gs, ln) {
   const pl = DRAFT.place[c.id], s = toMin(pl.start), iss = issuesAt(c, di, s);
   const h = Math.max(c.minutes / 60 * PXH, 34);
-  const pos = ln && ln.of > 1 ? "left:calc(5px + " + ln.lane + " * (100% - 10px) / " + ln.of + ");right:auto;width:calc((100% - 10px) / " + ln.of + " - 2px);" : "";
+  const pos = (ln && ln.of > 1 ? "left:calc(5px + " + ln.lane + " * (100% - 10px) / " + ln.of + ");right:auto;width:calc((100% - 10px) / " + ln.of + " - 2px);" : "") +
+    (cardWho(c).length ? "border-left-color:" + personColor(draftNames(), cardWho(c)[0]) + ";" : "");
   return '<div class="anc' + (iss.length ? " warn" : "") + (c.placeholder ? " ph" : "") + (c.routine ? " rtn" : "") + (c.reserved ? " rsv" : "") + '" data-drag="' + c.id + '" data-pin="' + c.id + '" tabindex="0" role="button" style="' + pos + "top:" + px(s - gs) + "px;height:" + h + 'px"' +
     ' aria-label="' + esc(c.name + ", " + fmtShort(s) + " to " + fmtShort(s + c.minutes) + (iss.length ? ". Warning: " + iss.join(". ") : "") + ". Press Enter to move.") + '">' +
-    "<b>" + esc(c.name) + '</b><span class="t">' + fmtShort(s) + "–" + fmtShort(s + c.minutes) + "</span>" + (iss.length ? '<span class="w">⚠ ' + esc(iss[0]) + "</span>" : "") +
-    '<button class="anc-x" type="button" data-unplace="' + c.id + '" aria-label="Move ' + esc(c.name) + ' back to the wish list">×</button></div>';
+    "<b>" + esc(c.name) + '</b><span class="t">' + fmtShort(s) + "–" + fmtShort(s + c.minutes) + "</span>" + (cardWho(c).length ? '<span class="anc-who">' + avatars(cardWho(c), draftNames()) + "</span>" : "") + (iss.length ? '<span class="w">⚠ ' + esc(iss[0]) + "</span>" : "") +
+    '<button class="anc-x" type="button" data-unplace="' + c.id + '" aria-label="Move ' + esc(c.name) + ' back to the wish list">×</button>' +
+    (draftNames().length > 1 && !c.reserved ? '<button class="anc-split" type="button" data-split="' + c.id + '" title="Add something for others at this time" aria-label="Add something for others at the same time as ' + esc(c.name) + '">+</button>' : "") + "</div>";
 }
 function trayItem(c) {
   const hs = hoursSummary(c);
@@ -3615,7 +3684,7 @@ function renderAnchors() {
         '<p class="note slot-tip">Tip: click any empty time on a day to add something, like lunch, a hike or nap time. Drag down to set how long.</p>' +
         (unplaced.length ? '<div class="row2"><button class="btn small" id="suggestBtn">Lay these out for me</button></div>' : "") + "</section>" +
       '<div class="board-scroll"><div class="board" style="grid-template-columns:52px repeat(' + n + ', minmax(150px, 1fr))"><div class="gutter"><div class="day-h"></div><div class="gutter-l" style="height:' + H + 'px">' + labels + "</div></div>" + cols + "</div></div>" +
-      '<div class="board-foot"><button class="btn primary" id="fillBtn"' + (placedIds.length ? "" : " disabled") + ">" + (d.tripId && savedTrips().some(t => t.id === d.tripId) ? "Update my itinerary →" : "Done planning: see my itinerary →") + "</button>" +
+      '<div class="board-foot"><button class="btn primary" id="fillBtn"' + (placedIds.length ? "" : " disabled") + ">" + (d.tripId && savedTrips().some(t => t.id === d.tripId) ? "Update itinerary →" : "See my itinerary →") + "</button>" +
         '<span class="note">' + (warnCount ? '<strong class="warn-t">⚠ ' + warnCount + (warnCount === 1 ? " pick has a timing warning" : " picks have timing warnings") + ".</strong> You can still go ahead. " : "") + "Next you choose how full your days should be: just your plans, plus meals, or plus a few nearby ideas.</span></div>" +
     '</section><aside class="rail">' + suggestionsPanel(d, isPlaced) +
       planMap("Your days on the map", pts, paths, d.home, days.map((_, i) => '<span style="--c:' + lineVar(i) + '"><i></i>Day ' + (i + 1) + "</span>").join("") + '<span><i style="background:var(--muted)"></i>Not placed</span>') +
@@ -3627,7 +3696,7 @@ function boardNextbar(d, placedIds, warnCount) {
   return '<div class="nextbar"><div class="wrap"><span><strong>' + picks + (picks === 1 ? " anchor" : " anchors") + "</strong> on your days" +
     (warnCount ? ' · <span class="warn-t">' + warnCount + " timing " + (warnCount === 1 ? "warning" : "warnings") + "</span>" : "") + "</span>" +
     '<span class="row2">' + (existing ? '<button class="btn" type="button" data-open-trip="' + esc(d.tripId) + '">View itinerary</button>' : "") +
-    '<button class="btn primary" type="button" data-fill' + (placedIds.length ? "" : " disabled") + ">" + (existing ? "Update my itinerary →" : "Done planning: see my itinerary →") + "</button></span></div></div>";
+    '<button class="btn primary" type="button" data-fill' + (placedIds.length ? "" : " disabled") + ">" + (existing ? "Update itinerary →" : "See my itinerary →") + "</button></span></div></div>";
 }
 
 let drag = null;
@@ -3646,6 +3715,12 @@ function bindAnchors() {
     el.addEventListener("pointercancel", () => { if (drag && drag.el === el) dragEnd(true); });
     el.addEventListener("keydown", e => { if (e.target === el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openPlace(el.dataset.drag); } });
   });
+  document.querySelectorAll("[data-split]").forEach(b => b.addEventListener("click", e => {
+    const c = candById(b.dataset.split), pl = c && DRAFT.place[c.id]; if (!pl) return;
+    const names = draftNames(), mine = cardWho(c), others = mine.length ? names.filter(n => !mine.includes(n)) : [];
+    const r = b.getBoundingClientRect();
+    openSlot(pl.day, toMin(pl.start), c.minutes, r.right, r.top, true, { from: c.id, who: others.length ? others : names });
+  }));
   document.querySelectorAll("[data-unplace]").forEach(b => b.addEventListener("click", () => { delete DRAFT.place[b.dataset.unplace]; saveDraft(); render(); }));
   const sb = $("#suggestBtn");
   if (sb) sb.addEventListener("click", () => {
@@ -3751,14 +3826,17 @@ function openPlace(id) {
   $("#drawerBody").innerHTML = '<form id="placeForm" class="place-form">' +
     '<label class="f" for="plDay">Day<select class="inp" id="plDay">' + days.map((dt, i) => '<option value="' + i + '"' + (pl && pl.day === i ? " selected" : "") + ">Day " + (i + 1) + " · " + esc(fmtDay(dt)) + "</option>").join("") + "</select></label>" +
     '<label class="f" for="plTime">Start time<input class="inp" type="time" step="900" id="plTime" value="' + (pl ? pl.start : pref) + '"></label>' +
+    whoPickerHTML(c.who) +
     '<p class="note warn-t" id="plWarn" role="status"></p>' +
-    '<div class="row2"><button class="btn primary" type="submit">' + (pl ? "Move" : "Place") + "</button>" + (pl ? '<button class="btn" type="button" id="plUnplace">Back to wish list</button>' : "") + '<button class="lnk" type="button" id="plRemove">Remove from wish list</button></div></form>' +
+    '<div class="row2"><button class="btn primary" type="submit">' + (pl ? "Save" : "Place") + "</button>" + (pl ? '<button class="btn" type="button" id="plUnplace">Back to wish list</button>' : "") + '<button class="lnk" type="button" id="plRemove">Remove from wish list</button></div></form>' +
     '<div class="pick-detail">' + pickDetailHTML(c) + "</div>" + (c.mapsUrl ? '<a class="lnk" href="' + esc(c.mapsUrl) + '" target="_blank" rel="noopener">Open in Google Maps</a>' : "");
   const chk = () => { const s = toMin($("#plTime").value); $("#plWarn").textContent = s == null ? "" : issuesAt(c, +$("#plDay").value, s).map(x => "⚠ " + x).join(" · "); };
   $("#plDay").addEventListener("change", chk); $("#plTime").addEventListener("input", chk); chk();
+  bindWhoPicker($("#placeForm"));
   $("#placeForm").addEventListener("submit", e => {
     e.preventDefault(); const s = toMin($("#plTime").value); if (s == null) return;
     if (!DRAFT.wish.includes(id)) DRAFT.wish.push(id);
+    c.who = readWhoPicker($("#placeForm"));
     DRAFT.place[id] = { day: +$("#plDay").value, start: toHM(Math.round(s / SNAP) * SNAP) }; saveDraft(); closeDrawer(); render();
   });
   const un = $("#plUnplace"); if (un) un.addEventListener("click", () => { delete DRAFT.place[id]; saveDraft(); closeDrawer(); render(); });
