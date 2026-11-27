@@ -2496,9 +2496,11 @@ function ensureLegs(t, adoptOnly) {
       const here = it.kind === "lodging" && hb ? hb : hasLL(it) ? it : null;
       if (!here) return;
       if (last && it.kind !== "lodging") {
-        const leg = it.transitFromPrev;
-        if (leg && !leg.from) leg.from = last.id; // first look: trust the leg Claude wrote
-        else if (!adoptOnly && (!leg || leg.from !== last.id)) it.transitFromPrev = Object.assign(estimateLeg(t, last, here), { from: last.id, est: true });
+        const leg = it.transitFromPrev, est = estimateLeg(t, last, here);
+        // Claude's own times are kept unless they're wildly off for the distance (e.g. left over from a stop that was removed).
+        const stale = leg && !leg.est && (Number(leg.minutes) > est.minutes * 1.8 + 8 || Number(leg.minutes) * 3 + 5 < est.minutes);
+        if (leg && !leg.from && !stale) leg.from = last.id; // first look: trust the leg Claude wrote
+        else if (stale || (!adoptOnly && (!leg || leg.from !== last.id))) it.transitFromPrev = Object.assign(est, { from: last.id, est: true });
       } else if (!last && it.transitFromPrev && !adoptOnly && it.kind !== "lodging") it.transitFromPrev = null; // first stop of the day
       last = here;
     });
