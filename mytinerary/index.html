@@ -2407,6 +2407,7 @@ function extraRules(p) {
   else if (rt.length) r.push("- DAILY ROUTINES, on home time (" + (p.from || PROFILE.homeCity || "home") + "): " + rt.map(x => x.what + (x.when ? " " + x.when : "") + (x.who ? " (" + x.who + ")" : "")).join("; ") +
     ". Put each one into every day as its own block (kind \"free\", category \"Routine\", a clear name like \"Nap time\" or \"Bedtime routine\", who set if it's one person) and plan around it: be back at the home base for naps and wrap up the evening in time for bedtime. If the destination is in a different time zone, keep routines on home time for the first two days (a 7pm Pacific bedtime is 9pm Central), shift them halfway on day 3, and use local time from day 4 on.");
   const names = travelerNames(p);
+  r.push("- Travel between stops goes ONLY in the next stop's transitFromPrev. Never add separate items like \"Drive to Fair Park\" or \"Head to the West End\". Transit items are only for flights, airport transfers, rental car pickup or return, and check-in or check-out.");
   if (names.length > 1) r.push("- Travelers: " + names.join(", ") + ". If some of them have separate plans (see ALREADY PLANNED and notes), split the group for that part of the day by giving those items a \"who\" list of names. Items with an empty who are for everyone. Whenever an item is only for some of them (a race only some run, a nap for one child, \"Jamie & Kelly: own lunch\"), its who MUST list just those people, and the others get their own items at the same time. Overlapping items are fine only when their who lists don't overlap.");
   r.push("- Never suggest a place that has closed, permanently or temporarily.");
   r.push("- cost = realistic US dollars per person including tax and tip. For meals, what a typical order there costs (coffee $6, casual lunch $18, nice dinner $70+).");
@@ -2720,8 +2721,14 @@ function estimateLeg(t, a, b) {
   return { mode, minutes: roadMinutes(dist, mode) };
 }
 function ensureLegs(t, adoptOnly) {
-  ensureLegsNow(t, adoptOnly); queueGoogleLegs(t);
+  // "Drive to Fair Park" as its own stop repeats the travel line under the next stop, so it goes; then legs are worked out fresh.
+  let dropped = 0;
+  t.days.forEach(d => { const n = d.items.length; d.items = d.items.filter(it => !travelStep(it)); dropped += n - d.items.length; });
+  ensureLegsNow(t, adoptOnly && !dropped); queueGoogleLegs(t);
 }
+const TRAVEL_RE_STEP = /^(drive|driving|walk|head|ride|rideshare|uber|lyft|taxi|cab|train|bus|metro|subway|transit|travel|take (a|the) \w+)\b[^,]*\bto\b/i;
+const travelStep = it => (it.kind === "transit" || it.kind === "free") && it.category !== "Your plan" && !it.routine && !fixedStep(it) &&
+  TRAVEL_RE_STEP.test(it.name || "") && !/\b(nap|rest|bed|sleep|change|pack|bags)\b/i.test(it.name || "");
 function ensureLegsNow(t, adoptOnly) {
   const hb = hasLL(t.homeBase) ? Object.assign({}, t.homeBase, { id: "home@" + t.homeBase.lat.toFixed(4) + "," + t.homeBase.lng.toFixed(4) }) : null; // a new address means new legs
   const names = travelerNames(t.prefs), keys = names.length > 1 ? names : ["_"];
