@@ -1890,7 +1890,7 @@ function stopCard(it, ii, d, nums, compact) {
   if (it.why) body += '<span class="why">' + esc(it.why) + "</span>";
   if (it.tip && !compact) body += '<span class="tip"><b>Pro tip</b>' + esc(it.tip) + "</span>";
   if (minor && it.booked) body += '<div class="foot"><span class="pill booked">Booked</span></div>';
-  if (it.kind === "free" && !S.readOnly) body += '<div class="foot">' + (true ? '<button class="lnk" data-split-stop="' + ii + '">' + (forEveryone(it, travelerNames(S.trip.prefs)) ? "Split" : "Who's going") + "</button>" : "") + '<button class="lnk" data-move="' + ii + '">Move</button><button class="lnk" data-remove="' + ii + '">Remove</button></div>';
+  if (it.kind === "free" && !S.readOnly) body += '<div class="foot">' + ('<button class="lnk" data-split-stop="' + ii + '">' + (forEveryone(it, travelerNames(S.trip.prefs)) ? "Split" : "Who's going") + "</button>") + '<button class="lnk" data-move="' + ii + '">Edit time/day</button><button class="lnk" data-remove="' + ii + '">Remove</button></div>';
   if (!minor && it.kind !== "free") {
     const foot = [];
     if (it.anchor) foot.push('<span class="pill pick">Your pick</span>');
@@ -1906,7 +1906,7 @@ function stopCard(it, ii, d, nums, compact) {
     foot.push('<a class="lnk" href="' + (it.mapsUrl ? esc(it.mapsUrl) : "https://www.google.com/maps/search/?api=1&query=" + q) + '" target="_blank" rel="noopener">Map</a>');
     if (!compact) foot.push('<a class="lnk" href="' + gcalLink(it, d) + '" target="_blank" rel="noopener">Add to calendar</a>');
     if (!S.readOnly) foot.push('<button class="lnk" data-split-stop="' + ii + '">' + (forEveryone(it, travelerNames(S.trip.prefs)) ? "Split" : "Who's going") + "</button>");
-    if (!S.readOnly) { foot.push('<button class="lnk" data-move="' + ii + '">Move</button>'); foot.push('<button class="lnk" data-swap="' + ii + '">Change</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
+    if (!S.readOnly) { foot.push('<button class="lnk" data-move="' + ii + '">Edit time/day</button>'); foot.push('<button class="lnk" data-swap="' + ii + '">Change</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
     body += '<div class="foot">' + foot.join("") + "</div>";
   }
   const openable = !minor && it.kind !== "free";
@@ -2626,12 +2626,12 @@ function openSplitStop(di, ii) {
 function openMove(di, ii) {
   const t = S.trip, it = t.days[di].items[ii]; if (!it) return;
   const len = Math.max(15, (toMin(it.end) ?? (toMin(it.time) + 60)) - toMin(it.time));
-  openDrawer("Move · Day " + (di + 1), it.name, fmtTime(it.time) + (it.end ? " to " + fmtTime(it.end) : ""));
+  openDrawer("Edit time or day · Day " + (di + 1), it.name, fmtTime(it.time) + (it.end ? " to " + fmtTime(it.end) : ""));
   $("#drawerBody").innerHTML = '<form id="moveForm" class="place-form">' +
     '<label class="f" for="mvDay">Day<select class="inp" id="mvDay">' + t.days.map((d, i) => '<option value="' + i + '"' + (i === di ? " selected" : "") + ">Day " + (i + 1) + " · " + esc(fmtDay(d.date)) + "</option>").join("") + "</select></label>" +
     '<div class="row"><label class="f" for="mvStart">Starts<input class="inp" type="time" step="300" id="mvStart" value="' + esc(it.time) + '"></label>' +
     '<label class="f" for="mvEnd">Ends<input class="inp" type="time" step="300" id="mvEnd" value="' + esc(it.end || toHM(toMin(it.time) + len)) + '"></label></div>' +
-    '<p class="note" id="mvNote"></p><div class="row2"><button class="btn primary" type="submit">Move</button><button class="lnk" type="button" id="mvCancel">Cancel</button></div></form>';
+    '<p class="note" id="mvNote"></p><div class="row2"><button class="btn primary" type="submit">Save</button><button class="lnk" type="button" id="mvCancel">Cancel</button></div></form>';
   let endTouched = false;
   const start = $("#mvStart"), end = $("#mvEnd");
   const clash = () => {
