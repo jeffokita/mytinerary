@@ -1511,6 +1511,8 @@ const MEALS = ["breakfast", "brunch", "lunch", "dinner", "drinks", "coffee", "sn
 function isMeal(it) { return it.kind === "meal" || MEALS.includes(String(it.category || "").toLowerCase()); }
 function plotted(it) { return Number.isFinite(it.lat) && Number.isFinite(it.lng) && it.kind !== "transit" && !isAirport(it); }
 // Flying in or out: the airport gets its own big pin on that day's map.
+// Fixed travel steps: flights, airport runs, check-in/out. Other transit items ("Drive to Fair Park") are ordinary and removable.
+const fixedStep = it => it.kind === "lodging" || (it.kind === "transit" && (flightish(it) || it.booked || /check.?(in|out)|rental|pick.?up|drop.?off|bags/i.test((it.category || "") + " " + (it.name || ""))));
 const flightish = it => isAirport(it) || /^flight/i.test(it.category || "") || /\bflights?\b|✈/i.test(it.name || "");
 const isAirport = it => /^(depart|arrive|flight)/i.test(it.category || "") && /airport|flight|fly|\b[A-Z]{3}\b/.test((it.name || "") + " " + (it.neighborhood || ""));
 const airportLL = it => hasLL(it.airport) ? it.airport : (hasLL(it) ? it : null);
@@ -1916,6 +1918,7 @@ function stopCard(it, ii, d, nums, compact) {
   if (it.why) body += '<span class="why">' + esc(it.why) + "</span>";
   if (it.tip && !compact) body += '<span class="tip"><b>Pro tip</b>' + esc(it.tip) + "</span>";
   if (minor && it.booked) body += '<div class="foot"><span class="pill booked">Booked</span></div>';
+  else if (minor && !fixedStep(it) && !S.readOnly && ii != null) body += '<div class="foot"><button class="lnk" data-move="' + ii + '">Edit time/day</button><button class="lnk" data-remove="' + ii + '">Remove</button></div>';
   if (it.kind === "free" && !S.readOnly) body += '<div class="foot">' + ('<button class="lnk" data-split-stop="' + ii + '">' + (forEveryone(it, travelerNames(S.trip.prefs)) ? "Split" : "Who's going") + "</button>") + '<button class="lnk" data-move="' + ii + '">Edit time/day</button><button class="lnk" data-remove="' + ii + '">Remove</button></div>';
   if (!minor && it.kind !== "free") {
     const foot = [];
@@ -2933,7 +2936,8 @@ async function reworkDay() {
       if (toMin(u.end) != null) it.end = u.end;
       const w = cleanWho(u.who); if (w) it.who = w.length === names.length ? [] : w;
     });
-    const gone = new Set(r.remove.map(x => Number(x && typeof x === "object" ? x.index : x)).map(i => d.items[i]).filter(it => it && it.kind !== "transit" && it.kind !== "lodging"));
+    const asks = r.remove.map(x => Number(x && typeof x === "object" ? x.index : x)).map(i => d.items[i]).filter(Boolean);
+    const gone = new Set(asks.filter(it => !fixedStep(it) || /flight|check|airport|rental|hotel|stay/i.test(ask))), kept = asks.filter(it => !gone.has(it));
     d.items = d.items.filter(it => !gone.has(it));
     // A place already on another day: if they asked for it here, move it (keeping its Google details); otherwise skip the repeat.
     const askWords = new Set(placeKey(ask).split(" ").filter(w => w.length > 3)), moved = [];
@@ -2954,8 +2958,11 @@ async function reworkDay() {
     if (r.title) d.title = String(r.title); if (r.pitch) d.pitch = String(r.pitch);
     markEdited(t); saveTrip(t); render();
     if (PLACES && r.add.length) enrichTrip(t);
+    // Describe what really changed, not just what Claude said it did.
+    const did = [gone.size ? "Removed " + [...gone].map(x => x.name).join(", ") : "", r.add.length - moved.length > 0 ? "added " + (r.add.length - moved.length) : "", r.update.length ? "retimed " + r.update.length : ""].filter(Boolean).join(", ");
     toast(moved.length ? moved.map(m => "Moved " + m.name + " here from " + fmtDay(m.day.date) + ". That day has a gap now: rework it to fill it, or leave it free.").join(" ")
-      : r.summary ? String(r.summary).slice(0, 160) : "Day " + (di + 1) + " updated");
+      : kept.length ? "Kept " + kept.map(x => x.name).join(", ") + " (flights and check-ins stay unless you ask about them)." + (did ? " " + did.replace(/^./, c => c.toUpperCase()) + "." : "")
+      : did ? did.replace(/^./, c => c.toUpperCase()) + "." : "Nothing changed. Try saying it another way.");
   } catch (e) {
     if (e && e.code === "not_granted") sampleBlocked = true;
     if (!(e && e.code)) console.error("Rework failed", e);
