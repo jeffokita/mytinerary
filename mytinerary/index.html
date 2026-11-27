@@ -651,6 +651,7 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .card.compact { margin: 0; padding: 10px 12px; gap: 4px; }
 .card.compact .name { font-size: 17px; }
 .card.compact .why { font-size: 14px; }
+.tight-leg { color: var(--warn); font-weight: 600; }
 .merge-row, .meanwhile { display: grid; grid-template-columns: 88px 40px minmax(0, 1fr); }
 .merge-row .txt, .meanwhile .txt { font-family: var(--mono); font-size: 12px; color: var(--muted); padding: 8px 0; }
 .merge-row .txt { color: var(--ink); font-weight: 600; }
@@ -842,7 +843,8 @@ async function replaceItems(t, bad, why) {
   const live = reps.filter(Boolean), res = await placesMatch(t.destination, live);
   if (res) live.forEach((r, i) => applyPlace(r, res[i]));
   let n = 0;
-  reps.forEach((r, i) => { if (r && !closedOnGoogle(r)) { t.days[bad[i].di].items[bad[i].ii] = r; n++; } });
+  reps.forEach((r, i) => { if (r && !closedOnGoogle(r)) { r.transitFromPrev = null; t.days[bad[i].di].items[bad[i].ii] = r; n++; } });
+  if (n) ensureLegs(t);
   return n;
 }
 async function replaceClosed(t) {
@@ -1561,6 +1563,7 @@ function normalize(t) {
   hb.routine = Array.isArray(hb.routine) ? hb.routine : [];
   t.watchouts = Array.isArray(t.watchouts) ? t.watchouts : [];
   t.booked = t.booked || {};
+  ensureLegs(t, true);
   return t;
 }
 function normItem(it) {
@@ -1786,11 +1789,17 @@ function stopCard(it, ii, d, nums, compact) {
   const openable = !minor && it.kind !== "free";
   return '<div class="' + cls + (openable ? " open" : "") + '"' + (openable ? ' data-toggle="' + it.id + '" aria-expanded="true"' : "") + ">" + (openable ? '<button class="chev c-close" type="button" data-toggle-btn="' + it.id + '" aria-label="Show less">▴</button>' : "") + body + "</div>";
 }
-const legHTML = it => it.transitFromPrev ? esc(MODE[it.transitFromPrev.mode] || it.transitFromPrev.mode || "Travel") + " · " + Math.round(Number(it.transitFromPrev.minutes)) + " min" : "";
+function legHTML(it, prev) {
+  const leg = it.transitFromPrev; if (!leg) return "";
+  const min = Math.round(Number(leg.minutes)), gap = prev && prev.end && it.time ? toMin(it.time) - toMin(prev.end) : null;
+  return esc(MODE[leg.mode] || leg.mode || "Travel") + " · " + (leg.est ? "~" : "") + min + " min" +
+    (gap != null && gap >= 0 && gap < min ? ' <span class="tight-leg">· tight, only ' + gap + " min between</span>" : "");
+}
 function stopRow(it, ii, d, nums, first) {
+  const prev = d.items.slice(0, ii).reverse().find(x => x.end && x.kind !== "free");
   const minor = it.kind === "transit" || it.kind === "lodging", num = nums[it.id];
   const node = it.kind === "lodging" ? '<span class="node minor home"></span>' : minor ? '<span class="node minor"></span>' : '<span class="node">' + (num || "") + "</span>";
-  return (it.transitFromPrev && !first ? '<div class="leg"><span></span><span class="rail-col"></span><span class="txt">' + legHTML(it) + "</span></div>" : "") +
+  return (it.transitFromPrev && !first ? '<div class="leg"><span></span><span class="rail-col"></span><span class="txt">' + legHTML(it, prev) + "</span></div>" : "") +
     '<div class="stop" data-id="' + it.id + '"><span class="time">' + esc(fmtTime(it.time)) + (it.end ? "<small>to " + esc(fmtTime(it.end)) + "</small>" : "") + "</span>" +
     '<span class="rail-col">' + node + "</span>" + stopCard(it, ii, d, nums) + "</div>";
 }
@@ -1815,7 +1824,7 @@ function renderSplit(xs, next, d, nums, names) {
   return '<div class="split-row"><span class="time">' + esc(fmtTime(toHM(t0))) + '<small>splitting up</small></span><span class="rail-col"><span class="node fork" aria-hidden="true">⑂</span></span>' +
     '<div class="tracks" style="--n:' + tracks.length + '">' + tracks.map(t => '<section class="track" style="--p:' + personColor(names, t.who[0]) + '" aria-label="' + esc(t.who.join(" and ")) + '">' +
       '<div class="track-h">' + avatars(t.who, names) + "<b>" + esc(t.who.join(" & ")) + "</b></div>" +
-      (t.xs.length ? t.xs.map((x, k) => '<div class="tstop" data-id="' + x.it.id + '">' + (k && x.it.transitFromPrev ? '<span class="t-leg">' + legHTML(x.it) + "</span>" : "") +
+      (t.xs.length ? t.xs.map((x, k) => '<div class="tstop" data-id="' + x.it.id + '">' + (k && x.it.transitFromPrev ? '<span class="t-leg">' + legHTML(x.it, t.xs[k - 1].it) + "</span>" : "") +
         '<span class="t-time">' + esc(fmtTime(x.it.time)) + (x.it.end ? "–" + esc(fmtTime(x.it.end)) : "") + "</span>" + stopCard(x.it, x.ii, d, nums, true) + "</div>").join("")
         : '<p class="note">No plans set: free time, or join one of the others.</p>') + "</section>").join("") + "</div></div>" +
     '<div class="merge-row"><span></span><span class="rail-col"><span class="node merge" aria-hidden="true"></span></span><span class="txt">' + meet + "</span></div>";
@@ -2320,6 +2329,7 @@ async function planDay(t, di, signal) {
     return keep;
   });
   t.days[di] = { date: t.days[di].date, title: nd.title || t.days[di].title, pitch: nd.pitch || "", items: nd.items };
+  ensureLegs(t, true);
 }
 async function retryDay(di) {
   const t = S.trip; if (!t || !sampleFn) return;
@@ -2443,7 +2453,39 @@ function openMove(di, ii) {
   clash();
 }
 // Edits after confirming are flagged so the trip can be re-confirmed.
-function markEdited(t) { if (t.status === "confirmed") t.editedAfterConfirm = true; }
+function markEdited(t) { if (t.status === "confirmed") t.editedAfterConfirm = true; ensureLegs(t); }
+// Each stop's travel leg remembers which stop it starts from. When the order changes (move, remove, add, swap,
+// a new hotel), legs whose starting point changed are re-estimated from distance; untouched legs keep Claude's times.
+function legMode(t, dist) {
+  if (dist < 1.2) return "walk";
+  const g = (t.prefs && t.prefs.extra && t.prefs.extra.getaround) || "";
+  if (g) return /transit/i.test(g) ? "transit" : /walk|rideshare/i.test(g) ? "rideshare" : "drive";
+  // No stated preference: go with how the rest of this trip gets around.
+  const counts = {};
+  t.days.forEach(d => d.items.forEach(it => { const m = it.transitFromPrev && it.transitFromPrev.mode; if (m && m !== "walk") counts[m] = (counts[m] || 0) + 1; }));
+  return Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || "drive";
+}
+function estimateLeg(t, a, b) {
+  const dist = km(a, b) * 1.3, mode = legMode(t, dist);
+  const min = mode === "walk" ? Math.max(3, Math.round(dist * 12)) : Math.round(dist / (mode === "transit" ? 18 : 32) * 60 + (mode === "transit" ? 10 : mode === "drive" ? 8 : 5));
+  return { mode, minutes: min };
+}
+function ensureLegs(t, adoptOnly) {
+  const hb = hasLL(t.homeBase) ? Object.assign({}, t.homeBase, { id: "home@" + t.homeBase.lat.toFixed(4) + "," + t.homeBase.lng.toFixed(4) }) : null; // a new address means new legs
+  t.days.forEach(d => {
+    let last = null; // where you're coming from: the last stop with a location (the hotel counts after check-in)
+    d.items.forEach(it => {
+      const here = it.kind === "lodging" && hb ? hb : hasLL(it) ? it : null;
+      if (!here) return;
+      if (last && it.kind !== "lodging") {
+        const leg = it.transitFromPrev;
+        if (leg && !leg.from) leg.from = last.id; // first look: trust the leg Claude wrote
+        else if (!adoptOnly && (!leg || leg.from !== last.id)) it.transitFromPrev = Object.assign(estimateLeg(t, last, here), { from: last.id, est: true });
+      } else if (!last && it.transitFromPrev && !adoptOnly && it.kind !== "lodging") it.transitFromPrev = null; // first stop of the day
+      last = here;
+    });
+  });
+}
 // "8:30pm start bedtime routine" -> { time: "20:30", name: "Start bedtime routine" }
 function parseQuick(text) {
   const m = /(?:^|\s)(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.|a|p)?(?=\s|$)/i.exec(text);
