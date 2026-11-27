@@ -627,6 +627,8 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .railtabs .sug-tabs { margin: -4px 0 0; }
 .rail-body { display: grid; gap: 14px; }
 .rail-body .panel { border: 0; padding: 0; background: none; border-radius: 0; }
+.stay-addr { display: block; color: var(--muted); margin: 2px 0; }
+.stale-note { margin: 10px 0 0; color: var(--warn); }
 .stay-line { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: baseline; font-size: 14px; border-top: 1px solid var(--rule); padding-top: 10px; }
 .stay-line small { display: block; font-size: 12px; }
 .headsup summary { cursor: pointer; font-size: 13px; font-weight: 600; }
@@ -1693,6 +1695,15 @@ function renderTrip() {
       "</aside>" +
     "</div></div>";
 }
+async function refreshNearby() {
+  const t = S.trip, hb = t.homeBase; if (!sampleFn) { toast(noClaudeCopy("Finding nearby spots")); return; }
+  const b = $("#refreshNearby"); if (b) { b.disabled = true; b.textContent = "Looking…"; }
+  const r = await sampleFn.json("You help a Mytinerary traveler settle in. They're staying at " + hb.name + (hb.address ? ", " + hb.address : "") + " in " + t.destination + ".\n\n" + profileSummary(PROFILE) +
+    '\n\nSuggest 3 real go-to spots within a short walk or drive of that address: a coffee place, a late bite or easy fallback dinner, and one practical stop (grocery, pharmacy or market). Reply with ONLY JSON: {"routine":[{"role":"Coffee","name":"","note":"one short line, including how far it is"}]}', { modelTier: "quick", cache: false }).catch(() => null);
+  if (r && Array.isArray(r.routine) && r.routine.length) { hb.routine = r.routine.slice(0, 3).map(x => ({ role: String(x.role || ""), name: String(x.name || ""), note: String(x.note || "") })); hb.routineStale = false; saveTrip(t); toast("Updated your go-to spots near " + hb.name + "."); }
+  else toast("Couldn't find nearby spots just now. Try again in a minute.");
+  render();
+}
 // One line under the map: where you're staying, with a quick way to fix it.
 function stayLine(t) {
   const hb = t.homeBase; if (!hb || !hb.name) return "";
@@ -1715,8 +1726,12 @@ function openStayEdit() {
     $("#stNote").textContent = PLACES ? "Finding it on Google Maps…" : "";
     let g = null; const prevName = hb.name || "";
     if (PLACES) { const res = await placesMatch(t.destination, [{ name: name || address, address }]); g = res && res[0]; }
+    const before = hasLL(hb) ? { lat: hb.lat, lng: hb.lng } : null, renamed = (name || hb.name) !== prevName;
     Object.assign(hb, { name: name || (g && g.name) || hb.name, address: (g && g.address) || address || hb.address, booked: true });
-    if (g) { hb.lat = g.lat; hb.lng = g.lng; hb.mapsUrl = g.mapsUrl; }
+    if (g) { hb.lat = g.lat; hb.lng = g.lng; hb.mapsUrl = g.mapsUrl; } else if (address) hb.mapsUrl = "";
+    if (renamed) { hb.why = ""; hb.alternatives = []; hb.nightly = 0; hb.type = ""; } // those described the old place
+    if (hb.routine && hb.routine.length && (renamed || (before && hasLL(hb) && km(before, hb) > 0.8))) hb.routineStale = true;
+    if (g || renamed) hb.neighborhood = "";
     t.homeBase = hb;
     t.days.forEach(d => d.items.forEach(it => {
       if (it.kind !== "lodging") return;
@@ -1933,8 +1948,10 @@ function renderHome(t) {
   const rooms = Math.ceil(t.travelers / 2);
   return '<section class="panel"><h3>Where you\'re staying <small>' + esc(hb.type || "") + (hb.nightly ? " · ~" + money(hb.nightly) + "/night" : "") + (S.readOnly || t.example ? "" : ' · <button class="lnk" type="button" data-editstay>Edit</button>') + "</small></h3>" +
     '<div class="home-name">' + esc(hb.name) + "</div>" +
-    '<div class="small muted">' + esc(hb.neighborhood || "") + (rooms > 1 ? " · " + rooms + " rooms" : "") + "</div>" +
+    (hb.address ? '<a class="small stay-addr" href="' + esc(hb.mapsUrl || "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(hb.address)) + '" target="_blank" rel="noopener">' + esc(hb.address) + "</a>" : "") +
+    '<div class="small muted">' + esc(hb.neighborhood || "") + (hb.neighborhood && rooms > 1 ? " · " : "") + (rooms > 1 ? rooms + " rooms" : "") + "</div>" +
     (hb.why ? '<p class="small" style="margin:8px 0 0">' + esc(hb.why) + "</p>" : "") +
+    (hb.routineStale && !S.readOnly ? '<p class="note stale-note">These nearby spots were picked for your previous address. <button class="lnk" type="button" id="refreshNearby">Find spots near here</button></p>' : "") +
     (hb.routine.length ? '<div class="routine"><span class="eyebrow">Your routine around here</span>' + hb.routine.map(r => "<div><b>" + esc(r.role) + "</b><span><strong>" + esc(r.name) + "</strong>" + (r.note ? '<br><span class="muted">' + esc(r.note) + "</span>" : "") + "</span></div>").join("") + "</div>" : "") +
     (hb.alternatives.length ? '<details class="alts"><summary>' + hb.alternatives.length + " similar options</summary><ul>" + hb.alternatives.map(a => "<li><strong>" + esc(a.name) + "</strong>" + (a.nightly ? " · ~" + money(a.nightly) : "") + (a.why ? " · " + esc(a.why) : "") + "</li>").join("") + "</ul></details>" : "") +
     "</section>";
@@ -1994,6 +2011,7 @@ function renderBudget(t) {
 function bindTrip() {
   document.querySelectorAll("[data-railtab]").forEach(b => b.addEventListener("click", () => { S.railTab = b.dataset.railtab; render(); }));
   document.querySelectorAll("[data-editstay]").forEach(b => b.addEventListener("click", openStayEdit));
+  const rn = $("#refreshNearby"); if (rn) rn.addEventListener("click", refreshNearby);
   const edb = $("#editDayBtn"); if (edb) edb.addEventListener("click", () => { S.editDay = !S.editDay; render(); if (S.editDay) { const q = $("#quickInput"); if (q) q.focus(); } });
   const tm = $("#tripMore"); if (tm) tm.addEventListener("click", e => { e.stopPropagation(); const open = $("#tripMoreMenu").classList.toggle("open"); tm.setAttribute("aria-expanded", String(open)); });
   const ep2 = $("#editPlan"); if (ep2) ep2.addEventListener("click", () => { location.hash = "anchors"; });
@@ -2919,7 +2937,8 @@ function mockSample() {
     } else if (prompt.startsWith("You are the trip designer")) {
       out = JSON.parse(JSON.stringify(EXAMPLE)); delete out.example; out.id = undefined; out.destination = (/"destination":"([^"]*)"/.exec(prompt) || [])[1] || "San Francisco";
       out.homeBase.booked = true; out.dayThemes = EXAMPLE.days.map(d => d.title); delete out.days;
-    } else if (prompt.startsWith("You fix a Mytinerary itinerary")) {
+    } else if (prompt.startsWith("You help a Mytinerary traveler settle in")) out = { routine: [{ role: "Coffee", name: "Avoca Coffee", note: "4-minute walk" }, { role: "Late bite", name: "Fixture Kitchen", note: "6-minute walk" }, { role: "Practical", name: "Central Market", note: "5-minute drive" }] };
+    else if (prompt.startsWith("You fix a Mytinerary itinerary")) {
       const n = (prompt.match(/^\d+\. Day /gm) || []).length;
       out = Array.from({ length: n }, (_, k) => ({ time: "12:00", kind: "activity", category: "Museum", name: "Replacement stop " + (k + 1), neighborhood: "Downtown", lat: 37.79, lng: -122.4, why: "Not used elsewhere in the trip." }));
     } else if (prompt.startsWith("You are the travel-profile interviewer")) out = mockProfileTurn(prompt);
