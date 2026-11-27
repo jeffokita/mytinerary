@@ -692,7 +692,7 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .gpin.on { background: var(--c); color: var(--on-c); }
 .gpin.home { background: var(--ink); color: var(--paper); border-color: var(--ink); border-radius: 6px; font-size: 14px; }
 .gpin.hl { transform: scale(1.35); }
-.gpin.air { height: 34px; padding: 0 12px; background: var(--ink); color: var(--paper); border-color: var(--paper); border-radius: 8px; font: 700 13px var(--body); white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,.45); z-index: 2; }
+.gpin.air { width: 32px; height: 32px; padding: 0; background: var(--ink); color: var(--paper); border-color: var(--paper); border-radius: 50%; font: 700 16px var(--body); box-shadow: 0 2px 8px rgba(0,0,0,.4); }
 
 /* Travel profile chat */
 .prof { padding: 32px 0 80px; }
@@ -2046,10 +2046,12 @@ function renderMap(t) {
     const d = t.days[S.day], nums = stopNumbers(d), col = lineVar(S.day);
     const ps = d.items.filter(it => plotted(it) && it.kind !== "lodging" && !(S.who !== "all" && it.who && it.who.length && !it.who.includes(S.who)));
     const hb = t.homeBase;
-    const air = d.items.filter(it => isAirport(it) && airportLL(it)).map(it => {
+    // Only the airport at this end: the one back home would zoom the map out to the whole country. One pin per airport.
+    const near = ll => !hasLL(hb) || km(ll, hb) < 150, seenAir = new Set();
+    const air = d.items.filter(it => isAirport(it) && airportLL(it) && near(airportLL(it))).map(it => {
       const ll = airportLL(it), out = /^depart$/i.test(it.category || ""), code = airportCode(it) || (it.airport && it.airport.name) || "Airport";
-      return { id: it.id, lat: ll.lat, lng: ll.lng, airport: true, label: "✈ " + (out ? "Fly out" : "Land") + " · " + code + (it.time ? " · " + fmtTime(out ? flightTime(it) : it.time) : ""), title: it.name, out };
-    });
+      return { id: it.id, lat: ll.lat, lng: ll.lng, airport: true, label: "✈", title: (out ? "Fly out" : "Land") + " · " + code + (it.time ? " · " + fmtTime(out ? flightTime(it) : it.time) : ""), out };
+    }).filter(a => { const k = a.lat.toFixed(2) + "," + a.lng.toFixed(2); if (seenAir.has(k)) return false; seenAir.add(k); return true; });
     const path = air.filter(a => !a.out).concat(ps, air.filter(a => a.out));
     return mapSlotHTML("Day " + (S.day + 1) + " map <small>numbers match the stops</small>",
       '<span style="--c:' + col + '"><i></i>Day ' + (S.day + 1) + '</span><span><i style="background:var(--ink);width:10px;height:10px"></i>' + esc(hb.name || "Home base") + "</span>" + (air.length ? "<span>✈ Airport</span>" : ""),
