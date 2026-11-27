@@ -655,7 +655,11 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .who-bar button { display: inline-flex; align-items: center; gap: 4px; }
 .split-row { display: grid; grid-template-columns: 88px 40px minmax(0, 1fr); align-items: start; }
 .split-row .time { font-family: var(--mono); font-size: 13px; padding-top: 18px; text-align: right; padding-right: 8px; }
-.split-row .time small { display: block; color: var(--muted); font-size: 11px; }
+.split-h { margin: 14px 0 0; font-family: var(--mono); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.t-free { font-family: var(--mono); font-size: 11px; color: var(--muted); font-style: italic; }
+.t-out { border-top: 1px dashed var(--rule); padding-top: 8px; }
+.t-meanwhile { margin: 0; padding-top: 8px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.merge-row .time { font-family: var(--mono); font-size: 13px; text-align: right; padding: 8px 8px 0 0; }
 .node.fork, .node.merge { border-radius: 8px; font-size: 14px; }
 .node.merge { width: 16px; height: 16px; margin-top: 8px; border-width: 3px; }
 .tracks { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 10px; margin: 8px 0; }
@@ -1482,6 +1486,7 @@ function store(k, v) {
     if (k === "mytin.trips" || SYNC_KEYS[k]) syncTouch();
   } catch (e) { return null; }
 }
+const fmtDur = m => m < 60 ? m + " min" : Math.floor(m / 60) + " hr" + (m % 60 >= 15 ? " " + (m % 60) + " min" : "");
 const MODE = { walk: "Walk", transit: "Transit", rideshare: "Rideshare", drive: "Drive", ferry: "Ferry", train: "Train", bike: "Bike" };
 const BOOK = { now: "Book now", daybefore: "Book day before", walkin: "Walk in", none: "" };
 const MEALS = ["breakfast", "brunch", "lunch", "dinner", "drinks", "coffee", "snack", "dessert"];
@@ -1669,7 +1674,7 @@ function renderTrip() {
     const w = t.weather && t.weather.days[dd.date], [icon] = w ? wxLabel(w.code) : [""];
     return '<button class="dpill" role="tab" data-day="' + i + '" aria-selected="' + (i === S.day) + '" style="--c:' + lineVar(i) + '" title="' + esc(dd.title || "") + '">' +
       '<span class="bullet">' + (i + 1) + "</span><span><b>" + esc(fmtDay(dd.date)) + "</b><small>" +
-      (dd.pending ? "planning…" : dd.failed ? "needs a retry" : (w ? icon + " " + w.hi + "°" : "") + (split(dd) ? (w ? " · " : "") + "⑂ split" : "")) + "</small></span></button>";
+      (dd.pending ? "planning…" : dd.failed ? "needs a retry" : (w ? icon + " " + w.hi + "°" : "") + (split(dd) ? (w ? " · " : "") + "⑂ splits up" : "")) + "</small></span></button>";
   }).join("");
   const status = !S.readOnly && !t.example ? (t.status === "confirmed"
     ? '<span class="pill booked">✓ Confirmed</span>' + (t.editedAfterConfirm ? '<button class="btn small" id="confirmTrip">Confirm changes</button>' : "")
@@ -1702,7 +1707,8 @@ function renderTrip() {
           '<form class="rework" id="quickAdd"><label for="quickInput" class="hidden">Add to this day</label><input id="quickInput" placeholder="Add something, e.g. 8:30pm start bedtime routine" autocomplete="off"><button class="btn small" type="submit">Add</button></form>' +
           '<form class="rework" id="reworkForm"><label for="reworkInput" class="hidden">Change this day</label><input id="reworkInput" placeholder="Rework the day, e.g. rainy day, more indoors, sleep in" autocomplete="off"><button class="btn small" type="submit" id="reworkBtn">Rework day</button></form>' +
           '<div class="row2">' + routeLink(d) + '<span class="note" id="reworkNote"></span></div></div>' : '<span class="note" id="reworkNote"></span>') +
-        (names.length > 1 ? '<div class="who-bar"><span class="pf-k">Showing</span><div class="filters" role="group">' + ["all"].concat(names).map(n => '<button type="button" data-who="' + esc(n) + '" aria-pressed="' + (S.who === n) + '">' + (n === "all" ? avatars(names, names) + " Everyone" : avatars([n], names) + " " + esc(n)) + "</button>").join("") + "</div></div>" : "") +
+        (names.length > 1 ? '<div class="who-bar"><span class="pf-k">Showing</span><div class="filters" role="group">' + ["all"].concat(names).map(n => '<button type="button" data-who="' + esc(n) + '" aria-pressed="' + (S.who === n) + '">' + (n === "all" ? avatars(names, names) + " Everyone" : avatars([n], names) + " " + esc(n)) + "</button>").join("") + "</div>" +
+          (!S.readOnly && !d.pending && !split(d) ? '<span class="note split-hint">Splitting up? Open a stop and tap <b>Split</b>.</span>' : "") + "</div>" : "") +
         (d.pending ? '<div class="day-pending" role="status"><p class="gen-status">Planning day ' + (S.day + 1) + " around your picks…</p>" + '<div class="skel-rows"><div></div><div></div><div></div><div></div></div></div>'
           : d.failed ? '<div class="day-pending"><p class="err">This day didn\'t come back.</p><button class="btn" type="button" data-retry-day="' + S.day + '">Try again</button></div>'
           : renderTimeline(d, S.day)) +
@@ -1867,7 +1873,7 @@ function stopCard(it, ii, d, nums, compact) {
   if (it.why) body += '<span class="why">' + esc(it.why) + "</span>";
   if (it.tip && !compact) body += '<span class="tip"><b>Pro tip</b>' + esc(it.tip) + "</span>";
   if (minor && it.booked) body += '<div class="foot"><span class="pill booked">Booked</span></div>';
-  if (it.kind === "free" && !S.readOnly) body += '<div class="foot"><button class="lnk" data-move="' + ii + '">Move</button><button class="lnk" data-remove="' + ii + '">Remove</button></div>';
+  if (it.kind === "free" && !S.readOnly) body += '<div class="foot">' + (travelerNames(S.trip.prefs).length > 1 ? '<button class="lnk" data-split-stop="' + ii + '">' + (forEveryone(it, travelerNames(S.trip.prefs)) ? "Split" : "Who's going") + "</button>" : "") + '<button class="lnk" data-move="' + ii + '">Move</button><button class="lnk" data-remove="' + ii + '">Remove</button></div>';
   if (!minor && it.kind !== "free") {
     const foot = [];
     if (it.anchor) foot.push('<span class="pill pick">Your pick</span>');
@@ -1882,6 +1888,7 @@ function stopCard(it, ii, d, nums, compact) {
     const q = encodeURIComponent((it.address || it.name + " " + (it.neighborhood || "") + " " + (S.trip.destination || "")).trim());
     foot.push('<a class="lnk" href="' + (it.mapsUrl ? esc(it.mapsUrl) : "https://www.google.com/maps/search/?api=1&query=" + q) + '" target="_blank" rel="noopener">Map</a>');
     if (!compact) foot.push('<a class="lnk" href="' + gcalLink(it, d) + '" target="_blank" rel="noopener">Add to calendar</a>');
+    if (!S.readOnly && travelerNames(S.trip.prefs).length > 1) foot.push('<button class="lnk" data-split-stop="' + ii + '">' + (forEveryone(it, travelerNames(S.trip.prefs)) ? "Split" : "Who's going") + "</button>");
     if (!S.readOnly) { foot.push('<button class="lnk" data-move="' + ii + '">Move</button>'); foot.push('<button class="lnk" data-swap="' + ii + '">Change</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
     body += '<div class="foot">' + foot.join("") + "</div>";
   }
@@ -1912,21 +1919,32 @@ function splitTracks(xs, names) {
   return tracks;
 }
 function renderSplit(xs, next, d, nums, names) {
-  const tracks = splitTracks(xs, names), t0 = Math.min(...xs.map(x => toMin(x.it.time) ?? 0));
-  const meet = next ? "Back together" + (next.it.kind === "lodging" || next.it.kind === "transit" ? "" : " at " + esc(next.it.name)) + " · " + esc(fmtTime(next.it.time)) : "Everyone's plans end here";
-  if (S.who !== "all") { // one person's view: their track, with what everyone else is doing alongside
-    const mine = tracks.filter(t => t.who.includes(S.who)), others = tracks.filter(t => !t.who.includes(S.who) && t.xs.length);
-    return mine.flatMap(t => t.xs).map((x, k) => stopRow(x.it, x.ii, d, nums, k === 0)).join("") +
-      (mine.every(t => !t.xs.length) ? '<div class="meanwhile"><span></span><span class="rail-col"></span><span class="txt">Free time while the group splits up</span></div>' : "") +
-      others.map(t => '<div class="meanwhile"><span></span><span class="rail-col"></span><span class="txt">Meanwhile ' + avatars(t.who, names) + " " + esc(t.who.join(" & ")) + ": " + t.xs.map(x => esc(x.it.name) + " (" + esc(fmtTime(x.it.time)) + ")").join(", ") + "</span></div>").join("");
-  }
-  return '<div class="split-row"><span class="time">' + esc(fmtTime(toHM(t0))) + '<small>splitting up</small></span><span class="rail-col"><span class="node fork" aria-hidden="true">⑂</span></span>' +
-    '<div class="tracks" style="--n:' + tracks.length + '">' + tracks.map(t => '<section class="track" style="--p:' + personColor(names, t.who[0]) + '" aria-label="' + esc(t.who.join(" and ")) + '">' +
-      '<div class="track-h">' + avatars(t.who, names) + "<b>" + esc(t.who.join(" & ")) + "</b></div>" +
-      (t.xs.length ? t.xs.map((x, k) => '<div class="tstop" data-id="' + x.it.id + '">' + (k && x.it.transitFromPrev ? '<span class="t-leg">' + legHTML(x.it, t.xs[k - 1].it) + "</span>" : "") +
+  const all = splitTracks(xs, names), t0 = Math.min(...xs.map(x => toMin(x.it.time) ?? 0));
+  const meetAt = next && (next.it.kind === "lodging" || next.it.kind === "transit") ? "" : next ? next.it.name : "";
+  const solo = S.who !== "all";
+  const tracks = solo ? all.filter(t => t.who.includes(S.who)) : all, others = solo ? all.filter(t => !t.who.includes(S.who) && t.xs.length) : [];
+  if (!tracks.length) tracks.push({ who: [S.who], xs: [] });
+  const label = w => solo ? (w.length === 1 ? "You, on your own" : "You with " + w.filter(n => n !== S.who).join(" & ")) : w.join(" & ");
+  const track = t => {
+    const lastX = [...t.xs].reverse().find(x => hasLL(x.it)), lastEnd = t.xs.length ? Math.max(...t.xs.map(x => toMin(x.it.end || x.it.time) ?? 0)) : null;
+    const out = next && lastX && hasLL(next.it) && meetAt ? estimateLeg(S.trip, lastX.it, next.it) : null;
+    const spare = next && lastEnd != null ? toMin(next.it.time) - lastEnd - (out ? out.minutes : 0) : null;
+    return '<section class="track" style="--p:' + personColor(names, t.who[0]) + '" aria-label="' + esc(t.who.join(" and ")) + '">' +
+      '<div class="track-h">' + avatars(t.who, names) + "<b>" + esc(label(t.who)) + "</b></div>" +
+      (t.xs.length ? t.xs.map(x => '<div class="tstop" data-id="' + x.it.id + '">' + (x.it.transitFromPrev ? '<span class="t-leg">' + legHTML(x.it, null) + "</span>" : "") +
         '<span class="t-time">' + esc(fmtTime(x.it.time)) + (x.it.end ? "–" + esc(fmtTime(x.it.end)) : "") + "</span>" + stopCard(x.it, x.ii, d, nums, true) + "</div>").join("")
-        : '<p class="note">No plans set: free time, or join one of the others.</p>') + "</section>").join("") + "</div></div>" +
-    '<div class="merge-row"><span></span><span class="rail-col"><span class="node merge" aria-hidden="true"></span></span><span class="txt">' + meet + "</span></div>";
+        : '<p class="note">No plans set: free time, or join one of the others.</p>') +
+      (spare != null && spare >= 45 ? '<span class="t-free">Free time, about ' + fmtDur(spare) + "</span>" : "") +
+      (out ? '<span class="t-leg t-out">Then ' + esc((MODE[out.mode] || out.mode).toLowerCase()) + " ~" + out.minutes + " min to " + esc(meetAt) + "</span>" : "") +
+      (solo ? others.map(o => '<p class="t-meanwhile">Meanwhile ' + avatars(o.who, names) + " " + esc(o.who.join(" & ")) + ": " + o.xs.map(x => esc(x.it.name) + " (" + esc(fmtTime(x.it.time)) + ")").join(", ") + "</p>").join("") : "") +
+      "</section>";
+  };
+  const until = next ? " until " + fmtTime(next.it.time) : "";
+  return '<div class="split-row"><span class="time">' + esc(fmtTime(toHM(t0))) + '</span><span class="rail-col"><span class="node fork" aria-hidden="true">⑂</span></span>' +
+    '<div><p class="split-h">' + (solo ? "The group splits up" + esc(until) : "The group splits into " + all.length + esc(until)) + "</p>" +
+    '<div class="tracks" style="--n:' + tracks.length + '">' + tracks.map(track).join("") + "</div></div></div>" +
+    '<div class="merge-row"><span class="time">' + (next ? esc(fmtTime(next.it.time)) : "") + '</span><span class="rail-col"><span class="node merge" aria-hidden="true"></span></span><span class="txt">' +
+    (next ? "Back together" + (meetAt ? " at " + esc(meetAt) : "") : "Everyone's plans end here") + "</span></div>";
 }
 function renderTimeline(d, di) {
   const nums = stopNumbers(d), names = travelerNames(S.trip.prefs);
@@ -2122,6 +2140,7 @@ function bindTrip() {
   document.querySelectorAll("[data-retry-day]").forEach(b => b.addEventListener("click", () => retryDay(+b.dataset.retryDay)));
   document.querySelectorAll("[data-who]").forEach(b => b.addEventListener("click", () => { S.who = b.dataset.who; render(); }));
   document.querySelectorAll("[data-move]").forEach(b => b.addEventListener("click", () => openMove(S.day, +b.dataset.move)));
+  document.querySelectorAll("[data-split-stop]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); openSplitStop(S.day, +b.dataset.splitStop); }));
   document.querySelectorAll("[data-remove]").forEach(b => b.addEventListener("click", () => {
     const t = S.trip, d = t.days[S.day], it = d.items[+b.dataset.remove];
     if (!it || !confirm("Remove " + it.name + " from day " + (S.day + 1) + "?")) return;
@@ -2334,7 +2353,7 @@ function extraRules(p) {
   else if (rt.length) r.push("- DAILY ROUTINES, on home time (" + (p.from || PROFILE.homeCity || "home") + "): " + rt.map(x => x.what + (x.when ? " " + x.when : "") + (x.who ? " (" + x.who + ")" : "")).join("; ") +
     ". Put each one into every day as its own block (kind \"free\", category \"Routine\", a clear name like \"Nap time\" or \"Bedtime routine\", who set if it's one person) and plan around it: be back at the home base for naps and wrap up the evening in time for bedtime. If the destination is in a different time zone, keep routines on home time for the first two days (a 7pm Pacific bedtime is 9pm Central), shift them halfway on day 3, and use local time from day 4 on.");
   const names = travelerNames(p);
-  if (names.length > 1) r.push("- Travelers: " + names.join(", ") + ". If some of them have separate plans (see ALREADY PLANNED and notes), split the group for that part of the day by giving those items a \"who\" list of names. Items with an empty who are for everyone. Overlapping items are fine only when their who lists don't overlap.");
+  if (names.length > 1) r.push("- Travelers: " + names.join(", ") + ". If some of them have separate plans (see ALREADY PLANNED and notes), split the group for that part of the day by giving those items a \"who\" list of names. Items with an empty who are for everyone. Whenever an item is only for some of them (a race only some run, a nap for one child, \"Jamie & Kelly: own lunch\"), its who MUST list just those people, and the others get their own items at the same time. Overlapping items are fine only when their who lists don't overlap.");
   r.push("- Never suggest a place that has closed, permanently or temporarily.");
   r.push("- cost = realistic US dollars per person including tax and tip. For meals, what a typical order there costs (coffee $6, casual lunch $18, nice dinner $70+).");
   return r.join("\n");
@@ -2532,6 +2551,35 @@ function updateGen() {
 document.addEventListener("click", e => { if (e.target && e.target.id === "genStop" && genCtl) genCtl.abort(); });
 
 // Move any stop (naps and other routines included) to a new time or day.
+// Split the group at one stop: pick who goes, and optionally what everyone else does meanwhile.
+function openSplitStop(di, ii) {
+  const t = S.trip, d = t.days[di], it = d.items[ii], names = travelerNames(t.prefs); if (!it || names.length < 2) return;
+  openDrawer("Split the group · Day " + (di + 1), it.name, fmtTime(it.time) + (it.end ? " to " + fmtTime(it.end) : ""));
+  $("#drawerBody").innerHTML = '<form id="splitForm" class="place-form">' + whoPickerHTML(it.who, names) +
+    '<label class="f" for="splitOther"><span id="splitOtherL">Meanwhile, what are the others doing?</span> <span class="h">Optional. Leave it empty for free time.</span><input class="inp" id="splitOther" placeholder="e.g. Nap back at the loft, or Panther City BBQ" autocomplete="off"></label>' +
+    '<p class="note">The day splits into side-by-side plans while you\'re apart, then joins back up at the next stop for everyone.</p>' +
+    '<div class="row2"><button class="btn primary" type="submit">Save</button><button class="lnk" type="button" id="splitCancel">Cancel</button></div></form>';
+  const root = $("#splitForm");
+  bindWhoPicker(root);
+  const others = () => { const w = readWhoPicker(root, names); return w.length ? names.filter(n => !w.includes(n)) : []; };
+  const relabel = () => { const o = others(); $("#splitOtherL").textContent = o.length ? "Meanwhile, what are " + o.join(" & ") + " doing?" : "Everyone's going, so there's no one to plan for."; $("#splitOther").disabled = !o.length; };
+  root.querySelectorAll("[data-whopick]").forEach(b => b.addEventListener("click", relabel)); relabel();
+  $("#splitCancel").addEventListener("click", closeDrawer);
+  root.addEventListener("submit", e => {
+    e.preventDefault();
+    it.who = readWhoPicker(root, names);
+    const o = others(), what = $("#splitOther").value.trim();
+    if (o.length && what) {
+      const q = parseQuick(what), nm = q ? q.name : what[0].toUpperCase() + what.slice(1);
+      const atHome = /\b(hotel|home|loft|stay|room|nap|rest)\b/i.test(nm) && hasLL(t.homeBase); // back at the base, so the commute can be timed
+      d.items.push(normItem({ time: q ? q.time : it.time, end: q ? toHM(toMin(q.time) + Math.max(30, (toMin(it.end) ?? toMin(it.time) + 60) - toMin(it.time))) : it.end, kind: "free", category: "Your plan", name: nm, who: o,
+        lat: atHome ? t.homeBase.lat : null, lng: atHome ? t.homeBase.lng : null, neighborhood: atHome ? t.homeBase.name : "" }));
+      d.items.sort((a, b) => (toMin(a.time) ?? 0) - (toMin(b.time) ?? 0));
+    }
+    markEdited(t); saveTrip(t); closeDrawer(); render();
+    toast(it.who.length ? it.name + ": " + it.who.join(" & ") + (o.length ? ". " + o.join(" & ") + (what ? " have their own plan." : " have free time.") : "") : it.name + " is for everyone again.");
+  });
+}
 function openMove(di, ii) {
   const t = S.trip, it = t.days[di].items[ii]; if (!it) return;
   const len = Math.max(15, (toMin(it.end) ?? (toMin(it.time) + 60)) - toMin(it.time));
@@ -2582,25 +2630,35 @@ function legMode(t, dist) {
 }
 function estimateLeg(t, a, b) {
   const dist = km(a, b) * 1.3, mode = legMode(t, dist);
-  const min = mode === "walk" ? Math.max(3, Math.round(dist * 12)) : Math.round(dist / (mode === "transit" ? 18 : 32) * 60 + (mode === "transit" ? 10 : mode === "drive" ? 8 : 5));
+  // City streets for the first ~10 km, then highway speeds: Fort Worth to Dallas is ~45 min, not two hours.
+  // Highways run straighter than city streets, so the long part gets a smaller detour factor.
+  const road = Math.min(dist, 10) + Math.max(dist - 10, 0) * 0.88;
+  const ride = (city, hwy) => (Math.min(road, 10) / city + Math.max(road - 10, 0) / hwy) * 60;
+  const min = mode === "walk" ? Math.max(3, Math.round(dist * 12)) : Math.round(mode === "transit" ? ride(18, 45) + 10 : ride(36, 100) + (mode === "drive" ? 8 : 5));
   return { mode, minutes: min };
 }
 function ensureLegs(t, adoptOnly) {
   const hb = hasLL(t.homeBase) ? Object.assign({}, t.homeBase, { id: "home@" + t.homeBase.lat.toFixed(4) + "," + t.homeBase.lng.toFixed(4) }) : null; // a new address means new legs
+  const names = travelerNames(t.prefs), keys = names.length > 1 ? names : ["_"];
   t.days.forEach(d => {
     const startsAway = d.items[0] && (d.items[0].kind === "transit" || d.items[0].kind === "lodging");
-    let last = startsAway ? null : hb; // the day starts from the home base; after that, the last stop with a location
+    // The day starts from the home base; after that, each person's last stop with a location (they differ while the group is split).
+    const lastOf = {}; keys.forEach(k => { lastOf[k] = startsAway ? null : hb; });
     d.items.forEach(it => {
       const here = it.kind === "lodging" && hb ? hb : hasLL(it) ? it : null;
       if (!here) return;
+      const mine = keys.length > 1 && !forEveryone(it, names) ? keys.filter(k => it.who.includes(k)) : [], who = mine.length ? mine : keys;
+      // At a meet-up, time it from whoever comes from the latest stop.
+      const last = who.map(k => lastOf[k]).reduce((a, b) => !a ? b : !b ? a : d.items.indexOf(b) > d.items.indexOf(a) ? b : a, null);
       if (last && it.kind !== "lodging") {
         const leg = it.transitFromPrev, est = estimateLeg(t, last, here);
         // Claude's own times are kept unless they're wildly off for the distance (e.g. left over from a stop that was removed).
         const stale = leg && !leg.est && (Number(leg.minutes) > est.minutes * 1.8 + 8 || Number(leg.minutes) * 3 + 5 < est.minutes);
         if (leg && !leg.from && !stale) leg.from = last.id; // first look: trust the leg Claude wrote
-        else if (stale || (!adoptOnly && (!leg || leg.from !== last.id))) it.transitFromPrev = Object.assign(est, { from: last.id, est: true });
+        // Our own estimates are always recomputed, so a better formula fixes old trips too.
+        else if (stale || (leg && leg.est && (leg.minutes !== est.minutes || leg.mode !== est.mode)) || (!adoptOnly && (!leg || leg.from !== last.id))) it.transitFromPrev = Object.assign(est, { from: last.id, est: true });
       } else if (!last && it.transitFromPrev && !adoptOnly && it.kind !== "lodging") it.transitFromPrev = null; // first stop of the day
-      last = here;
+      who.forEach(k => { lastOf[k] = here; });
     });
   });
 }
@@ -2666,7 +2724,7 @@ function tripContext(t) {
     (facts ? "\nCONFIRMED DETAILS (the traveler checked these; respect them):\n" + facts : "") +
     "\nHome base: " + (t.homeBase.name || "") + " (" + (t.homeBase.neighborhood || "") + ")";
 }
-function dayList(d) { return d.items.map((it, i) => i + ". " + it.time + "-" + (it.end || "") + " " + (it.category || it.kind) + ": " + it.name + " (" + (it.neighborhood || "") + ")").join("\n"); }
+function dayList(d) { return d.items.map((it, i) => i + ". " + it.time + "-" + (it.end || "") + " " + (it.category || it.kind) + ": " + it.name + " (" + (it.neighborhood || "") + ")" + (it.who && it.who.length ? " [who: " + it.who.join(", ") + "]" : "")).join("\n"); }
 function openDrawer(eyebrow, title, sub) {
   $("#drawerEyebrow").textContent = eyebrow; $("#drawerTitle").textContent = title; $("#drawerSub").textContent = sub || "";
   $("#drawer").classList.add("open"); $("#drawerBg").classList.add("open"); $("#drawer").setAttribute("aria-hidden", "false");
@@ -2736,14 +2794,30 @@ async function reworkDay() {
     "\n\nOTHER DAYS (avoid repeating these places)\n" + t.days.filter((_, i) => i !== di).map(x => x.items.map(i => i.name).join(", ")).join("\n") +
     "\n\nDAY " + (di + 1) + " (" + d.date + ") CURRENT PLAN\n" + dayList(d) +
     "\n\nTRAVELER'S REQUEST: " + ask +
-    "\n\nRewrite this day to honor the request. Keep any arrival, check-in, check-out and departure steps and their times. Keep good stops that still fit. Use real, well-established places with accurate lat/lng, and cluster stops near each other.\n" +
-    'Reply with ONLY one JSON object: {"date":"' + d.date + '","title":"3-6 words","pitch":"1-2 sentences","items":[' + ITEM_SHAPE + "]}";
+    "\n\nRULES\n" + extraRules(t.prefs) +
+    "\n- Make the SMALLEST set of edits that honors the request. Every stop the request doesn't touch stays exactly as it is: don't swap, retime or reword it." +
+    "\n- Never touch arrival, check-in, check-out or departure steps, or routine blocks (naps, bedtime), unless the request is about them." +
+    "\n- To change who goes, or the time, use update. To replace a place, remove it and add the new one. New places must be real and well established, with accurate lat/lng, near the stops around them." +
+    '\n\nReply with ONLY one JSON object: {"remove":[stop numbers],"update":[{"index":0,"time":"HH:MM","end":"HH:MM","who":[]}],"add":[' + ITEM_SHAPE + '],"title":"new 3-6 word title, or empty to keep","pitch":"new 1-2 sentence pitch, or empty to keep","summary":"one short sentence on what you changed"}' +
+    "\nIn update, include only the fields that change. who: [] means everyone.";
   try {
-    const nd = await sampleFn.json(prompt, { modelTier: "default", cache: false });
-    if (!nd || !Array.isArray(nd.items) || !nd.items.length) throw { code: "invalid_json" };
-    nd.items.forEach(normItem); nd.date = d.date;
-    t.days[di] = nd; markEdited(t); saveTrip(t); render();
-    toast("Day " + (di + 1) + " reworked");
+    const r = await sampleFn.json(prompt, { modelTier: "default", cache: false });
+    if (!r || typeof r !== "object" || (!Array.isArray(r.remove) && !Array.isArray(r.update) && !Array.isArray(r.add))) throw { code: "invalid_json" };
+    const names = travelerNames(t.prefs), cleanWho = w => Array.isArray(w) ? names.filter(n => w.some(x => String(x).trim().toLowerCase() === n.toLowerCase())) : undefined;
+    (r.update || []).forEach(u => {
+      const it = d.items[Number(u && u.index)]; if (!it) return;
+      if (toMin(u.time) != null) it.time = u.time;
+      if (toMin(u.end) != null) it.end = u.end;
+      const w = cleanWho(u.who); if (w) it.who = w.length === names.length ? [] : w;
+    });
+    const gone = new Set((r.remove || []).map(Number).map(i => d.items[i]).filter(it => it && it.kind !== "transit" && it.kind !== "lodging"));
+    d.items = d.items.filter(it => !gone.has(it));
+    (r.add || []).filter(x => x && x.name && toMin(x.time) != null).forEach(x => { normItem(x); const w = cleanWho(x.who) || []; x.who = w.length === names.length ? [] : w; d.items.push(x); });
+    d.items.sort((a, b) => (toMin(a.time) ?? 0) - (toMin(b.time) ?? 0));
+    if (r.title) d.title = String(r.title); if (r.pitch) d.pitch = String(r.pitch);
+    markEdited(t); saveTrip(t); render();
+    if (PLACES && (r.add || []).length) enrichTrip(t);
+    toast(r.summary ? String(r.summary).slice(0, 160) : "Day " + (di + 1) + " updated");
   } catch (e) {
     if (e && e.code === "not_granted") sampleBlocked = true;
     btn.disabled = false; input.disabled = false;
@@ -3038,6 +3112,8 @@ function mockSample() {
     } else if (prompt.startsWith("You are the trip designer")) {
       out = JSON.parse(JSON.stringify(EXAMPLE)); delete out.example; out.id = undefined; out.destination = (/"destination":"([^"]*)"/.exec(prompt) || [])[1] || "San Francisco";
       out.homeBase.booked = true; out.dayThemes = EXAMPLE.days.map(d => d.title); delete out.days;
+    } else if (prompt.startsWith("You revise one day")) {
+      out = { remove: [], update: [], add: [{ time: "15:00", end: "15:45", kind: "meal", category: "Coffee", name: "Blue Bottle Coffee", neighborhood: "Ferry Building", lat: 37.7955, lng: -122.3937, why: "A mock swap from the rework." }], title: "", pitch: "", summary: "Added an afternoon coffee and left the rest alone." };
     } else if (prompt.startsWith("You update a Mytinerary itinerary with new information")) {
       const date = (/DAY 2 \((\d{4}-\d{2}-\d{2})/.exec(prompt) || [])[1];
       out = { summary: "Added Jamie's 9:40am race on day 2 and moved breakfast earlier.", days: date ? [{ date, title: "Race morning", pitch: "Jamie races, everyone cheers.", items: [
@@ -3868,8 +3944,8 @@ function commuteLabels(ids, gs) {
 // Who a board card is for. Empty means everyone; with fewer than two names there's nothing to split.
 const draftNames = () => travelerNames(DRAFT && DRAFT.prefs);
 const cardWho = c => { const names = draftNames(); return names.length > 1 && c.who && c.who.length && !names.every(n => c.who.includes(n)) ? names.filter(n => c.who.includes(n)) : []; };
-function whoPickerHTML(sel) {
-  const names = draftNames(); if (names.length < 2) return "";
+function whoPickerHTML(sel, names = draftNames()) {
+  if (names.length < 2) return "";
   const on = sel && sel.length ? sel : names;
   return '<div class="who-pick"><span class="qlabel">Who\'s going?</span><div class="filters" role="group">' +
     names.map(n => '<button type="button" data-whopick="' + esc(n) + '" aria-pressed="' + on.includes(n) + '">' + avatars([n], names) + " " + esc(n) + "</button>").join("") + "</div></div>";
@@ -3880,7 +3956,7 @@ function bindWhoPicker(root) {
     if (!root.querySelector('[data-whopick][aria-pressed="true"]')) b.setAttribute("aria-pressed", "true"); // someone has to go
   }));
 }
-const readWhoPicker = root => { const names = draftNames(), sel = [...root.querySelectorAll('[data-whopick][aria-pressed="true"]')].map(b => b.dataset.whopick); return sel.length === names.length ? [] : sel; };
+const readWhoPicker = (root, names = draftNames()) => { const sel = [...root.querySelectorAll('[data-whopick][aria-pressed="true"]')].map(b => b.dataset.whopick); return sel.length === names.length ? [] : sel; };
 function ancCard(c, di, gs, ln) {
   const pl = DRAFT.place[c.id], s = toMin(pl.start), iss = issuesAt(c, di, s);
   const h = Math.max(c.minutes / 60 * PXH, 34);
