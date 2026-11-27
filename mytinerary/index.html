@@ -692,6 +692,7 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .gpin.on { background: var(--c); color: var(--on-c); }
 .gpin.home { background: var(--ink); color: var(--paper); border-color: var(--ink); border-radius: 6px; font-size: 14px; }
 .gpin.hl { transform: scale(1.35); }
+.gpin.air { height: 34px; padding: 0 12px; background: var(--ink); color: var(--paper); border-color: var(--paper); border-radius: 8px; font: 700 13px var(--body); white-space: nowrap; box-shadow: 0 2px 10px rgba(0,0,0,.45); z-index: 2; }
 
 /* Travel profile chat */
 .prof { padding: 32px 0 80px; }
@@ -1451,7 +1452,7 @@ async function mountMap(slot, data) {
   const all = (data.points || []).filter(hasLL).concat(hasLL(data.home) ? [Object.assign({}, data.home, { home: true, title: data.home.name })] : []);
   all.forEach(pt => {
     const el = document.createElement("div");
-    el.className = "gpin" + (pt.home ? " home" : "") + (pt.filled ? " on" : "");
+    el.className = "gpin" + (pt.home ? " home" : "") + (pt.airport ? " air" : "") + (pt.filled ? " on" : "");
     el.style.setProperty("--c", pt.color || "var(--ink)");
     el.textContent = pt.home ? "⌂" : pt.label || "";
     const mk = new AdvancedMarkerElement({ map: gm.map, position: { lat: pt.lat, lng: pt.lng }, content: el, title: pt.title || "", gmpClickable: !!pt.id });
@@ -1508,7 +1509,30 @@ const MODE = { walk: "Walk", transit: "Transit", rideshare: "Rideshare", drive: 
 const BOOK = { now: "Book now", daybefore: "Book day before", walkin: "Walk in", none: "" };
 const MEALS = ["breakfast", "brunch", "lunch", "dinner", "drinks", "coffee", "snack", "dessert"];
 function isMeal(it) { return it.kind === "meal" || MEALS.includes(String(it.category || "").toLowerCase()); }
-function plotted(it) { return Number.isFinite(it.lat) && Number.isFinite(it.lng) && it.kind !== "transit"; }
+function plotted(it) { return Number.isFinite(it.lat) && Number.isFinite(it.lng) && it.kind !== "transit" && !isAirport(it); }
+// Flying in or out: the airport gets its own big pin on that day's map.
+const isAirport = it => /^(depart|arrive|flight)/i.test(it.category || "") && /airport|flight|fly|\b[A-Z]{3}\b/.test((it.name || "") + " " + (it.neighborhood || ""));
+const airportLL = it => hasLL(it.airport) ? it.airport : (hasLL(it) ? it : null);
+const airportCode = it => ((/\b([A-Z]{3})\b/.exec((it.neighborhood || "") + " " + (it.name || "")) || [])[1]) || "";
+function flightTime(it) {
+  const m = /(\d{1,2})(?::(\d{2}))?\s*([ap])\.?m\.?\s*flight/i.exec(it.name || "");
+  if (!m) return it.time;
+  let h = +m[1] % 12; if (m[3].toLowerCase() === "p") h += 12;
+  return toHM(h * 60 + +(m[2] || 0));
+}
+// Most flight steps come without a location; look the airport up on Google once and keep it on the stop.
+let airportBusy = false;
+async function resolveAirports(t) {
+  if (!PLACES || airportBusy) return;
+  const todo = []; t.days.forEach(d => d.items.forEach(it => { if (isAirport(it) && !airportLL(it) && !it.airportTried) todo.push(it); }));
+  if (!todo.length) return;
+  airportBusy = true;
+  const res = await placesMatch(t.destination, todo.map(it => ({ name: (airportCode(it) ? airportCode(it) + " " : "") + "airport", neighborhood: it.neighborhood || "" })));
+  airportBusy = false;
+  todo.forEach((it, k) => { it.airportTried = true; const g = res && res[k]; if (g && hasLL(g)) it.airport = { lat: g.lat, lng: g.lng, name: g.name || airportCode(it) || "Airport" }; });
+  saveTrip(t);
+  if (S.trip && S.trip.id === t.id && S.view === "trip" && todo.some(it => it.airport)) render();
+}
 
 /* ---------- Example trip: rebuilt from the 2020 "Mytinerary Itinerary Template" (SF weekend) ---------- */
 const EXAMPLE = {
@@ -1666,6 +1690,7 @@ function render(fresh) {
   if (PENDING_MAP && $("#mapSlot")) mountMap($("#mapSlot"), PENDING_MAP);
   PENDING_MAP = null;
   if (S.view === "trip") bindTrip();
+  if (S.view === "trip" && S.trip && !S.readOnly) resolveAirports(S.trip);
   renderTripsMenu();
 }
 
@@ -1906,7 +1931,7 @@ function stopCard(it, ii, d, nums, compact) {
     foot.push('<a class="lnk" href="' + (it.mapsUrl ? esc(it.mapsUrl) : "https://www.google.com/maps/search/?api=1&query=" + q) + '" target="_blank" rel="noopener">Map</a>');
     if (!compact) foot.push('<a class="lnk" href="' + gcalLink(it, d) + '" target="_blank" rel="noopener">Add to calendar</a>');
     if (!S.readOnly) foot.push('<button class="lnk" data-split-stop="' + ii + '">' + (forEveryone(it, travelerNames(S.trip.prefs)) ? "Split" : "Who's going") + "</button>");
-    if (!S.readOnly) { foot.push('<button class="lnk" data-move="' + ii + '">Edit time/day</button>'); foot.push('<button class="lnk" data-swap="' + ii + '">Change</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
+    if (!S.readOnly) { foot.push('<button class="lnk" data-move="' + ii + '">Edit time/day</button>'); foot.push('<button class="lnk" data-swap="' + ii + '">Swap place</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
     body += '<div class="foot">' + foot.join("") + "</div>";
   }
   const openable = !minor && it.kind !== "free";
@@ -2020,9 +2045,14 @@ function renderMap(t) {
     const d = t.days[S.day], nums = stopNumbers(d), col = lineVar(S.day);
     const ps = d.items.filter(it => plotted(it) && it.kind !== "lodging" && !(S.who !== "all" && it.who && it.who.length && !it.who.includes(S.who)));
     const hb = t.homeBase;
+    const air = d.items.filter(it => isAirport(it) && airportLL(it)).map(it => {
+      const ll = airportLL(it), out = /^depart$/i.test(it.category || ""), code = airportCode(it) || (it.airport && it.airport.name) || "Airport";
+      return { id: it.id, lat: ll.lat, lng: ll.lng, airport: true, label: "✈ " + (out ? "Fly out" : "Land") + " · " + code + (it.time ? " · " + fmtTime(out ? flightTime(it) : it.time) : ""), title: it.name, out };
+    });
+    const path = air.filter(a => !a.out).concat(ps, air.filter(a => a.out));
     return mapSlotHTML("Day " + (S.day + 1) + " map <small>numbers match the stops</small>",
-      '<span style="--c:' + col + '"><i></i>Day ' + (S.day + 1) + '</span><span><i style="background:var(--ink);width:10px;height:10px"></i>' + esc(hb.name || "Home base") + "</span>",
-      { points: ps.map(it => ({ id: it.id, lat: it.lat, lng: it.lng, label: String(nums[it.id] || ""), color: col, filled: true, title: it.name })), paths: [{ color: col, pts: ps }],
+      '<span style="--c:' + col + '"><i></i>Day ' + (S.day + 1) + '</span><span><i style="background:var(--ink);width:10px;height:10px"></i>' + esc(hb.name || "Home base") + "</span>" + (air.length ? "<span>✈ Airport</span>" : ""),
+      { points: ps.map(it => ({ id: it.id, lat: it.lat, lng: it.lng, label: String(nums[it.id] || ""), color: col, filled: true, title: it.name })).concat(air), paths: [{ color: col, pts: path }],
         home: hasLL(hb) ? { lat: hb.lat, lng: hb.lng, name: hb.name } : null,
         onPick: id => { const el = document.querySelector('.stop[data-id="' + id + '"], .tstop[data-id="' + id + '"]'); if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.querySelector(".card").classList.add("hl"); } highlightPin(id); } });
   }
@@ -2813,7 +2843,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") closeDrawer(
 // Changing a stop starts with why, so the alternatives actually fix the problem.
 function openSwap(di, ii) {
   const t = S.trip, d = t.days[di], it = d.items[ii];
-  openDrawer("Change a stop · Day " + (di + 1), it.name, (it.category || "") + " · " + fmtTime(it.time) + (it.end ? " to " + fmtTime(it.end) : ""));
+  openDrawer("Swap a place · Day " + (di + 1), it.name, (it.category || "") + " · " + fmtTime(it.time) + (it.end ? " to " + fmtTime(it.end) : ""));
   const body = $("#drawerBody");
   if (!sampleFn) { body.innerHTML = '<p class="small">Changing stops needs Claude, which is available when this page is open on claude.ai.</p>'; return; }
   const reasons = isMeal(it) ? ["Something cheaper", "Grab and go", "Closer by", "Kid-friendly", "Better reviewed", "A different cuisine"] : ["Something cheaper", "Closer by", "Indoors", "Kid-friendly", "Shorter", "Something different"];
