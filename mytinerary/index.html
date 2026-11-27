@@ -2918,30 +2918,36 @@ async function reworkDay() {
     "\n- Never touch arrival, check-in, check-out or departure steps, or routine blocks (naps, bedtime), unless the request is about them." +
     "\n- To change who goes, or the time, use update. To replace a place, remove it and add the new one. New places must be real and well established, with accurate lat/lng, near the stops around them." +
     '\n\nReply with ONLY one JSON object: {"remove":[stop numbers],"update":[{"index":0,"time":"HH:MM","end":"HH:MM","who":[]}],"add":[' + ITEM_SHAPE + '],"title":"new 3-6 word title, or empty to keep","pitch":"new 1-2 sentence pitch, or empty to keep","summary":"one short sentence on what you changed"}' +
-    "\nIn update, include only the fields that change. who: [] means everyone.";
+    "\nremove, update and add are always lists; use [] when there's nothing for one. In update, include only the fields that change. who: [] means everyone.";
   try {
     const r = await sampleFn.json(prompt, { modelTier: "default", cache: false });
-    if (!r || typeof r !== "object" || (!Array.isArray(r.remove) && !Array.isArray(r.update) && !Array.isArray(r.add))) throw { code: "invalid_json" };
+    if (!r || typeof r !== "object" || Array.isArray(r)) throw { code: "invalid_json" };
+    // Claude sometimes sends {} or a single object where a list belongs; treat anything that isn't a list as a list of what's there.
+    const list = v => Array.isArray(v) ? v : v && typeof v === "object" && Object.keys(v).length ? [v] : v != null && v !== "" && typeof v !== "object" ? [v] : [];
+    r.remove = list(r.remove); r.update = list(r.update); r.add = list(r.add);
+    if (!r.remove.length && !r.update.length && !r.add.length && !r.title && !r.pitch) { const n2 = $("#reworkNote"); if (n2) n2.textContent = "Claude didn't find anything to change for that. Try saying it another way."; const b2 = $("#reworkBtn"), i2 = $("#reworkInput"); if (b2) b2.disabled = false; if (i2) i2.disabled = false; return; }
     const names = travelerNames(t.prefs), cleanWho = w => Array.isArray(w) ? names.filter(n => w.some(x => String(x).trim().toLowerCase() === n.toLowerCase())) : undefined;
-    (r.update || []).forEach(u => {
-      const it = d.items[Number(u && u.index)]; if (!it) return;
+    r.update.forEach(u => {
+      const it = u && typeof u === "object" ? d.items[Number(u.index)] : null; if (!it) return;
       if (toMin(u.time) != null) it.time = u.time;
       if (toMin(u.end) != null) it.end = u.end;
       const w = cleanWho(u.who); if (w) it.who = w.length === names.length ? [] : w;
     });
-    const gone = new Set((r.remove || []).map(Number).map(i => d.items[i]).filter(it => it && it.kind !== "transit" && it.kind !== "lodging"));
+    const gone = new Set(r.remove.map(x => Number(x && typeof x === "object" ? x.index : x)).map(i => d.items[i]).filter(it => it && it.kind !== "transit" && it.kind !== "lodging"));
     d.items = d.items.filter(it => !gone.has(it));
     const taken = tripPlaces({ days: t.days.filter((_, i) => i !== di) });
-    (r.add || []).filter(x => x && x.name && toMin(x.time) != null && !(x.kind !== "free" && taken.has(x))).forEach(x => { normItem(x); const w = cleanWho(x.who) || []; x.who = w.length === names.length ? [] : w; d.items.push(x); });
+    r.add.filter(x => x && typeof x === "object" && x.name && toMin(x.time) != null && !(x.kind !== "free" && taken.has(x))).forEach(x => { normItem(x); const w = cleanWho(x.who) || []; x.who = w.length === names.length ? [] : w; d.items.push(x); });
     d.items.sort((a, b) => (toMin(a.time) ?? 0) - (toMin(b.time) ?? 0));
     if (r.title) d.title = String(r.title); if (r.pitch) d.pitch = String(r.pitch);
     markEdited(t); saveTrip(t); render();
-    if (PLACES && (r.add || []).length) enrichTrip(t);
+    if (PLACES && r.add.length) enrichTrip(t);
     toast(r.summary ? String(r.summary).slice(0, 160) : "Day " + (di + 1) + " updated");
   } catch (e) {
     if (e && e.code === "not_granted") sampleBlocked = true;
-    btn.disabled = false; input.disabled = false;
-    note.textContent = genErrorCopy(e);
+    if (!(e && e.code)) console.error("Rework failed", e);
+    const b2 = $("#reworkBtn"), i2 = $("#reworkInput"), n2 = $("#reworkNote") || note; // the page may have re-rendered
+    if (b2) b2.disabled = false; if (i2) i2.disabled = false;
+    n2.textContent = e && e.code ? genErrorCopy(e).replace("building the trip", "reworking this day") : "Something went wrong reworking this day (" + String((e && e.message) || e).slice(0, 120) + "). Try again.";
   }
 }
 
@@ -3233,7 +3239,7 @@ function mockSample() {
       out = JSON.parse(JSON.stringify(EXAMPLE)); delete out.example; out.id = undefined; out.destination = (/"destination":"([^"]*)"/.exec(prompt) || [])[1] || "San Francisco";
       out.homeBase.booked = true; out.dayThemes = EXAMPLE.days.map(d => d.title); delete out.days;
     } else if (prompt.startsWith("You revise one day")) {
-      out = { remove: [], update: [], add: [{ time: "15:00", end: "15:45", kind: "meal", category: "Coffee", name: "Blue Bottle Coffee", neighborhood: "Ferry Building", lat: 37.7955, lng: -122.3937, why: "A mock swap from the rework." }], title: "", pitch: "", summary: "Added an afternoon coffee and left the rest alone." };
+      out = { remove: [2], update: [{ index: 1, time: "10:00", end: "11:00" }], add: [{ time: "15:00", end: "15:45", kind: "meal", category: "Coffee", name: "Blue Bottle Coffee", neighborhood: "Ferry Building", lat: 37.45, lng: -122.15, why: "A mock swap from the rework." }], title: "", pitch: "", summary: "Added an afternoon coffee and left the rest alone." };
     } else if (prompt.startsWith("You update a Mytinerary itinerary with new information")) {
       const date = (/DAY 2 \((\d{4}-\d{2}-\d{2})/.exec(prompt) || [])[1];
       out = { summary: "Added Jamie's 9:40am race on day 2 and moved breakfast earlier.", days: date ? [{ date, title: "Race morning", pitch: "Jamie races, everyone cheers.", items: [
