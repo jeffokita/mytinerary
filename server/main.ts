@@ -16,7 +16,7 @@ const SECRET = process.env.SESSION_SECRET || randomBytes(32).toString("hex"); //
 const FROM = process.env.RESEND_FROM || "Mytinerary <mytinerary@jeffokita.com>";
 const SESSION_DAYS = 60, LINK_MINUTES = 20;
 // Per person per day. Generous for real planning, small enough that a bug can't run up a bill.
-const LIMITS = { claude: Number(process.env.DAILY_CLAUDE_CALLS || 80), places: Number(process.env.DAILY_PLACES_CALLS || 400), photos: Number(process.env.DAILY_PHOTO_CALLS || 400) };
+const LIMITS = { claude: Number(process.env.DAILY_CLAUDE_CALLS || 80), places: Number(process.env.DAILY_PLACES_CALLS || 400), photos: Number(process.env.DAILY_PHOTO_CALLS || 400), routes: Number(process.env.DAILY_ROUTE_CALLS || 600) };
 
 const APP_HTML = new URL("../mytinerary/index.html", import.meta.url);
 const anthropic = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
@@ -201,6 +201,40 @@ async function placesMatch(req: IncomingMessage, res: ServerResponse, email: str
   }));
   send(res, 200, { results });
 }
+// Real travel times from the Google Routes API (Essentials tier: no live traffic). Same key as Places.
+const routeCache = new Map<string, { at: number; minutes: number; meters: number } | null>();
+let routesOffAt = 0; // the API isn't enabled for this key; check again every 10 minutes
+const MODES: Record<string, string> = { walk: "WALK", transit: "TRANSIT", drive: "DRIVE", rideshare: "DRIVE" };
+async function oneRoute(a: { lat: number; lng: number }, b: { lat: number; lng: number }, mode: string) {
+  const wp = (p: { lat: number; lng: number }) => ({ location: { latLng: { latitude: p.lat, longitude: p.lng } } });
+  const r = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+    method: "POST", signal: AbortSignal.timeout(10_000),
+    headers: { "content-type": "application/json", "x-goog-api-key": GOOGLE_KEY, "x-goog-fieldmask": "routes.duration,routes.distanceMeters" },
+    body: JSON.stringify({ origin: wp(a), destination: wp(b), travelMode: MODES[mode] || "DRIVE", ...(MODES[mode] === "DRIVE" ? { routingPreference: "TRAFFIC_UNAWARE" } : {}) }),
+  });
+  if (r.status === 403) { routesOffAt = Date.now(); console.warn("Routes API refused (403): enable it for this key"); return null; }
+  if (!r.ok) return null;
+  const route = (await r.json()).routes?.[0];
+  if (!route?.duration) return null;
+  return { minutes: Math.max(1, Math.round(parseInt(route.duration, 10) / 60)), meters: Number(route.distanceMeters) || 0 };
+}
+async function routes(req: IncomingMessage, res: ServerResponse, email: string) {
+  if (!GOOGLE_KEY || Date.now() - routesOffAt < 600_000) throw new HttpError(503, "Google Routes isn't set up on this server.");
+  const b = await body(req);
+  const ok = (p: any) => p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng));
+  const legs = (Array.isArray(b.legs) ? b.legs.slice(0, 40) : []).map((l: any) => ok(l?.a) && ok(l?.b) ? { a: { lat: +l.a.lat, lng: +l.a.lng }, b: { lat: +l.b.lat, lng: +l.b.lng }, mode: String(l.mode || "drive") } : null);
+  const key = (l: any) => [l.a.lat, l.a.lng, l.b.lat, l.b.lng].map((x: number) => x.toFixed(4)).join(",") + "@" + l.mode;
+  const todo = legs.filter((l: any) => l && !(routeCache.has(key(l)) && Date.now() - (routeCache.get(key(l))?.at ?? 0) < 7 * 864e5));
+  if (todo.length) spend(email, "routes", todo.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: 5 }, async () => {
+    while (next < todo.length) {
+      const l = todo[next++];
+      try { const r = await oneRoute(l.a, l.b, l.mode); routeCache.set(key(l), r ? { at: Date.now(), ...r } : null); } catch { /* leave it out */ }
+    }
+  }));
+  send(res, 200, { results: legs.map((l: any) => { const r = l && routeCache.get(key(l)); return r ? { minutes: r.minutes, meters: r.meters } : null; }) });
+}
 const photoCache = new Map<string, { at: number; uri: string }>();
 async function placePhoto(req: IncomingMessage, res: ServerResponse, email: string, url: URL) {
   if (!GOOGLE_KEY) throw new HttpError(503, "Google Places isn't set up on this server yet.");
@@ -357,6 +391,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   }
   if (path === "/api/claude" && m === "POST") return claude(req, res, user);
   if (path === "/api/places/match" && m === "POST") return placesMatch(req, res, user);
+  if (path === "/api/routes" && m === "POST") return routes(req, res, user);
   if (path === "/api/places/photo" && m === "GET") return placePhoto(req, res, user, url);
   throw new HttpError(404, "Not found");
 }

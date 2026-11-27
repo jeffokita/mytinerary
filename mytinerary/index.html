@@ -609,6 +609,11 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .dv-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
 .dv-head .eyebrow { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .dv-head h2 { font-family: var(--display); font-weight: 600; font-size: clamp(24px, 3vw, 32px); line-height: 1.1; margin: 4px 0; }
+.dv-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; flex: none; }
+.split-pick { display: grid; gap: 6px; }
+.split-pick button { text-align: left; display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 10px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 10px; background: var(--card); cursor: pointer; font: inherit; }
+.split-pick button:hover { border-color: var(--ink); }
+.split-pick .t-time { padding-top: 2px; }
 .dv-head .pitch { margin: 0; color: var(--muted); font-size: 15px; max-width: 62ch; }
 .dv-edit { display: grid; gap: 8px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 12px; margin-bottom: 14px; }
 .dv-edit .rework { flex: none; }
@@ -774,6 +779,7 @@ let sampleFn = null, mcpApi = null;
 let sampleBlocked = false;
 let runtimeSettled = false;
 // Hosted on our own server (Railway): Claude and Google Places go through /api, behind an emailed sign-in link.
+let ROUTES_OFF = false;
 let HOSTED = false, ME = null, PLACES = false, GOOGLE_OAUTH = false, GOOGLE_CONNECTED = false;
 const hostedP = !MOCK && !hasRuntime && /^https?:$/.test(location.protocol)
   ? fetch("/api/me").then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null);
@@ -1713,13 +1719,13 @@ function renderTrip() {
       '<section class="dayview" aria-label="Day plan" style="--c:' + c + '">' +
         '<div class="dv-head"><div><span class="eyebrow" style="color:' + c + '">Day ' + (S.day + 1) + " · " + esc(fmtDay(d.date)) + (w ? " · " + wxChip(w) : "") + "</span>" +
           "<h2>" + esc(d.title) + "</h2>" + (d.pitch ? '<p class="pitch">' + esc(d.pitch) + "</p>" : "") + "</div>" +
-          (S.readOnly || d.pending ? "" : '<button class="btn small" type="button" id="editDayBtn" aria-expanded="' + !!S.editDay + '">✎ Edit day ' + (S.editDay ? "▴" : "▾") + "</button>") + "</div>" +
+          (S.readOnly || d.pending ? "" : '<span class="dv-btns"><button class="btn small" type="button" id="splitDayBtn">⑂ Split the group</button><button class="btn small" type="button" id="editDayBtn" aria-expanded="' + !!S.editDay + '">✎ Edit day ' + (S.editDay ? "▴" : "▾") + "</button></span>") + "</div>" +
         (S.editDay && !S.readOnly && !d.pending ? '<div class="dv-edit">' +
           '<form class="rework" id="quickAdd"><label for="quickInput" class="hidden">Add to this day</label><input id="quickInput" placeholder="Add something, e.g. 8:30pm start bedtime routine" autocomplete="off"><button class="btn small" type="submit">Add</button></form>' +
           '<form class="rework" id="reworkForm"><label for="reworkInput" class="hidden">Change this day</label><input id="reworkInput" placeholder="Rework the day, e.g. rainy day, more indoors, sleep in" autocomplete="off"><button class="btn small" type="submit" id="reworkBtn">Rework day</button></form>' +
           '<div class="row2">' + routeLink(d) + '<span class="note" id="reworkNote"></span></div></div>' : '<span class="note" id="reworkNote"></span>') +
         (names.length > 1 ? '<div class="who-bar"><span class="pf-k">Showing</span><div class="filters" role="group">' + ["all"].concat(names).map(n => '<button type="button" data-who="' + esc(n) + '" aria-pressed="' + (S.who === n) + '">' + (n === "all" ? avatars(names, names) + " Everyone" : avatars([n], names) + " " + esc(n)) + "</button>").join("") + "</div>" +
-          (!S.readOnly && !d.pending && !split(d) ? '<span class="note split-hint">Splitting up? Open a stop and tap <b>Split</b>.</span>' : "") + "</div>" : "") +
+          "</div>" : "") +
         (d.pending ? '<div class="day-pending" role="status"><p class="gen-status">Planning day ' + (S.day + 1) + " around your picks…</p>" + '<div class="skel-rows"><div></div><div></div><div></div><div></div></div></div>'
           : d.failed ? '<div class="day-pending"><p class="err">This day didn\'t come back.</p><button class="btn" type="button" data-retry-day="' + S.day + '">Try again</button></div>'
           : renderTimeline(d, S.day)) +
@@ -1884,7 +1890,7 @@ function stopCard(it, ii, d, nums, compact) {
   if (it.why) body += '<span class="why">' + esc(it.why) + "</span>";
   if (it.tip && !compact) body += '<span class="tip"><b>Pro tip</b>' + esc(it.tip) + "</span>";
   if (minor && it.booked) body += '<div class="foot"><span class="pill booked">Booked</span></div>';
-  if (it.kind === "free" && !S.readOnly) body += '<div class="foot">' + (travelerNames(S.trip.prefs).length > 1 ? '<button class="lnk" data-split-stop="' + ii + '">' + (forEveryone(it, travelerNames(S.trip.prefs)) ? "Split" : "Who's going") + "</button>" : "") + '<button class="lnk" data-move="' + ii + '">Move</button><button class="lnk" data-remove="' + ii + '">Remove</button></div>';
+  if (it.kind === "free" && !S.readOnly) body += '<div class="foot">' + (true ? '<button class="lnk" data-split-stop="' + ii + '">' + (forEveryone(it, travelerNames(S.trip.prefs)) ? "Split" : "Who's going") + "</button>" : "") + '<button class="lnk" data-move="' + ii + '">Move</button><button class="lnk" data-remove="' + ii + '">Remove</button></div>';
   if (!minor && it.kind !== "free") {
     const foot = [];
     if (it.anchor) foot.push('<span class="pill pick">Your pick</span>');
@@ -1899,7 +1905,7 @@ function stopCard(it, ii, d, nums, compact) {
     const q = encodeURIComponent((it.address || it.name + " " + (it.neighborhood || "") + " " + (S.trip.destination || "")).trim());
     foot.push('<a class="lnk" href="' + (it.mapsUrl ? esc(it.mapsUrl) : "https://www.google.com/maps/search/?api=1&query=" + q) + '" target="_blank" rel="noopener">Map</a>');
     if (!compact) foot.push('<a class="lnk" href="' + gcalLink(it, d) + '" target="_blank" rel="noopener">Add to calendar</a>');
-    if (!S.readOnly && travelerNames(S.trip.prefs).length > 1) foot.push('<button class="lnk" data-split-stop="' + ii + '">' + (forEveryone(it, travelerNames(S.trip.prefs)) ? "Split" : "Who's going") + "</button>");
+    if (!S.readOnly) foot.push('<button class="lnk" data-split-stop="' + ii + '">' + (forEveryone(it, travelerNames(S.trip.prefs)) ? "Split" : "Who's going") + "</button>");
     if (!S.readOnly) { foot.push('<button class="lnk" data-move="' + ii + '">Move</button>'); foot.push('<button class="lnk" data-swap="' + ii + '">Change</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
     body += '<div class="foot">' + foot.join("") + "</div>";
   }
@@ -2138,6 +2144,7 @@ function bindTrip() {
   bindQuestions();
   document.querySelectorAll("[data-editstay]").forEach(b => b.addEventListener("click", openStayEdit));
   const rn = $("#refreshNearby"); if (rn) rn.addEventListener("click", refreshNearby);
+  const sdb = $("#splitDayBtn"); if (sdb) sdb.addEventListener("click", () => openSplitDay(S.day));
   const edb = $("#editDayBtn"); if (edb) edb.addEventListener("click", () => { S.editDay = !S.editDay; render(); if (S.editDay) { const q = $("#quickInput"); if (q) q.focus(); } });
   const tm = $("#tripMore"); if (tm) tm.addEventListener("click", e => { e.stopPropagation(); const open = $("#tripMoreMenu").classList.toggle("open"); tm.setAttribute("aria-expanded", String(open)); });
   const ep2 = $("#editPlan"); if (ep2) ep2.addEventListener("click", () => { location.hash = "anchors"; });
@@ -2563,8 +2570,33 @@ document.addEventListener("click", e => { if (e.target && e.target.id === "genSt
 
 // Move any stop (naps and other routines included) to a new time or day.
 // Split the group at one stop: pick who goes, and optionally what everyone else does meanwhile.
+function askNames(then) {
+  const t = S.trip;
+  openDrawer("Split the group", "Who's on this trip?", "Add everyone's names so you can give people their own plans.");
+  $("#drawerBody").innerHTML = '<form id="namesForm" class="place-form"><label class="f" for="namesIn">Names, separated by commas<input class="inp" id="namesIn" value="' + esc((t.prefs && t.prefs.who) || "") + '" placeholder="e.g. Jeff, Arden, Jamie, Kelly" autocomplete="off" required></label><p class="note" id="namesNote"></p>' +
+    '<div class="row2"><button class="btn primary" type="submit">Next</button><button class="lnk" type="button" id="namesCancel">Cancel</button></div></form>';
+  $("#namesCancel").addEventListener("click", closeDrawer);
+  $("#namesForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const v = $("#namesIn").value.trim();
+    if (travelerNames({ who: v }).length < 2) { $("#namesNote").textContent = "Add at least two names."; return; }
+    t.prefs = t.prefs || {}; t.prefs.who = v; saveTrip(t); then();
+  });
+}
+function openSplitDay(di) {
+  const t = S.trip, d = t.days[di];
+  if (travelerNames(t.prefs).length < 2) return askNames(() => openSplitDay(di));
+  const stops = d.items.map((it, ii) => ({ it, ii })).filter(x => x.it.kind !== "transit" && x.it.kind !== "lodging");
+  openDrawer("Split the group · Day " + (di + 1), "Where does the group split up?", "Pick the stop only some of you are going to. You'll choose who goes next.");
+  $("#drawerBody").innerHTML = '<div class="split-pick">' + stops.map(x => '<button type="button" data-pick="' + x.ii + '"><span class="t-time">' + esc(fmtTime(x.it.time)) + '</span><span><b>' + esc(x.it.name) + "</b>" +
+    (x.it.who && x.it.who.length ? '<br><span class="note">' + esc(x.it.who.join(" & ")) + "</span>" : "") + "</span></button>").join("") + "</div>" +
+    '<p class="note">Not on the list? Add it with Edit day, then split it here.</p>';
+  $("#drawerBody").querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => openSplitStop(di, +b.dataset.pick)));
+}
 function openSplitStop(di, ii) {
-  const t = S.trip, d = t.days[di], it = d.items[ii], names = travelerNames(t.prefs); if (!it || names.length < 2) return;
+  const t = S.trip, d = t.days[di], it = d.items[ii]; if (!it) return;
+  if (travelerNames(t.prefs).length < 2) return askNames(() => openSplitStop(di, ii));
+  const names = travelerNames(t.prefs);
   openDrawer("Split the group · Day " + (di + 1), it.name, fmtTime(it.time) + (it.end ? " to " + fmtTime(it.end) : ""));
   $("#drawerBody").innerHTML = '<form id="splitForm" class="place-form">' + whoPickerHTML(it.who, names) +
     '<label class="f" for="splitOther"><span id="splitOtherL">Meanwhile, what are the others doing?</span> <span class="h">Optional. Leave it empty for free time.</span><input class="inp" id="splitOther" placeholder="e.g. Nap back at the loft, or Panther City BBQ" autocomplete="off"></label>' +
@@ -2649,6 +2681,9 @@ function estimateLeg(t, a, b) {
   return { mode, minutes: min };
 }
 function ensureLegs(t, adoptOnly) {
+  ensureLegsNow(t, adoptOnly); queueGoogleLegs(t);
+}
+function ensureLegsNow(t, adoptOnly) {
   const hb = hasLL(t.homeBase) ? Object.assign({}, t.homeBase, { id: "home@" + t.homeBase.lat.toFixed(4) + "," + t.homeBase.lng.toFixed(4) }) : null; // a new address means new legs
   const names = travelerNames(t.prefs), keys = names.length > 1 ? names : ["_"];
   t.days.forEach(d => {
@@ -2664,14 +2699,40 @@ function ensureLegs(t, adoptOnly) {
       if (last && it.kind !== "lodging") {
         const leg = it.transitFromPrev, est = estimateLeg(t, last, here);
         // Claude's own times are kept unless they're wildly off for the distance (e.g. left over from a stop that was removed).
-        const stale = leg && !leg.est && (Number(leg.minutes) > est.minutes * 1.8 + 8 || Number(leg.minutes) * 3 + 5 < est.minutes);
+        const stale = leg && !leg.est && !leg.g && (Number(leg.minutes) > est.minutes * 1.8 + 8 || Number(leg.minutes) * 3 + 5 < est.minutes);
         if (leg && !leg.from && !stale) leg.from = last.id; // first look: trust the leg Claude wrote
         // Our own estimates are always recomputed, so a better formula fixes old trips too.
         else if (stale || (leg && leg.est && (leg.minutes !== est.minutes || leg.mode !== est.mode)) || (!adoptOnly && (!leg || leg.from !== last.id))) it.transitFromPrev = Object.assign(est, { from: last.id, est: true });
+        if (it.transitFromPrev) it.transitFromPrev.a = { lat: last.lat, lng: last.lng }; // where it starts, for Google's travel time
       } else if (!last && it.transitFromPrev && !adoptOnly && it.kind !== "lodging") it.transitFromPrev = null; // first stop of the day
       who.forEach(k => { lastOf[k] = here; });
     });
   });
+}
+// Real travel times from Google (hosted only). Estimates show right away; Google's numbers replace them a moment later.
+const legKey = (a, b, mode) => [a.lat, a.lng, b.lat, b.lng].map(x => (+x).toFixed(4)).join(",") + "@" + mode;
+const legTimers = {};
+function queueGoogleLegs(t) {
+  if (!PLACES || ROUTES_OFF || !t || !t.days) return;
+  clearTimeout(legTimers[t.id]); legTimers[t.id] = setTimeout(() => googleLegs(t), 500);
+}
+async function googleLegs(t) {
+  const todo = [];
+  t.days.forEach(d => d.items.forEach(it => { const l = it.transitFromPrev; if (l && l.a && hasLL(it) && l.g !== legKey(l.a, it, l.mode)) todo.push({ it, l }); }));
+  for (let i = 0; i < todo.length; i += 40) {
+    const part = todo.slice(i, i + 40);
+    let res = null;
+    try {
+      const r = await fetch("/api/routes", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ legs: part.map(x => ({ a: x.l.a, b: { lat: x.it.lat, lng: x.it.lng }, mode: x.l.mode })) }) });
+      if (r.status === 503) { ROUTES_OFF = true; return; }
+      res = r.ok ? (await r.json()).results : null;
+    } catch (e) { return; }
+    if (!res) return;
+    part.forEach((x, k) => { const g = res[k]; if (g && x.it.transitFromPrev === x.l) { x.l.minutes = g.minutes; x.l.est = false; x.l.g = legKey(x.l.a, x.it, x.l.mode); } });
+  }
+  if (!todo.length) return;
+  saveTrip(t);
+  if (S.trip && S.trip.id === t.id && S.view === "trip" && !$("#drawer.open")) render();
 }
 // "8:30pm start bedtime routine" -> { time: "20:30", name: "Start bedtime routine" }
 function parseQuick(text) {
