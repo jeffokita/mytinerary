@@ -1505,12 +1505,13 @@ function store(k, v) {
   } catch (e) { return null; }
 }
 const fmtDur = m => m < 60 ? m + " min" : Math.floor(m / 60) + " hr" + (m % 60 >= 15 ? " " + (m % 60) + " min" : "");
-const MODE = { walk: "Walk", transit: "Transit", rideshare: "Rideshare", drive: "Drive", ferry: "Ferry", train: "Train", bike: "Bike" };
+const MODE = { flight: "Flight", walk: "Walk", transit: "Transit", rideshare: "Rideshare", drive: "Drive", ferry: "Ferry", train: "Train", bike: "Bike" };
 const BOOK = { now: "Book now", daybefore: "Book day before", walkin: "Walk in", none: "" };
 const MEALS = ["breakfast", "brunch", "lunch", "dinner", "drinks", "coffee", "snack", "dessert"];
 function isMeal(it) { return it.kind === "meal" || MEALS.includes(String(it.category || "").toLowerCase()); }
 function plotted(it) { return Number.isFinite(it.lat) && Number.isFinite(it.lng) && it.kind !== "transit" && !isAirport(it); }
 // Flying in or out: the airport gets its own big pin on that day's map.
+const flightish = it => isAirport(it) || /^flight/i.test(it.category || "") || /\bflights?\b|✈/i.test(it.name || "");
 const isAirport = it => /^(depart|arrive|flight)/i.test(it.category || "") && /airport|flight|fly|\b[A-Z]{3}\b/.test((it.name || "") + " " + (it.neighborhood || ""));
 const airportLL = it => hasLL(it.airport) ? it.airport : (hasLL(it) ? it : null);
 const airportCode = it => ((/\b([A-Z]{3})\b/.exec((it.neighborhood || "") + " " + (it.name || "")) || [])[1]) || "";
@@ -1940,8 +1941,8 @@ function stopCard(it, ii, d, nums, compact) {
 function legHTML(it, prev) {
   const leg = it.transitFromPrev; if (!leg) return "";
   const min = Math.round(Number(leg.minutes)), gap = prev && prev.end && it.time ? toMin(it.time) - toMin(prev.end) : null;
-  return esc(MODE[leg.mode] || leg.mode || "Travel") + " · " + (leg.est ? "~" : "") + min + " min" +
-    (gap != null && gap >= 0 && gap < min ? ' <span class="tight-leg">· tight, only ' + gap + " min between</span>" : "");
+  return (leg.mode === "flight" ? "✈ " : "") + esc(MODE[leg.mode] || leg.mode || "Travel") + " · " + (leg.est ? "~" : "") + (min >= 90 ? fmtDur(min) : min + " min") +
+    (leg.mode !== "flight" && gap != null && gap >= 0 && gap < min ? ' <span class="tight-leg">· tight, only ' + gap + " min between</span>" : "");
 }
 function stopRow(it, ii, d, nums, first) {
   const prev = d.items.slice(0, ii).reverse().find(x => x.end && x.kind !== "free");
@@ -2381,7 +2382,7 @@ function bindPlan() {
 }
 
 /* ---------- Generation ---------- */
-const ITEM_SHAPE = '{"time":"HH:MM","end":"HH:MM","kind":"meal|activity|free|transit|lodging","category":"Breakfast|Lunch|Dinner|Drinks|Coffee|Tour|Museum|Outdoors|Shopping|Market|Show|Free time|Arrive|Depart|Check in|Check out","name":"Real place name","neighborhood":"...","address":"street address, city","lat":0.0,"lng":0.0,"why":"one sentence selling why this fits THEM","tip":"insider pro tip, specific and a little playful, or empty","cost":0,"costTier":"$|$$|$$$|$$$$","booking":"now|daybefore|walkin|none","booked":false,"anchor":false,"who":[],"transitFromPrev":{"mode":"walk|transit|rideshare|drive|ferry|train","minutes":0}}';
+const ITEM_SHAPE = '{"time":"HH:MM","end":"HH:MM","kind":"meal|activity|free|transit|lodging","category":"Breakfast|Lunch|Dinner|Drinks|Coffee|Tour|Museum|Outdoors|Shopping|Market|Show|Free time|Arrive|Depart|Check in|Check out","name":"Real place name","neighborhood":"...","address":"street address, city","lat":0.0,"lng":0.0,"why":"one sentence selling why this fits THEM","tip":"insider pro tip, specific and a little playful, or empty","cost":0,"costTier":"$|$$|$$$|$$$$","booking":"now|daybefore|walkin|none","booked":false,"anchor":false,"who":[],"transitFromPrev":{"mode":"walk|transit|rideshare|drive|ferry|train|flight","minutes":0}}';
 
 const OCCASIONS = ["Just because", "Birthday", "Anniversary", "Honeymoon", "Bachelor or bachelorette", "Work plus play", "Reunion", "Family visit", "Race", "Other"];
 const OCC_DETAIL = { Race: ["Which race, and when does it start?", "e.g. Dallas Marathon, Sunday 7am start"], Other: ["What's the occasion?", "e.g. college visit, a concert, a family wedding"] };
@@ -2701,14 +2702,17 @@ function legMode(t, dist) {
   t.days.forEach(d => d.items.forEach(it => { const m = it.transitFromPrev && it.transitFromPrev.mode; if (m && m !== "walk") counts[m] = (counts[m] || 0) + 1; }));
   return Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || "drive";
 }
+function roadMinutes(dist, mode) {
+  const road = Math.min(dist, 6) + Math.max(dist - 6, 0) * 0.8;
+  const ride = (city, hwy) => (Math.min(road, 6) / city + Math.max(road - 6, 0) / hwy) * 60;
+  return mode === "walk" ? Math.max(3, Math.round(dist * 12)) : Math.round(mode === "transit" ? ride(18, 45) + 10 : ride(36, 105) + (mode === "drive" ? 4 : 3));
+}
+const flightMinutes = kmStraight => Math.round(kmStraight * 1.05 / 780 * 60 + 25);
 function estimateLeg(t, a, b) {
   const dist = km(a, b) * 1.3, mode = legMode(t, dist);
   // City streets for the first ~10 km, then highway speeds: Fort Worth to Dallas is ~40 min, not two hours.
   // Highways run straighter than city streets, so the long part gets a smaller detour factor.
-  const road = Math.min(dist, 6) + Math.max(dist - 6, 0) * 0.8;
-  const ride = (city, hwy) => (Math.min(road, 6) / city + Math.max(road - 6, 0) / hwy) * 60;
-  const min = mode === "walk" ? Math.max(3, Math.round(dist * 12)) : Math.round(mode === "transit" ? ride(18, 45) + 10 : ride(36, 105) + (mode === "drive" ? 4 : 3));
-  return { mode, minutes: min };
+  return { mode, minutes: roadMinutes(dist, mode) };
 }
 function ensureLegs(t, adoptOnly) {
   ensureLegsNow(t, adoptOnly); queueGoogleLegs(t);
@@ -2717,16 +2721,22 @@ function ensureLegsNow(t, adoptOnly) {
   const hb = hasLL(t.homeBase) ? Object.assign({}, t.homeBase, { id: "home@" + t.homeBase.lat.toFixed(4) + "," + t.homeBase.lng.toFixed(4) }) : null; // a new address means new legs
   const names = travelerNames(t.prefs), keys = names.length > 1 ? names : ["_"];
   t.days.forEach(d => {
-    const startsAway = d.items[0] && (d.items[0].kind === "transit" || d.items[0].kind === "lodging");
+    const startsAway = d.items[0] && (d.items[0].kind === "transit" || d.items[0].kind === "lodging" || flightish(d.items[0]));
     // The day starts from the home base; after that, each person's last stop with a location (they differ while the group is split).
     const lastOf = {}; keys.forEach(k => { lastOf[k] = startsAway ? null : hb; });
-    d.items.forEach(it => {
-      const here = it.kind === "lodging" && hb ? hb : hasLL(it) ? it : null;
+    d.items.forEach((it, ii) => {
+      // Flying in or out: the stop sits at the airport, wherever Claude happened to pin it.
+      const air = isAirport(it) && airportLL(it);
+      const here = it.kind === "lodging" && hb ? hb : air ? (air === it ? it : { lat: air.lat, lng: air.lng, id: it.id + "@air" }) : hasLL(it) ? it : null;
       if (!here) return;
       const mine = keys.length > 1 && !forEveryone(it, names) ? keys.filter(k => it.who.includes(k)) : [], who = mine.length ? mine : keys;
       // At a meet-up, time it from whoever comes from the latest stop.
       const last = who.map(k => lastOf[k]).reduce((a, b) => !a ? b : !b ? a : d.items.indexOf(b) > d.items.indexOf(a) ? b : a, null);
-      if (last && it.kind !== "lodging") {
+      const li = d.items.indexOf(last), crossed = last && (flightish(it) || d.items.slice(li + 1, ii).some(flightish)) && km(last, here) > 150;
+      if (crossed) { // a flight between them: the "commute" is the flight, not a 20-hour drive
+        const leg = it.transitFromPrev, mine = leg && leg.mode === "flight" && !leg.est && Number(leg.minutes) > 20;
+        it.transitFromPrev = mine ? Object.assign(leg, { from: last.id }) : { mode: "flight", minutes: flightMinutes(km(last, here)), from: last.id, est: true };
+      } else if (last && it.kind !== "lodging") {
         const leg = it.transitFromPrev, est = estimateLeg(t, last, here);
         // Claude's own times are kept unless they're wildly off for the distance (e.g. left over from a stop that was removed).
         const stale = leg && !leg.est && !leg.g && (Number(leg.minutes) > est.minutes * 1.8 + 8 || Number(leg.minutes) * 3 + 5 < est.minutes);
@@ -2748,7 +2758,7 @@ function queueGoogleLegs(t) {
 }
 async function googleLegs(t) {
   const todo = [];
-  t.days.forEach(d => d.items.forEach(it => { const l = it.transitFromPrev; if (l && l.a && hasLL(it) && l.g !== legKey(l.a, it, l.mode)) todo.push({ it, l }); }));
+  t.days.forEach(d => d.items.forEach(it => { const l = it.transitFromPrev; if (l && l.a && l.mode !== "flight" && hasLL(it) && l.g !== legKey(l.a, it, l.mode)) todo.push({ it, l }); }));
   for (let i = 0; i < todo.length; i += 40) {
     const part = todo.slice(i, i + 40);
     let res = null;
@@ -4036,10 +4046,11 @@ function commuteMode() {
   return /transit/i.test(g) ? "transit" : /walk/i.test(g) ? "rideshare" : "drive";
 }
 function commuteEstimate(a, b) {
+  if (km(a, b) > 250) return { mode: "flight", icon: "✈", min: flightMinutes(km(a, b)) }; // nobody drives that between stops
   const dist = km(a, b) * 1.3; // roads aren't straight lines
-  if (dist < 1.2) return { mode: "walk", icon: "🚶", min: Math.max(3, Math.round(dist * 12)) };
-  const mode = commuteMode(), speed = mode === "transit" ? 18 : 32, extra = mode === "transit" ? 10 : mode === "drive" ? 8 : 5;
-  return { mode, icon: mode === "transit" ? "🚇" : "🚗", min: Math.round(dist / speed * 60 + extra) };
+  if (dist < 1.2) return { mode: "walk", icon: "🚶", min: roadMinutes(dist, "walk") };
+  const mode = commuteMode();
+  return { mode, icon: mode === "transit" ? "🚇" : "🚗", min: roadMinutes(dist, mode) };
 }
 function commuteLabels(ids, gs) {
   const items = ids.map(id => ({ c: candById(id), s: toMin(DRAFT.place[id].start) })).filter(x => x.c && hasLL(x.c)).sort((a, b) => a.s - b.s);
