@@ -590,6 +590,48 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .wx-line { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 12px 0 0; }
 .wx-line span { display: inline-flex; gap: 6px; font-size: 13px; color: var(--muted); }
 
+/* Trip page: slim header, pinned day strip, one-line stops, tabbed side panel */
+.trip2 { padding-bottom: 60px; }
+.th { display: flex; justify-content: space-between; align-items: center; gap: 12px 20px; flex-wrap: wrap; padding: 22px 0 6px; }
+.th-main { display: grid; gap: 4px; }
+.th-dest { font-family: var(--display); font-weight: 700; font-size: clamp(28px, 4vw, 42px); line-height: 1.05; letter-spacing: -0.015em; }
+.th-meta { font-family: var(--mono); font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.th-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.th-more .menu-pop { min-width: 250px; }
+.th-about { margin: 2px 0 8px; font-size: 14px; color: var(--muted); }
+.th-about summary { cursor: pointer; font-size: 13px; width: max-content; }
+.th-about p { max-width: 70ch; color: var(--ink); margin: 8px 0; }
+.daystrip { position: sticky; top: 60px; z-index: 15; background: var(--paper); display: flex; gap: 6px; overflow-x: auto; padding: 10px 0; border-bottom: 1px solid var(--rule); margin-bottom: 18px; scrollbar-width: thin; }
+.dpill { flex: 0 0 auto; display: flex; gap: 8px; align-items: center; background: var(--card); border: 1px solid var(--rule); border-radius: 999px; padding: 4px 14px 4px 4px; cursor: pointer; font: inherit; color: inherit; text-align: left; }
+.dpill b { display: block; font-size: 13px; font-weight: 600; line-height: 1.2; }
+.dpill small { display: block; font-family: var(--mono); font-size: 10px; color: var(--muted); line-height: 1.2; min-height: 12px; }
+.dpill[aria-selected="true"] { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); }
+.dv-head { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+.dv-head .eyebrow { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.dv-head h2 { font-family: var(--display); font-weight: 600; font-size: clamp(24px, 3vw, 32px); line-height: 1.1; margin: 4px 0; }
+.dv-head .pitch { margin: 0; color: var(--muted); font-size: 15px; max-width: 62ch; }
+.dv-edit { display: grid; gap: 8px; background: var(--card); border: 1px solid var(--rule); border-radius: 14px; padding: 12px; margin-bottom: 14px; }
+.dv-edit .rework { flex: none; }
+.dayview .who-bar { margin-bottom: 10px; }
+.card.collapsed { cursor: pointer; gap: 3px; padding: 11px 14px; }
+.card.collapsed:hover { border-color: var(--c); }
+.c-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.c-row .name { font-size: 18px; flex: 0 1 auto; }
+.c-row .chev { margin-left: auto; color: var(--muted); font-size: 12px; }
+.why1 { font-size: 14px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card.open { position: relative; }
+.c-close { position: absolute; top: 8px; right: 10px; background: none; border: 0; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px; }
+.card.free { padding: 8px 14px; }
+.card.free .name { font-size: 16px; }
+.railtabs { display: grid; gap: 12px; }
+.railtabs .sug-tabs { margin: -4px 0 0; }
+.rail-body { display: grid; gap: 14px; }
+.rail-body .panel { border: 0; padding: 0; background: none; border-radius: 0; }
+.stay-line { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: baseline; font-size: 14px; border-top: 1px solid var(--rule); padding-top: 10px; }
+.stay-line small { display: block; font-size: 12px; }
+.headsup summary { cursor: pointer; font-size: 13px; font-weight: 600; }
+.headsup .watch { margin-top: 8px; }
+
 /* Split itineraries: the day's line branches into tracks, then merges */
 .avs { display: inline-flex; padding-left: 6px; vertical-align: middle; }
 .av { width: 22px; height: 22px; border-radius: 50%; background: var(--p); color: var(--on-c); display: inline-grid; place-items: center; font: 700 11px var(--body); border: 2px solid var(--card); margin-left: -6px; }
@@ -1593,9 +1635,6 @@ function renderTrip() {
   const banner = t.example
     ? '<div class="banner"><strong>Example trip.</strong> This is the 2020 San Francisco test itinerary from your template, rebuilt in the new format. <a class="btn small primary" href="#plan">Plan your own</a>' + (S.scan.trips.length ? "" : '<button class="btn small" type="button" data-find-trip>Already booked? Start from Gmail &amp; Calendar</button>') + "</div>"
     : "";
-  const tabs = t.days.map((dd, i) =>
-    '<button class="line-tab" role="tab" data-day="' + i + '" aria-selected="' + (i === S.day) + '" style="--c:' + lineVar(i) + '">' +
-    '<span class="bullet">' + (i + 1) + '</span><span class="d">' + esc(fmtDay(dd.date)) + (dd.pending ? " · planning…" : dd.failed ? " · needs a retry" : "") + '</span><span class="t">' + esc(dd.title || "Day " + (i + 1)) + "</span></button>").join("");
 
   const names = travelerNames(t.prefs);
   if (S.who !== "all" && !names.includes(S.who)) S.who = "all";
@@ -1603,57 +1642,89 @@ function renderTrip() {
     (ME ? '<button class="btn small primary" type="button" id="copyShared">Save a copy to my trips</button>'
       : '<form class="look" id="inviteForm"><label for="inviteEmail" class="hidden">Your email</label><input id="inviteEmail" type="email" required placeholder="Your email"><button class="btn small primary" type="submit">Request an invite</button></form><span class="note" id="inviteNote"></span>') + "</div>" : "";
   const editedNote = t.status === "confirmed" && !S.readOnly ? '<p class="note">Confirmed ' + esc(fmtDay(String(t.confirmedAt || "").slice(0, 10))) + ". You can keep editing; changes save automatically" + (t.editedAfterConfirm ? ", and you've made some since confirming." : ".") + "</p>" : "";
-  return '<div class="wrap">' + shareBanner + banner + (S.readOnly ? "" : renderImport("trip")) +
-    '<section class="trip-head">' +
-      '<span class="eyebrow">' + esc(fmtRange(t.startDate, t.endDate)) + " · " + t.days.length + (t.days.length === 1 ? " day" : " days") + (nights ? " · " + nights + (nights === 1 ? " night" : " nights") : "") + "</span>" +
-      '<h1 class="dest">' + esc(t.destination) + "</h1>" +
-      '<p class="thesis">' + esc(t.summary) + "</p>" +
-      '<div class="facts">' +
-        '<span class="chip">' + t.travelers + (t.travelers === 1 ? " traveler" : " travelers") + "</span>" +
-        (t.tripType ? '<span class="chip">' + esc(t.tripType) + "</span>" : "") +
-        (t.pace ? '<span class="chip">' + esc(t.pace) + " pace</span>" : "") +
-        (t.budget ? '<span class="chip">' + esc(t.budget) + " · ~" + money(BUDGET_TARGET[t.budget] || 300) + "/person/day</span>" : "") +
-        (t.occasion && t.occasion !== "Just because" ? '<span class="chip">' + esc(t.occasion) + "</span>" : "") +
-      "</div>" +
-      '<div class="head-actions">' +
-        (!S.readOnly && !t.example ? (t.status === "confirmed"
-          ? '<span class="pill booked">✓ Confirmed</span>' + (t.editedAfterConfirm ? '<button class="btn small primary" id="confirmTrip">Confirm changes</button>' : "")
-          : '<button class="btn small primary" id="confirmTrip">Confirm itinerary</button>') : "") +
-        (!S.readOnly && HOSTED && ME && !t.example ? '<button class="btn small" id="shareTrip">Share</button>' : "") +
-        '<button class="btn small" id="copyText">Copy for the group chat</button>' +
-        (t.plan && !S.readOnly ? '<a class="btn small" href="#anchors" id="editPlan">Rearrange anchor days</a>' : "") +
-        (t.example || S.readOnly ? "" : '<button class="btn small" id="delTrip">Remove from my trips</button>') +
-      "</div>" + editedNote +
-    "</section>" +
-    '<nav class="lines" role="tablist" aria-label="Days">' + tabs + "</nav>" +
+  const split = dd => names.length > 1 && dd.items.some(it => !forEveryone(it, names));
+  const strip = t.days.map((dd, i) => {
+    const w = t.weather && t.weather.days[dd.date], [icon] = w ? wxLabel(w.code) : [""];
+    return '<button class="dpill" role="tab" data-day="' + i + '" aria-selected="' + (i === S.day) + '" style="--c:' + lineVar(i) + '" title="' + esc(dd.title || "") + '">' +
+      '<span class="bullet">' + (i + 1) + "</span><span><b>" + esc(fmtDay(dd.date)) + "</b><small>" +
+      (dd.pending ? "planning…" : dd.failed ? "needs a retry" : (w ? icon + " " + w.hi + "°" : "") + (split(dd) ? (w ? " · " : "") + "⑂ split" : "")) + "</small></span></button>";
+  }).join("");
+  const status = !S.readOnly && !t.example ? (t.status === "confirmed"
+    ? '<span class="pill booked">✓ Confirmed</span>' + (t.editedAfterConfirm ? '<button class="btn small" id="confirmTrip">Confirm changes</button>' : "")
+    : '<button class="btn small" id="confirmTrip">Confirm itinerary</button>') : "";
+  const more = '<div class="menu th-more"><button class="btn small ghost" type="button" id="tripMore" aria-haspopup="true" aria-expanded="false" aria-label="More actions">⋯</button><div class="menu-pop" id="tripMoreMenu" role="menu">' +
+    '<button type="button" id="copyText"><strong>Copy for the group chat</strong><small>A text version of the whole trip</small></button>' +
+    (t.plan && !S.readOnly ? '<button type="button" data-href="#anchors" id="editPlan"><strong>Rearrange anchor days</strong><small>Back to Plan your days</small></button>' : "") +
+    (t.example || S.readOnly ? "" : '<button type="button" id="delTrip"><strong>Remove from my trips</strong><small>Deletes this itinerary</small></button>') + "</div></div>";
+  const facts = [t.travelers + (t.travelers === 1 ? " traveler" : " travelers"), t.tripType, t.pace && t.pace + " pace", t.budget && t.budget + " · ~" + money(BUDGET_TARGET[t.budget] || 300) + "/person/day", t.occasion && t.occasion !== "Just because" ? t.occasion : ""].filter(Boolean);
+  const w = t.weather && t.weather.days[d.date];
+  const tab = S.railTab || "map", tabs = [["map", "Map"], ["stay", "Stay"], ["book", "Bookings"], ["budget", "Budget"]];
+  const railBody = tab === "stay" ? renderHome(t) + weatherPanel(t)
+    : tab === "book" ? renderBookings(t)
+    : tab === "budget" ? renderBudget(t)
+    : renderMap(t) + stayLine(t) + (t.watchouts.length ? '<details class="headsup"><summary>Heads up · ' + t.watchouts.length + '</summary><ul class="watch">' + t.watchouts.map(x => "<li>" + esc(x) + "</li>").join("") + "</ul></details>" : "");
+  return '<div class="wrap trip2">' + shareBanner + banner + (S.readOnly ? "" : renderImport("trip")) +
+    '<header class="th"><div class="th-main"><h1 class="th-dest">' + esc(t.destination) + '</h1><span class="th-meta">' + esc(fmtRange(t.startDate, t.endDate)) + " · " + t.days.length + (t.days.length === 1 ? " day" : " days") +
+      (names.length > 1 ? " · " + avatars(names, names) : " · " + t.travelers + (t.travelers === 1 ? " traveler" : " travelers")) + "</span></div>" +
+      '<div class="th-actions">' + status + (!S.readOnly && HOSTED && ME && !t.example ? '<button class="btn small primary" id="shareTrip">Share</button>' : "") + more + "</div></header>" +
+    '<details class="th-about"><summary>About this trip</summary><p>' + esc(t.summary || "") + '</p><div class="facts">' + facts.map(f => '<span class="chip">' + esc(f) + "</span>").join("") + "</div></details>" +
+    editedNote +
+    '<nav class="daystrip" role="tablist" aria-label="Days">' + strip + "</nav>" +
     '<div class="grid">' +
-      '<section aria-label="Day plan">' +
-        '<div class="day-head">' +
-          '<span class="eyebrow" style="color:' + c + '">Day ' + (S.day + 1) + " · " + esc(fmtDay(d.date)) + "</span>" + (t.weather && t.weather.days[d.date] ? '<div class="day-wx">' + wxChip(t.weather.days[d.date], { label: true }) + "</div>" : "") +
-          "<h2>" + esc(d.title) + "</h2>" +
-          '<p class="pitch">' + esc(d.pitch) + "</p>" +
-          '<div class="day-tools">' +
-            routeLink(d) +
-            (S.readOnly || d.pending ? "" : '<form class="rework" id="reworkForm"><label for="reworkInput" class="hidden">Change this day</label><input id="reworkInput" placeholder="Not feeling it? e.g. rainy day, more indoors, sleep in" autocomplete="off"><button class="btn small" type="submit" id="reworkBtn">Rework day</button></form>' +
-              '<form class="rework" id="quickAdd"><label for="quickInput" class="hidden">Add to this day</label><input id="quickInput" placeholder="Add something, e.g. 8:30pm start bedtime routine" autocomplete="off"><button class="btn small" type="submit">Add</button></form>') +
-          "</div>" +
-          (names.length > 1 ? '<div class="who-bar"><span class="pf-k">Showing</span><div class="filters" role="group">' + ["all"].concat(names).map(n => '<button type="button" data-who="' + esc(n) + '" aria-pressed="' + (S.who === n) + '">' + (n === "all" ? avatars(names, names) + " Everyone" : avatars([n], names) + " " + esc(n)) + "</button>").join("") + "</div></div>" : "") +
-          '<span class="note" id="reworkNote"></span>' +
-        "</div>" +
+      '<section class="dayview" aria-label="Day plan" style="--c:' + c + '">' +
+        '<div class="dv-head"><div><span class="eyebrow" style="color:' + c + '">Day ' + (S.day + 1) + " · " + esc(fmtDay(d.date)) + (w ? " · " + wxChip(w) : "") + "</span>" +
+          "<h2>" + esc(d.title) + "</h2>" + (d.pitch ? '<p class="pitch">' + esc(d.pitch) + "</p>" : "") + "</div>" +
+          (S.readOnly || d.pending ? "" : '<button class="btn small" type="button" id="editDayBtn" aria-expanded="' + !!S.editDay + '">✎ Edit day ' + (S.editDay ? "▴" : "▾") + "</button>") + "</div>" +
+        (S.editDay && !S.readOnly && !d.pending ? '<div class="dv-edit">' +
+          '<form class="rework" id="quickAdd"><label for="quickInput" class="hidden">Add to this day</label><input id="quickInput" placeholder="Add something, e.g. 8:30pm start bedtime routine" autocomplete="off"><button class="btn small" type="submit">Add</button></form>' +
+          '<form class="rework" id="reworkForm"><label for="reworkInput" class="hidden">Change this day</label><input id="reworkInput" placeholder="Rework the day, e.g. rainy day, more indoors, sleep in" autocomplete="off"><button class="btn small" type="submit" id="reworkBtn">Rework day</button></form>' +
+          '<div class="row2">' + routeLink(d) + '<span class="note" id="reworkNote"></span></div></div>' : '<span class="note" id="reworkNote"></span>') +
+        (names.length > 1 ? '<div class="who-bar"><span class="pf-k">Showing</span><div class="filters" role="group">' + ["all"].concat(names).map(n => '<button type="button" data-who="' + esc(n) + '" aria-pressed="' + (S.who === n) + '">' + (n === "all" ? avatars(names, names) + " Everyone" : avatars([n], names) + " " + esc(n)) + "</button>").join("") + "</div></div>" : "") +
         (d.pending ? '<div class="day-pending" role="status"><p class="gen-status">Planning day ' + (S.day + 1) + " around your picks…</p>" + '<div class="skel-rows"><div></div><div></div><div></div><div></div></div></div>'
           : d.failed ? '<div class="day-pending"><p class="err">This day didn\'t come back.</p><button class="btn" type="button" data-retry-day="' + S.day + '">Try again</button></div>'
           : renderTimeline(d, S.day)) +
       "</section>" +
-      '<aside class="rail">' +
-        renderMap(t) +
-        weatherPanel(t) +
-        renderHome(t) +
-        renderBookings(t) +
-        renderBudget(t) +
-        (t.watchouts.length ? '<section class="panel"><h3>Heads up</h3><ul class="watch">' + t.watchouts.map(w => "<li>" + esc(w) + "</li>").join("") + "</ul></section>" : "") +
+      '<aside class="rail"><section class="panel railtabs"><div class="sug-tabs" role="tablist">' + tabs.map(([k, l]) => '<button type="button" role="tab" data-railtab="' + k + '" aria-selected="' + (tab === k) + '">' + l + "</button>").join("") + "</div>" +
+        '<div class="rail-body">' + railBody + "</div></section>" +
         '<p class="note">' + (PLACES ? "Places are checked against Google Maps, but hours change. Confirm and book through the venue before you go." : "Places come from Claude\'s knowledge and can be out of date. Check hours and book through the venue before you go.") + "</p>" +
       "</aside>" +
     "</div></div>";
+}
+// One line under the map: where you're staying, with a quick way to fix it.
+function stayLine(t) {
+  const hb = t.homeBase; if (!hb || !hb.name) return "";
+  return '<div class="stay-line"><span class="pf-k">Staying at</span><span><b>' + esc(hb.name) + "</b>" + (hb.address ? '<small class="muted">' + esc(hb.address) + "</small>" : "") + "</span>" +
+    (S.readOnly || t.example ? "" : '<button class="lnk" type="button" data-editstay>Edit</button>') + "</div>";
+}
+// Update where you're staying: Google finds the exact spot, and check-in/check-out stops follow.
+function openStayEdit() {
+  const t = S.trip, hb = t.homeBase || {};
+  openDrawer("Where you're staying", hb.name || "Your stay", "The map, check-in and check-out update to match.");
+  $("#drawerBody").innerHTML = '<form id="stayForm" class="place-form">' +
+    '<label class="f" for="stName">Name<input class="inp" id="stName" value="' + esc(hb.name || "") + '" placeholder="e.g. Kimpton Pittman Hotel, or Airbnb on Magnolia Ave"></label>' +
+    '<label class="f" for="stAddr">Address<input class="inp" id="stAddr" value="' + esc(hb.address || "") + '" placeholder="Street address, city" autocomplete="street-address"></label>' +
+    '<p class="note" id="stNote"></p><div class="row2"><button class="btn primary" type="submit">Save</button><button class="lnk" type="button" id="stCancel">Cancel</button></div></form>';
+  $("#stCancel").addEventListener("click", closeDrawer);
+  $("#stayForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = $("#stName").value.trim(), address = $("#stAddr").value.trim();
+    if (!name && !address) { $("#stNote").textContent = "Add a name or an address."; return; }
+    $("#stNote").textContent = PLACES ? "Finding it on Google Maps…" : "";
+    let g = null; const prevName = hb.name || "";
+    if (PLACES) { const res = await placesMatch(t.destination, [{ name: name || address, address }]); g = res && res[0]; }
+    Object.assign(hb, { name: name || (g && g.name) || hb.name, address: (g && g.address) || address || hb.address, booked: true });
+    if (g) { hb.lat = g.lat; hb.lng = g.lng; hb.mapsUrl = g.mapsUrl; }
+    t.homeBase = hb;
+    t.days.forEach(d => d.items.forEach(it => {
+      if (it.kind !== "lodging") return;
+      const nm = prevName && it.name.includes(prevName) ? it.name.split(prevName).join(hb.name) : /^check (in|out)/i.test(it.name) ? it.name.replace(/^(check (in|out)\s*(:|at)?).*$/i, "$1 " + hb.name) : it.name;
+      Object.assign(it, { name: nm, address: hb.address, lat: hb.lat, lng: hb.lng });
+    }));
+    if (prevName && t.homeBase.routine) t.homeBase.routine.forEach(r => { if (r.note) r.note = r.note.split(prevName).join(hb.name); });
+    if (t.prefs) t.prefs.stay = hb.name + (hb.address ? ", " + hb.address : "");
+    markEdited(t); saveTrip(t); closeDrawer(); render();
+    toast(g ? "Updated your stay and its spot on the map." : PLACES ? "Updated. We couldn't find it on Google Maps, so double-check the address." : "Updated your stay.");
+  });
 }
 
 function routeLink(d) {
@@ -1679,6 +1750,16 @@ const forEveryone = (it, names) => names.length < 2 || !it.who || !it.who.length
 // One stop's card: what it is, why, tips, and its actions.
 function stopCard(it, ii, d, nums, compact) {
   const minor = it.kind === "transit" || it.kind === "lodging";
+  if (!minor && it.kind !== "free" && !(S.openStops && S.openStops.has(it.id))) {
+    // Collapsed: name, one line of why, and the one fact that matters most. Tap for everything else.
+    const key = it.booked ? '<span class="pill booked">Booked</span>' : it.booking === "now" ? '<span class="pill now">Book now</span>'
+      : typeof it.rating === "number" ? '<span class="pill">★ ' + it.rating.toFixed(1) + "</span>" : it.costTier ? '<span class="pill">' + esc(it.costTier) + "</span>" : "";
+    const warn = closedAtTime(it, d.date) || (it.verified === false ? "Not found on Google Maps" : "");
+    return '<div class="card collapsed' + (S.hl === it.id ? " hl" : "") + (compact ? " compact" : "") + '" data-toggle="' + it.id + '" role="button" tabindex="0" aria-expanded="false">' +
+      '<span class="cat">' + esc(it.category || it.kind) + (it.neighborhood ? " · " + esc(it.neighborhood) : "") + "</span>" +
+      '<span class="c-row"><span class="name">' + esc(it.name) + "</span>" + (it.anchor ? '<span class="pill pick">Your pick</span>' : "") + key + (warn ? '<span class="pill daybefore" title="' + esc(warn) + '">⚠</span>' : "") + '<span class="chev">▾</span></span>' +
+      (it.why && !compact ? '<span class="why1">' + esc(it.why) + "</span>" : "") + "</div>";
+  }
   const cls = "card" + (it.kind === "free" ? " free" : "") + (minor ? " transitk" : "") + (S.hl === it.id ? " hl" : "") + (compact ? " compact" : "");
   let body = '<span class="cat">' + esc(it.category || it.kind) + (it.neighborhood ? " · " + esc(it.neighborhood) : "") + "</span>" + '<span class="name">' + esc(it.name) + "</span>";
   if (it.why) body += '<span class="why">' + esc(it.why) + "</span>";
@@ -1702,7 +1783,8 @@ function stopCard(it, ii, d, nums, compact) {
     if (!S.readOnly) { foot.push('<button class="lnk" data-move="' + ii + '">Move</button>'); foot.push('<button class="lnk" data-swap="' + ii + '">Change</button>'); foot.push('<button class="lnk" data-remove="' + ii + '">Remove</button>'); }
     body += '<div class="foot">' + foot.join("") + "</div>";
   }
-  return '<div class="' + cls + '">' + body + "</div>";
+  const openable = !minor && it.kind !== "free";
+  return '<div class="' + cls + (openable ? " open" : "") + '"' + (openable ? ' data-toggle="' + it.id + '" aria-expanded="true"' : "") + ">" + (openable ? '<button class="chev c-close" type="button" data-toggle-btn="' + it.id + '" aria-label="Show less">▴</button>' : "") + body + "</div>";
 }
 const legHTML = it => it.transitFromPrev ? esc(MODE[it.transitFromPrev.mode] || it.transitFromPrev.mode || "Travel") + " · " + Math.round(Number(it.transitFromPrev.minutes)) + " min" : "";
 function stopRow(it, ii, d, nums, first) {
@@ -1840,7 +1922,7 @@ function renderHome(t) {
   const hb = t.homeBase;
   if (!hb.name) return "";
   const rooms = Math.ceil(t.travelers / 2);
-  return '<section class="panel"><h3>Home base <small>' + esc(hb.type || "") + (hb.nightly ? " · ~" + money(hb.nightly) + "/night" : "") + "</small></h3>" +
+  return '<section class="panel"><h3>Where you\'re staying <small>' + esc(hb.type || "") + (hb.nightly ? " · ~" + money(hb.nightly) + "/night" : "") + (S.readOnly || t.example ? "" : ' · <button class="lnk" type="button" data-editstay>Edit</button>') + "</small></h3>" +
     '<div class="home-name">' + esc(hb.name) + "</div>" +
     '<div class="small muted">' + esc(hb.neighborhood || "") + (rooms > 1 ? " · " + rooms + " rooms" : "") + "</div>" +
     (hb.why ? '<p class="small" style="margin:8px 0 0">' + esc(hb.why) + "</p>" : "") +
@@ -1901,6 +1983,17 @@ function renderBudget(t) {
 }
 
 function bindTrip() {
+  document.querySelectorAll("[data-railtab]").forEach(b => b.addEventListener("click", () => { S.railTab = b.dataset.railtab; render(); }));
+  document.querySelectorAll("[data-editstay]").forEach(b => b.addEventListener("click", openStayEdit));
+  const edb = $("#editDayBtn"); if (edb) edb.addEventListener("click", () => { S.editDay = !S.editDay; render(); if (S.editDay) { const q = $("#quickInput"); if (q) q.focus(); } });
+  const tm = $("#tripMore"); if (tm) tm.addEventListener("click", e => { e.stopPropagation(); const open = $("#tripMoreMenu").classList.toggle("open"); tm.setAttribute("aria-expanded", String(open)); });
+  const ep2 = $("#editPlan"); if (ep2) ep2.addEventListener("click", () => { location.hash = "anchors"; });
+  const toggle = id => { S.openStops = S.openStops || new Set(); S.openStops.has(id) ? S.openStops.delete(id) : S.openStops.add(id); render(); };
+  document.querySelectorAll(".card[data-toggle]").forEach(cd => {
+    cd.addEventListener("click", e => { if (e.target.closest("a, button, input, form")) return; if (cd.classList.contains("open")) return; toggle(cd.dataset.toggle); });
+    cd.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target === cd) { e.preventDefault(); toggle(cd.dataset.toggle); } });
+  });
+  document.querySelectorAll("[data-toggle-btn]").forEach(b => b.addEventListener("click", () => toggle(b.dataset.toggleBtn)));
   ensureTripWeather(S.trip);
   document.querySelectorAll("[data-retry-day]").forEach(b => b.addEventListener("click", () => retryDay(+b.dataset.retryDay)));
   document.querySelectorAll("[data-who]").forEach(b => b.addEventListener("click", () => { S.who = b.dataset.who; render(); }));
@@ -1929,7 +2022,7 @@ function bindTrip() {
   });
   const ep = $("#editPlan");
   if (ep) ep.addEventListener("click", () => { DRAFT = JSON.parse(JSON.stringify(S.trip.plan)); DRAFT.tripId = S.trip.id; DRAFT.suggested = true; saveDraft(); });
-  document.querySelectorAll(".line-tab").forEach(b => b.addEventListener("click", () => { S.day = +b.dataset.day; S.hl = null; render(); }));
+  document.querySelectorAll(".dpill").forEach(b => b.addEventListener("click", () => { S.day = +b.dataset.day; S.hl = null; S.editDay = false; render(); }));
   document.querySelectorAll("[data-swap]").forEach(b => b.addEventListener("click", () => openSwap(S.day, +b.dataset.swap)));
   document.querySelectorAll("[data-book]").forEach(cb => cb.addEventListener("change", () => {
     S.trip.booked[cb.dataset.book] = cb.checked; saveTrip(S.trip); render();
@@ -2244,6 +2337,8 @@ async function generate(p) {
   S.view = "gen"; render();
   const tick = setInterval(() => { if (S.gen) { S.gen.pct = Math.min(90, S.gen.pct + 4); updateGen(); } }, 1500);
   let trip;
+  // Weather runs alongside the home-base call and never holds up the trip (capped at 6 seconds).
+  const wxP = Promise.race([(async () => { const ll = await geocode(p.dest); return ll ? fetchWeather(ll.lat, ll.lng, tripDates(p)) : null; })().catch(() => null), delay(6000).then(() => null)]);
   try {
     const frame = await sampleFn.json(framePrompt(p), { signal, modelTier: "quick", cache: false });
     if (!frame || !frame.homeBase || !frame.homeBase.name) throw { code: "invalid_json" };
@@ -2267,7 +2362,7 @@ async function generate(p) {
   }
   clearInterval(tick);
   S.trip = trip; S.day = 0; S.gen = null;
-  if (hasLL(trip.homeBase)) trip.weather = await fetchWeather(trip.homeBase.lat, trip.homeBase.lng, trip.days.map(d => d.date)).catch(() => null) || (DRAFT && DRAFT.weather) || null;
+  trip.weather = await wxP || (DRAFT && DRAFT.weather) || null;
   saveTrip(trip); store("mytin.lastOpened", trip.id);
   if (p.anchors && DRAFT) { DRAFT.tripId = trip.id; saveDraft(); }
   if (FORM.booked || FORM.prefill) { FORM.booked = null; FORM.prefill = null; store("mytin.form", FORM); } // the next new trip starts clean
@@ -4053,7 +4148,10 @@ $("#tripsBtn").addEventListener("click", e => {
   const open = $("#tripsMenu").classList.toggle("open");
   $("#tripsBtn").setAttribute("aria-expanded", String(open));
 });
-document.addEventListener("click", e => { if (!e.target.closest(".menu")) closeMenu(); });
+document.addEventListener("click", e => {
+  if (!e.target.closest(".menu")) closeMenu();
+  if (!e.target.closest(".th-more")) { const m = $("#tripMoreMenu"); if (m) m.classList.remove("open"); }
+});
 
 /* ---------- Boot ---------- */
 S.scan.trips = loadFound();
