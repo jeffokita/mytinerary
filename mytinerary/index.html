@@ -2726,9 +2726,9 @@ function ensureLegs(t, adoptOnly) {
   t.days.forEach(d => { const n = d.items.length; d.items = d.items.filter(it => !travelStep(it)); dropped += n - d.items.length; });
   ensureLegsNow(t, adoptOnly && !dropped); queueGoogleLegs(t);
 }
-const TRAVEL_RE_STEP = /^(drive|driving|walk|head|ride|rideshare|uber|lyft|taxi|cab|train|bus|metro|subway|transit|travel|take (a|the) \w+)\b[^,]*\bto\b/i;
+const TRAVEL_RE_STEP = /^(drive|driving|walk|head|ride|rideshare|uber|lyft|taxi|cab|train|bus|metro|subway|transit|travel)\b[^,]*\bto\b/i;
 const travelStep = it => (it.kind === "transit" || it.kind === "free") && it.category !== "Your plan" && !it.routine && !fixedStep(it) &&
-  TRAVEL_RE_STEP.test(it.name || "") && !/\b(nap|rest|bed|sleep|change|pack|bags)\b/i.test(it.name || "");
+  TRAVEL_RE_STEP.test(it.name || "") && !/\b(nap|rest|bed|sleep|change|pack|bags|flight|airport|cable car|ferry|boat|scenic)\b/i.test(it.name || "");
 function ensureLegsNow(t, adoptOnly) {
   const hb = hasLL(t.homeBase) ? Object.assign({}, t.homeBase, { id: "home@" + t.homeBase.lat.toFixed(4) + "," + t.homeBase.lng.toFixed(4) }) : null; // a new address means new legs
   const names = travelerNames(t.prefs), keys = names.length > 1 ? names : ["_"];
