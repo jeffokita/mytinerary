@@ -2076,9 +2076,9 @@ function renderMap(t) {
   const kmPerDegLat = 111.32;
   const kmPerPx = kmPerDegLat / sc;
   const nice = [0.25, 0.5, 1, 2, 5, 10, 20, 50, 100, 200];
-  let km = nice.find(n => n / kmPerPx >= 70) || 200;
-  const bar = km / kmPerPx;
-  svg += '<g transform="translate(' + (W - P - bar) + "," + (H - 18) + ')"><line x1="0" y1="0" x2="' + bar + '" y2="0" stroke="var(--ink)" stroke-width="2"/><line x1="0" y1="-4" x2="0" y2="4" stroke="var(--ink)" stroke-width="2"/><line x1="' + bar + '" y1="-4" x2="' + bar + '" y2="4" stroke="var(--ink)" stroke-width="2"/><text x="' + (bar / 2) + '" y="-8" text-anchor="middle">' + km + " km · " + (Math.round(km * 0.621 * 10) / 10) + " mi</text></g>";
+  let barKm = nice.find(n => n / kmPerPx >= 70) || 200;
+  const bar = barKm / kmPerPx;
+  svg += '<g transform="translate(' + (W - P - bar) + "," + (H - 18) + ')"><line x1="0" y1="0" x2="' + bar + '" y2="0" stroke="var(--ink)" stroke-width="2"/><line x1="0" y1="-4" x2="0" y2="4" stroke="var(--ink)" stroke-width="2"/><line x1="' + bar + '" y1="-4" x2="' + bar + '" y2="4" stroke="var(--ink)" stroke-width="2"/><text x="' + (bar / 2) + '" y="-8" text-anchor="middle">' + barKm + " km · " + (Math.round(barKm * 0.621 * 10) / 10) + " mi</text></g>";
   svg += '<g transform="translate(24,30)"><text x="0" y="0" text-anchor="middle" style="font-weight:600;fill:var(--ink)">N</text><path d="M0 6 L5 20 L0 16 L-5 20 Z" fill="var(--ink)"/></g>';
   const order = t.days.map((_, i) => i).filter(i => i !== S.day).concat([S.day]);
   order.forEach(di => {
