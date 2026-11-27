@@ -1496,7 +1496,7 @@ function addMin(t, mins) {
 }
 const money = n => "$" + Math.round(n).toLocaleString("en-US");
 function uid() { return Math.random().toString(36).slice(2, 9); }
-function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 3200); }
+function toast(msg, ms) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), ms || Math.max(3200, String(msg).length * 60)); }
 function store(k, v) {
   try {
     if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null");
@@ -2910,7 +2910,7 @@ async function reworkDay() {
   const t = S.trip, di = S.day, d = t.days[di];
   btn.disabled = true; input.disabled = true; note.textContent = "Reworking day " + (di + 1) + "…";
   const prompt = "You revise one day of a Mytinerary itinerary.\n\nTRIP\n" + tripContext(t) +
-    "\n\nOTHER DAYS (these places are taken: never add them to this day)\n" + t.days.filter((_, i) => i !== di).map(x => x.items.filter(i => !["transit", "lodging"].includes(i.kind)).map(i => i.name).join(", ")).join("\n") +
+    "\n\nOTHER DAYS (these places are already planned. Don't add them here on your own; but if the traveler asks for one of them on this day, add it with its exact name and \"moveFromOtherDay\": true, and it will be moved here)\n" + t.days.filter((_, i) => i !== di).map(x => x.items.filter(i => !["transit", "lodging"].includes(i.kind)).map(i => i.name).join(", ")).join("\n") +
     "\n\nDAY " + (di + 1) + " (" + d.date + ") CURRENT PLAN\n" + dayList(d) +
     "\n\nTRAVELER'S REQUEST: " + ask +
     "\n\nRULES\n" + extraRules(t.prefs) +
@@ -2935,13 +2935,27 @@ async function reworkDay() {
     });
     const gone = new Set(r.remove.map(x => Number(x && typeof x === "object" ? x.index : x)).map(i => d.items[i]).filter(it => it && it.kind !== "transit" && it.kind !== "lodging"));
     d.items = d.items.filter(it => !gone.has(it));
-    const taken = tripPlaces({ days: t.days.filter((_, i) => i !== di) });
-    r.add.filter(x => x && typeof x === "object" && x.name && toMin(x.time) != null && !(x.kind !== "free" && taken.has(x))).forEach(x => { normItem(x); const w = cleanWho(x.who) || []; x.who = w.length === names.length ? [] : w; d.items.push(x); });
+    // A place already on another day: if they asked for it here, move it (keeping its Google details); otherwise skip the repeat.
+    const askWords = new Set(placeKey(ask).split(" ").filter(w => w.length > 3)), moved = [];
+    const cityWords = new Set(placeKey(t.destination).split(" "));
+    const asked = name => placeKey(name).split(" ").some(w => w.length > 4 && !cityWords.has(w) && (askWords.has(w) || askWords.has(w.replace(/s$/, ""))));
+    r.add.filter(x => x && typeof x === "object" && x.name && toMin(x.time) != null).forEach(x => {
+      let from = null;
+      if (x.kind !== "free") t.days.forEach((od, oi) => { if (oi === di || from) return; const k = od.items.findIndex(o => !["transit", "lodging", "free"].includes(o.kind) && (placeKey(o.name) === placeKey(x.name) || (x.placeId && o.placeId === x.placeId))); if (k >= 0) from = { oi, k }; });
+      if (from && !(x.moveFromOtherDay || asked(x.name))) return; // Claude repeated it on its own
+      const w = cleanWho(x.who) || [], who = w.length === names.length ? [] : w;
+      if (from) {
+        const od = t.days[from.oi], o = od.items.splice(from.k, 1)[0], len = (toMin(o.end) ?? toMin(o.time) + 60) - toMin(o.time);
+        Object.assign(o, { time: x.time, end: toMin(x.end) != null ? x.end : toHM(toMin(x.time) + len), who, transitFromPrev: null });
+        d.items.push(o); moved.push({ name: o.name, day: od, oi: from.oi, was: od.items });
+      } else { normItem(x); delete x.moveFromOtherDay; x.who = who; d.items.push(x); }
+    });
     d.items.sort((a, b) => (toMin(a.time) ?? 0) - (toMin(b.time) ?? 0));
     if (r.title) d.title = String(r.title); if (r.pitch) d.pitch = String(r.pitch);
     markEdited(t); saveTrip(t); render();
     if (PLACES && r.add.length) enrichTrip(t);
-    toast(r.summary ? String(r.summary).slice(0, 160) : "Day " + (di + 1) + " updated");
+    toast(moved.length ? moved.map(m => "Moved " + m.name + " here from " + fmtDay(m.day.date) + ". That day has a gap now: rework it to fill it, or leave it free.").join(" ")
+      : r.summary ? String(r.summary).slice(0, 160) : "Day " + (di + 1) + " updated");
   } catch (e) {
     if (e && e.code === "not_granted") sampleBlocked = true;
     if (!(e && e.code)) console.error("Rework failed", e);
