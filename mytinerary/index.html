@@ -624,7 +624,9 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .card.free { padding: 8px 14px; }
 .card.free .name { font-size: 16px; }
 .railtabs { display: grid; gap: 12px; }
-.railtabs .sug-tabs { margin: -4px 0 0; flex-wrap: wrap; }
+.railtabs .sug-tabs { margin: -4px 0 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 0; }
+.railtabs .sug-tabs button { padding: 6px 9px 8px; white-space: nowrap; flex: none; }
+.tab-count { display: inline-grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; margin-left: 5px; border-radius: 999px; background: var(--warn); color: #fff; font: 700 10px var(--body); vertical-align: 1px; }
 .q-add { flex: none; }
 .q-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 10px; }
 .q { border: 1px solid var(--rule); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; background: var(--card); }
@@ -1676,7 +1678,7 @@ function renderTrip() {
     (t.example || S.readOnly ? "" : '<button type="button" id="delTrip"><strong>Remove from my trips</strong><small>Deletes this itinerary</small></button>') + "</div></div>";
   const facts = [t.travelers + (t.travelers === 1 ? " traveler" : " travelers"), t.tripType, t.pace && t.pace + " pace", t.budget && t.budget + " · ~" + money(BUDGET_TARGET[t.budget] || 300) + "/person/day", t.occasion && t.occasion !== "Just because" ? t.occasion : ""].filter(Boolean);
   const w = t.weather && t.weather.days[d.date];
-  const tab = S.railTab || "map", nq = openQs(t).length, tabs = [["map", "Map"], ["stay", "Stay"], ["book", "Bookings"], ["budget", "Budget"], ["qs", "To figure out" + (nq ? " (" + nq + ")" : "")]];
+  const tab = S.railTab || "map", nq = openQs(t).length, tabs = [["map", "Map"], ["stay", "Stay"], ["book", "Bookings"], ["budget", "Budget"], ["qs", "To do"]];
   const railBody = tab === "qs" ? questionsPanel(t)
     : tab === "stay" ? renderHome(t) + weatherPanel(t)
     : tab === "book" ? renderBookings(t)
@@ -1703,7 +1705,7 @@ function renderTrip() {
           : d.failed ? '<div class="day-pending"><p class="err">This day didn\'t come back.</p><button class="btn" type="button" data-retry-day="' + S.day + '">Try again</button></div>'
           : renderTimeline(d, S.day)) +
       "</section>" +
-      '<aside class="rail"><section class="panel railtabs"><div class="sug-tabs" role="tablist">' + tabs.map(([k, l]) => '<button type="button" role="tab" data-railtab="' + k + '" aria-selected="' + (tab === k) + '">' + l + "</button>").join("") + "</div>" +
+      '<aside class="rail"><section class="panel railtabs"><div class="sug-tabs" role="tablist">' + tabs.map(([k, l]) => '<button type="button" role="tab" data-railtab="' + k + '" aria-selected="' + (tab === k) + '">' + l + (k === "qs" && nq ? '<span class="tab-count" aria-label="' + nq + ' open">' + nq + "</span>" : "") + "</button>").join("") + "</div>" +
         '<div class="rail-body">' + railBody + "</div></section>" +
         '<p class="note">' + (PLACES ? "Places are checked against Google Maps, but hours change. Confirm and book through the venue before you go." : "Places come from Claude\'s knowledge and can be out of date. Check hours and book through the venue before you go.") + "</p>" +
       "</aside>" +
