@@ -2641,11 +2641,11 @@ function legMode(t, dist) {
 }
 function estimateLeg(t, a, b) {
   const dist = km(a, b) * 1.3, mode = legMode(t, dist);
-  // City streets for the first ~10 km, then highway speeds: Fort Worth to Dallas is ~45 min, not two hours.
+  // City streets for the first ~10 km, then highway speeds: Fort Worth to Dallas is ~40 min, not two hours.
   // Highways run straighter than city streets, so the long part gets a smaller detour factor.
-  const road = Math.min(dist, 10) + Math.max(dist - 10, 0) * 0.88;
-  const ride = (city, hwy) => (Math.min(road, 10) / city + Math.max(road - 10, 0) / hwy) * 60;
-  const min = mode === "walk" ? Math.max(3, Math.round(dist * 12)) : Math.round(mode === "transit" ? ride(18, 45) + 10 : ride(36, 100) + (mode === "drive" ? 8 : 5));
+  const road = Math.min(dist, 6) + Math.max(dist - 6, 0) * 0.8;
+  const ride = (city, hwy) => (Math.min(road, 6) / city + Math.max(road - 6, 0) / hwy) * 60;
+  const min = mode === "walk" ? Math.max(3, Math.round(dist * 12)) : Math.round(mode === "transit" ? ride(18, 45) + 10 : ride(36, 105) + (mode === "drive" ? 4 : 3));
   return { mode, minutes: min };
 }
 function ensureLegs(t, adoptOnly) {
