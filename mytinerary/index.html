@@ -1946,7 +1946,7 @@ function renderHome(t) {
   const hb = t.homeBase;
   if (!hb.name) return "";
   const rooms = Math.ceil(t.travelers / 2);
-  return '<section class="panel"><h3>Where you\'re staying <small>' + esc(hb.type || "") + (hb.nightly ? " · ~" + money(hb.nightly) + "/night" : "") + (S.readOnly || t.example ? "" : ' · <button class="lnk" type="button" data-editstay>Edit</button>') + "</small></h3>" +
+  return '<section class="panel"><h3>Where you\'re staying <small>' + [esc(hb.type || ""), hb.nightly ? "~" + money(hb.nightly) + "/night" : "", S.readOnly || t.example ? "" : '<button class="lnk" type="button" data-editstay>Edit</button>'].filter(Boolean).join(" · ") + "</small></h3>" +
     '<div class="home-name">' + esc(hb.name) + "</div>" +
     (hb.address ? '<a class="small stay-addr" href="' + esc(hb.mapsUrl || "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(hb.address)) + '" target="_blank" rel="noopener">' + esc(hb.address) + "</a>" : "") +
     '<div class="small muted">' + esc(hb.neighborhood || "") + (hb.neighborhood && rooms > 1 ? " · " : "") + (rooms > 1 ? rooms + " rooms" : "") + "</div>" +
