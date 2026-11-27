@@ -866,7 +866,8 @@ async function replaceItems(t, bad, why) {
   const live = reps.filter(Boolean), res = await placesMatch(t.destination, live);
   if (res) live.forEach((r, i) => applyPlace(r, res[i]));
   let n = 0;
-  reps.forEach((r, i) => { if (r && !closedOnGoogle(r)) { r.transitFromPrev = null; t.days[bad[i].di].items[bad[i].ii] = r; n++; } });
+  const used = tripPlaces(t);
+  reps.forEach((r, i) => { if (r && !closedOnGoogle(r) && !used.has(r)) { r.transitFromPrev = null; t.days[bad[i].di].items[bad[i].ii] = r; n++; } });
   if (n) ensureLegs(t);
   return n;
 }
@@ -887,12 +888,22 @@ async function fixHours(t) {
   const n = await replaceItems(t, bad, "These stops are scheduled at a time the place isn't open (by Google's hours). Pick a similar place that is open for the whole time slot.");
   return { fixed: n, mine: mine.length };
 }
+// Places already committed in the trip, by name and Google place id, so suggestions never repeat one.
+const placeKey = n => String(n || "").toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]+/g, " ").trim();
+function tripPlaces(t, skip) {
+  const names = new Set(), ids = new Set(), list = [];
+  t.days.forEach(d => d.items.forEach(it => {
+    if (it === skip || ["transit", "lodging", "free"].includes(it.kind) || !it.name) return;
+    names.add(placeKey(it.name)); if (it.placeId) ids.add(it.placeId); list.push(it.name);
+  }));
+  return { has: o => names.has(placeKey(o.name)) || (!!o.placeId && ids.has(o.placeId)), list: [...new Set(list)] };
+}
 // Days are planned in parallel, so two days can pick the same spot. Keep the first, swap the later ones (never anchors or the hotel).
 async function fixRepeats(t) {
   const seen = new Set(), bad = [];
   t.days.forEach((d, di) => d.items.forEach((it, ii) => {
     if (["transit", "lodging", "free"].includes(it.kind) || !it.name) return;
-    const k = it.name.toLowerCase().replace(/^the\s+/, "").replace(/[^a-z0-9]+/g, " ").trim();
+    const k = placeKey(it.name);
     if (seen.has(k) && !it.anchor) bad.push({ di, ii, it }); else seen.add(k);
   }));
   return replaceItems(t, bad, "These places are repeated from an earlier day of the same trip.");
@@ -2757,16 +2768,21 @@ async function swapOptions(di, ii, why) {
   swapCtl = new AbortController();
   const prompt = "You help Mytinerary travelers swap one stop in their itinerary.\n\nTRIP\n" + tripContext(t) +
     "\n\nDAY " + (di + 1) + " (" + d.date + ") CURRENT PLAN\n" + dayList(d) +
+    "\n\nPLACES ALREADY IN THE TRIP, ON ANY DAY (never suggest these)\n" + tripPlaces(t, it).list.join(", ") +
     (why ? "\n\nWHY THEY WANT TO CHANGE IT: " + why + ". Every option must clearly fix this." : "") +
-    "\n\nReplace item " + ii + " (" + it.name + "). Suggest 3 different real, well-established alternatives of the same kind (" + (it.category || it.kind) + ") that fit the same time slot, stay close to the previous and next stops, match the traveler's budget and interests, and are not already in the plan. Vary them: one safe pick, one local favorite, one wildcard.\n" +
-    "Reply with ONLY a JSON array of 3 objects, each shaped like:\n" + ITEM_SHAPE + "\nKeep time=\"" + it.time + "\" and end=\"" + (it.end || "") + "\". transitFromPrev is from the previous stop in the list.";
+    "\n\nReplace item " + ii + " (" + it.name + "). Suggest 5 different real, well-established alternatives of the same kind (" + (it.category || it.kind) + ") that fit the same time slot, stay close to the previous and next stops, match the traveler's budget and interests, and are not already in the plan. Vary them: one safe pick, one local favorite, one wildcard.\n" +
+    "Reply with ONLY a JSON array of 5 objects, each shaped like:\n" + ITEM_SHAPE + "\nKeep time=\"" + it.time + "\" and end=\"" + (it.end || "") + "\". transitFromPrev is from the previous stop in the list.";
   try {
     const arr = await sampleFn.json(prompt, { signal: swapCtl.signal, modelTier: "default", cache: false });
-    const alts = (Array.isArray(arr) ? arr : []).slice(0, 3).map(normItem);
+    const used = tripPlaces(t, it);
+    let alts = (Array.isArray(arr) ? arr : []).filter(a => a && a.name).map(normItem).filter(a => !used.has(a) && placeKey(a.name) !== placeKey(it.name));
     alts.forEach(a => { a.who = it.who || []; a.anchor = false; });
-    if (PLACES) { const res = await placesMatch(t.destination, alts); if (res) alts.forEach((a, k) => applyPlace(a, res[k])); }
-    const open = alts.filter(a => !closedOnGoogle(a)); if (open.length) alts.splice(0, alts.length, ...open);
-    if (!alts.length) throw { code: "invalid_json" };
+    if (PLACES && alts.length) { const res = await placesMatch(t.destination, alts); if (res) alts.forEach((a, k) => applyPlace(a, res[k])); }
+    // Google's match can reveal a repeat under another name (same place id), so check again.
+    alts = alts.filter(a => !used.has(a) && (!a.placeId || a.placeId !== it.placeId));
+    const open = alts.filter(a => !closedOnGoogle(a)); if (open.length) alts = open;
+    alts = alts.slice(0, 3);
+    if (!alts.length) { body.innerHTML = '<p class="err">Everything that fit is already on another day. Try a different reason, or "Just show me options".</p>'; return; }
     body.innerHTML = alts.map((a, k) => '<button class="alt" data-k="' + k + '"><span class="cat">' + esc(a.category || "") + (a.neighborhood ? " · " + esc(a.neighborhood) : "") + '</span><span class="name" style="font-family:var(--display);font-weight:600;font-size:18px">' + esc(a.name) + '</span><span class="small">' + esc(a.why || "") + '</span><span class="foot">' + (a.cost ? '<span class="pill">' + esc(a.costTier || "") + " ~" + money(a.cost) + "</span> " : "") + (BOOK[a.booking] ? '<span class="pill ' + a.booking + '">' + BOOK[a.booking] + "</span>" : "") + "</span></button>").join("") +
       '<p class="note">Pick one to replace ' + esc(it.name) + ".</p>";
     body.querySelectorAll(".alt").forEach(b => b.addEventListener("click", () => {
@@ -2791,7 +2807,7 @@ async function reworkDay() {
   const t = S.trip, di = S.day, d = t.days[di];
   btn.disabled = true; input.disabled = true; note.textContent = "Reworking day " + (di + 1) + "…";
   const prompt = "You revise one day of a Mytinerary itinerary.\n\nTRIP\n" + tripContext(t) +
-    "\n\nOTHER DAYS (avoid repeating these places)\n" + t.days.filter((_, i) => i !== di).map(x => x.items.map(i => i.name).join(", ")).join("\n") +
+    "\n\nOTHER DAYS (these places are taken: never add them to this day)\n" + t.days.filter((_, i) => i !== di).map(x => x.items.filter(i => !["transit", "lodging"].includes(i.kind)).map(i => i.name).join(", ")).join("\n") +
     "\n\nDAY " + (di + 1) + " (" + d.date + ") CURRENT PLAN\n" + dayList(d) +
     "\n\nTRAVELER'S REQUEST: " + ask +
     "\n\nRULES\n" + extraRules(t.prefs) +
@@ -2812,7 +2828,8 @@ async function reworkDay() {
     });
     const gone = new Set((r.remove || []).map(Number).map(i => d.items[i]).filter(it => it && it.kind !== "transit" && it.kind !== "lodging"));
     d.items = d.items.filter(it => !gone.has(it));
-    (r.add || []).filter(x => x && x.name && toMin(x.time) != null).forEach(x => { normItem(x); const w = cleanWho(x.who) || []; x.who = w.length === names.length ? [] : w; d.items.push(x); });
+    const taken = tripPlaces({ days: t.days.filter((_, i) => i !== di) });
+    (r.add || []).filter(x => x && x.name && toMin(x.time) != null && !(x.kind !== "free" && taken.has(x))).forEach(x => { normItem(x); const w = cleanWho(x.who) || []; x.who = w.length === names.length ? [] : w; d.items.push(x); });
     d.items.sort((a, b) => (toMin(a.time) ?? 0) - (toMin(b.time) ?? 0));
     if (r.title) d.title = String(r.title); if (r.pitch) d.pitch = String(r.pitch);
     markEdited(t); saveTrip(t); render();
@@ -3121,6 +3138,10 @@ function mockSample() {
         { time: "09:40", end: "11:00", kind: "activity", category: "Event", name: "Jamie's DEKA race", who: ["Jamie"], lat: 37.79, lng: -122.4 },
         { time: "12:00", end: "13:00", kind: "meal", category: "Lunch", name: "Recovery lunch", lat: 37.791, lng: -122.401 }] }] : [] };
     } else if (prompt.startsWith("You help a Mytinerary traveler settle in")) out = { routine: [{ role: "Coffee", name: "Avoca Coffee", note: "4-minute walk" }, { role: "Late bite", name: "Fixture Kitchen", note: "6-minute walk" }, { role: "Practical", name: "Central Market", note: "5-minute drive" }] };
+    else if (prompt.startsWith("You help Mytinerary travelers swap")) { // the first two repeat places from other days, to exercise the filter
+      const taken = ((/never suggest these\)\n(.*)/.exec(prompt) || [])[1] || "").split(", ").filter(Boolean);
+      out = [taken[0], taken[1], "Tartine Bakery", "Zuni Cafe", "Swan Oyster Depot"].map((name, k) => ({ time: "12:00", kind: "meal", category: "Lunch", name: name || "Spot " + k, neighborhood: "Mission", lat: 37.76, lng: -122.42, why: "Mock option." }));
+    }
     else if (prompt.startsWith("You fix a Mytinerary itinerary")) {
       const n = (prompt.match(/^\d+\. Day /gm) || []).length;
       out = Array.from({ length: n }, (_, k) => ({ time: "12:00", kind: "activity", category: "Museum", name: "Replacement stop " + (k + 1), neighborhood: "Downtown", lat: 37.79, lng: -122.4, why: "Not used elsewhere in the trip." }));
