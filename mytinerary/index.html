@@ -669,6 +669,8 @@ label.f.pre .inp { border-color: var(--l2); background: color-mix(in srgb, var(-
 .card.compact .name { font-size: 17px; }
 .card.compact .why { font-size: 14px; }
 .tight-leg { color: var(--warn); font-weight: 600; }
+.home-start .card .name { font-size: 16px; }
+.home-start .rail-col::before { top: 22px; }
 .merge-row, .meanwhile { display: grid; grid-template-columns: 88px 40px minmax(0, 1fr); }
 .merge-row .txt, .meanwhile .txt { font-family: var(--mono); font-size: 12px; color: var(--muted); padding: 8px 0; }
 .merge-row .txt { color: var(--ink); font-weight: 600; }
@@ -1934,8 +1936,20 @@ function renderTimeline(d, di) {
     else { if (!cur) { cur = { split: [] }; segs.push(cur); } cur.split.push({ it, ii }); }
   });
   let html = '<div class="timeline" style="--c:' + lineVar(di) + '">';
+  const hb = S.trip.homeBase, startsAway = d.items[0] && (d.items[0].kind === "transit" || d.items[0].kind === "lodging");
+  const firstLoc = d.items.find(it => hasLL(it) && it.kind !== "lodging");
+  const fromHome = hb && hb.name && !startsAway && firstLoc;
+  let homeRow = "";
+  if (fromHome) {
+    const leg = firstLoc.transitFromPrev, leave = leg ? toMin(firstLoc.time) - Math.round(Number(leg.minutes)) : null;
+    homeRow = '<div class="stop home-start"><span class="time">' + (leave != null ? esc(fmtTime(toHM(leave))) : "") + '</span><span class="rail-col"><span class="node minor home"></span></span>' +
+      '<div class="card transitk"><span class="cat">Start the day</span><span class="name">Leave ' + esc(hb.name) + "</span></div></div>";
+  }
   segs.forEach((sg, k) => {
-    if (sg.x) html += stopRow(sg.x.it, sg.x.ii, d, nums, k === 0 || !!segs[k - 1].split);
+    // "Leave the hotel" goes right before the first place you actually head out to.
+    const hasFirst = sg.x ? sg.x.it === firstLoc : sg.split.some(x => x.it === firstLoc);
+    if (homeRow && hasFirst) { html += homeRow; homeRow = ""; }
+    if (sg.x) html += stopRow(sg.x.it, sg.x.ii, d, nums, sg.x.it === firstLoc && fromHome ? false : (k === 0 || !!segs[k - 1].split));
     else html += renderSplit(sg.split, (segs.slice(k + 1).find(s => s.x) || {}).x, d, nums, names);
   });
   return html + "</div>";
@@ -2574,7 +2588,8 @@ function estimateLeg(t, a, b) {
 function ensureLegs(t, adoptOnly) {
   const hb = hasLL(t.homeBase) ? Object.assign({}, t.homeBase, { id: "home@" + t.homeBase.lat.toFixed(4) + "," + t.homeBase.lng.toFixed(4) }) : null; // a new address means new legs
   t.days.forEach(d => {
-    let last = null; // where you're coming from: the last stop with a location (the hotel counts after check-in)
+    const startsAway = d.items[0] && (d.items[0].kind === "transit" || d.items[0].kind === "lodging");
+    let last = startsAway ? null : hb; // the day starts from the home base; after that, the last stop with a location
     d.items.forEach(it => {
       const here = it.kind === "lodging" && hb ? hb : hasLL(it) ? it : null;
       if (!here) return;
